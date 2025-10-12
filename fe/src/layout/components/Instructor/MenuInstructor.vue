@@ -27,6 +27,16 @@
                     </router-link>
                 </li>
                 <li class="nav-item">
+                    <router-link to="/instructor/content-creator" class="nav-link d-flex align-items-center gap-1 fs-5">
+                        ✍️ Content Creator
+                    </router-link>
+                </li>
+                <li class="nav-item">
+                    <router-link to="/instructor/question-bank" class="nav-link d-flex align-items-center gap-1 fs-5">
+                        🏦 Question Bank
+                    </router-link>
+                </li>
+                <li class="nav-item">
                     <router-link to="/instructor/chat" class="nav-link d-flex align-items-center gap-1 fs-5">
                         💬 Student Chat
                     </router-link>

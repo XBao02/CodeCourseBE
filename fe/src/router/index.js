@@ -116,6 +116,16 @@ const routes = [
         component: () => import("../components/Instructor/Courses.vue"),
       },
       {
+        path: "content-creator",
+        name: "InstructorContentCreator",
+        component: () => import("../components/Instructor/ContentCreator.vue"),
+      },
+      {
+        path: "question-bank",
+        name: "InstructorQuestionBank",
+        component: () => import("../components/Instructor/QuestionBank.vue"),
+      },
+      {
         path: "chat",
         name: "InstructorChat",
         component: () => import("../components/Instructor/Chat.vue"),
