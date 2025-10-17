@@ -1,5 +1,5 @@
 <template>
-    <div class="container mt-5">
+    <div class="adm container mt-5">
         <div class="card shadow-lg rounded-3">
             <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">👨‍🏫 Instructor Management</h4>
@@ -111,3 +111,9 @@ export default {
     }
 };
 </script>
+<style scoped>
+.adm {
+    max-width: 1200px;
+    padding-top: 6rem;
+}
+</style>

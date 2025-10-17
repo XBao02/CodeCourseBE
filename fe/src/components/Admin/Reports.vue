@@ -1,6 +1,6 @@
 <template>
-    <div class="admin-report container py-4">
-        <h2 class="mb-4">📊 Báo cáo thống kê hệ thống</h2>
+    <div class="adm container mt-5">
+        <h2 class="mb-4">Báo cáo thống kê hệ thống</h2>
 
         <!-- Thống kê tổng quan -->
         <div class="row mb-4">
@@ -102,8 +102,9 @@ export default {
 </script>
 
 <style scoped>
-.admin-report {
+.adm {
     max-width: 1200px;
+    padding-top: 6rem;
 }
 
 .card {

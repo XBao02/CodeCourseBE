@@ -1,5 +1,5 @@
 <template>
-  <div class="container py-4">
+  <div class="adm container mt-4">
     <!-- Header -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
       <div>
@@ -137,3 +137,13 @@ export default {
   },
 };
 </script>
+<style scoped>
+.adm {
+  max-width: 1200px;
+  padding-top: 6rem;
+}
+
+.card {
+  border-radius: 12px;
+}
+</style>

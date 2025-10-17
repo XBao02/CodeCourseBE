@@ -124,6 +124,14 @@ export default {
 </script>
 
 <style scoped>
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1050;
+}
+
 .nav-link {
     font-weight: 500;
     color: #444 !important;
