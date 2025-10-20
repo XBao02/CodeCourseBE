@@ -26,15 +26,15 @@
 
         <!-- Nút hành động -->
         <div class="d-flex justify-content-center gap-3 mb-4">
-        <!-- Login -->
-        <router-link to="/login" class="btn btn-success btn-lg d-flex align-items-center gap-2 px-4">
-            <i class="bi bi-mortarboard-fill"></i> Login <i class="bi bi-arrow-right"></i>
-        </router-link>
+            <!-- Login -->
+            <router-link to="/login" class="btn btn-success btn-lg d-flex align-items-center gap-2 px-4">
+                <i class="bi bi-mortarboard-fill"></i> Login <i class="bi bi-arrow-right"></i>
+            </router-link>
 
-        <!-- Register -->
-        <router-link to="/register" class="btn btn-light btn-lg shadow-sm d-flex align-items-center gap-2 px-4">
-            <i class="bi bi-person-video3"></i> Register
-        </router-link>
+            <!-- Register -->
+            <router-link to="/register" class="btn btn-light btn-lg shadow-sm d-flex align-items-center gap-2 px-4">
+                <i class="bi bi-person-video3"></i> Register
+            </router-link>
         </div>
 
         <!-- Link demo -->
@@ -46,7 +46,7 @@
         </div>
 
     </section>
-    
+
     <section class="container py-5 text-center">
         <!-- Tiêu đề -->
         <h2 class="fw-bold mb-2">Everything You Need to Excel</h2>
@@ -140,7 +140,7 @@
 
 <script>
 export default {
-  name: "MenuUser",
+    name: "MenuUser",
 };
 </script>
 <style></style>
