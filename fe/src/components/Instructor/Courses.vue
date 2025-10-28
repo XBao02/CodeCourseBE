@@ -48,7 +48,7 @@
                         <div class="course-stats">
                             <span><i class="fas fa-users"></i> {{ course.students }} học viên</span>
                             <span><i class="fas fa-star"></i> {{ course.rating }}</span>
-                            <span><i class="fas fa-dollar-sign"></i> {{ course.price }}</span>
+                            <span><i class="fas fa-dollar-sign"></i> {{ Number(course.price).toLocaleString('vi-VN') }}</span>
                         </div>
 
                         <div class="course-meta">
@@ -59,6 +59,9 @@
                     <div class="course-actions">
                         <button @click="editCourse(course.id)" class="btn-edit">
                             <i class="fas fa-edit"></i> Sửa
+                        </button>
+                        <button @click="goLessons(course.id)" class="btn-content">
+                            <i class="fas fa-pen-nib"></i> Soạn nội dung
                         </button>
                         <button @click="viewCourse(course.id)" class="btn-view">
                             <i class="fas fa-eye"></i> Xem
@@ -76,7 +79,6 @@
             </div>
         </div>
 
-        <!-- Modal tạo/sửa khóa học -->
         <div v-if="showCourseModal" class="modal-overlay">
             <div class="modal-content">
                 <h2>{{ editingCourse ? 'Sửa khóa học' : 'Tạo khóa học mới' }}</h2>
@@ -109,12 +111,36 @@
                 </form>
             </div>
         </div>
+
+        <div v-if="showContentModal" class="modal-overlay content-modal">
+            <div class="modal-content content-modal-content">
+                <div class="modal-header">
+                    <h2>Soạn nội dung khóa học: {{ selectedCourse?.title }}</h2>
+                    <button @click="closeContentModal" class="btn-close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="modal-body">
+                    <ContentCreator 
+                        v-if="selectedCourse" 
+                        :course="selectedCourse"
+                        @close="closeContentModal"
+                    />
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
 <script>
+import ContentCreator from './ContentCreator.vue'
+
 export default {
     name: 'InstructorCourses',
+    components: {
+        ContentCreator
+    },
     data() {
         return {
             courses: [],
@@ -123,7 +149,9 @@ export default {
             filterStatus: 'all',
             searchQuery: '',
             showCourseModal: false,
+            showContentModal: false,
             editingCourse: null,
+            selectedCourse: null,
             courseForm: {
                 title: '',
                 description: '',
@@ -133,58 +161,39 @@ export default {
         }
     },
     mounted() {
+        // GỌI CHỨC NĂNG LOAD KHI COMPONENT ĐƯỢC TẠO
         this.loadCourses()
     },
     methods: {
         async loadCourses() {
+            this.loading = true
+            this.courses = []
+            this.filteredCourses = []
             try {
-                // Giả lập API call
-                setTimeout(() => {
-                    this.courses = [
-                        {
-                            id: 1,
-                            title: 'Lập trình Vue.js cơ bản',
-                            description: 'Học Vue.js từ cơ bản đến nâng cao',
-                            price: '500.000đ',
-                            students: 45,
-                            rating: '4.8',
-                            status: 'active',
-                            thumbnail: 'https://via.placeholder.com/300x200',
-                            updatedAt: new Date('2024-01-15')
-                        },
-                        {
-                            id: 2,
-                            title: 'JavaScript nâng cao',
-                            description: 'Nắm vững các concept nâng cao của JavaScript',
-                            price: '700.000đ',
-                            students: 32,
-                            rating: '4.9',
-                            status: 'active',
-                            thumbnail: 'https://via.placeholder.com/300x200',
-                            updatedAt: new Date('2024-01-10')
-                        },
-                        {
-                            id: 3,
-                            title: 'React Native từ zero',
-                            description: 'Xây dựng ứng dụng mobile với React Native',
-                            price: '0đ',
-                            students: 28,
-                            rating: '4.7',
-                            status: 'draft',
-                            thumbnail: 'https://via.placeholder.com/300x200',
-                            updatedAt: new Date('2024-01-05')
-                        }
-                    ]
-                    this.filteredCourses = this.courses
-                    this.loading = false
-                }, 1000)
+                // ĐÃ XÁC NHẬN URL VÀ ENDPOINT HOẠT ĐỘNG
+                const res = await fetch('http://localhost:5000/api/courses?instructor_id=2') 
+                
+                if (!res.ok) {
+                    const errorData = await res.json()
+                    throw new Error(errorData.message || `Lỗi HTTP: ${res.status}`)
+                }
+                
+                const data = await res.json()
+                
+                // CẬP NHẬT DỮ LIỆU
+                this.courses = data
+                this.filteredCourses = data
+                console.log('Khóa học đã tải:', this.courses)
             } catch (error) {
                 console.error('Lỗi khi tải khóa học:', error)
-                this.loading = false
+                // Thông báo lỗi nếu cần
+                // alert(`Không thể tải khóa học. Chi tiết: ${error.message}`) 
             }
+            this.loading = false
         },
 
         filterCourses() {
+            // Logic lọc (đã đúng)
             if (this.filterStatus === 'all') {
                 this.filteredCourses = this.courses
             } else {
@@ -195,6 +204,7 @@ export default {
         },
 
         searchCourses() {
+            // Logic tìm kiếm (đã đúng)
             const query = this.searchQuery.toLowerCase()
             this.filteredCourses = this.courses.filter(course =>
                 course.title.toLowerCase().includes(query) ||
@@ -203,6 +213,7 @@ export default {
         },
 
         getStatusText(status) {
+            // Logic map status (đã đúng)
             const statusMap = {
                 active: 'Đang hoạt động',
                 draft: 'Bản nháp',
@@ -212,7 +223,13 @@ export default {
         },
 
         formatDate(date) {
-            return new Date(date).toLocaleDateString('vi-VN')
+            // Logic format ngày (đã sửa lỗi format trước đó)
+            if (!date) return 'N/A'
+            const d = new Date(date);
+            if (isNaN(d.getTime())) {
+                return 'Ngày không hợp lệ';
+            }
+            return d.toLocaleDateString('vi-VN')
         },
 
         createNewCourse() {
@@ -245,47 +262,96 @@ export default {
 
         async toggleArchive(courseId, currentStatus) {
             try {
-                // Giả lập API call
-                const newStatus = currentStatus === 'archived' ? 'active' : 'archived'
+                const isArchived = currentStatus === 'archived'
+                const res = await fetch(`http://localhost:5000/api/courses/${courseId}/archive`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_archived: !isArchived })
+                })
+                const data = await res.json()
+                if (!res.ok) throw new Error(data.message || 'Không thể cập nhật trạng thái')
 
-                // Cập nhật trạng thái trong local data
-                const courseIndex = this.courses.findIndex(c => c.id === courseId)
-                if (courseIndex !== -1) {
-                    this.courses[courseIndex].status = newStatus
-                    this.filterCourses()
-                }
+                // cập nhật lại danh sách từ server để đồng bộ
+                await this.loadCourses()
+                alert('Đã cập nhật trạng thái khóa học')
             } catch (error) {
                 console.error('Lỗi khi cập nhật trạng thái:', error)
+                alert(`Lỗi: ${error.message}`)
             }
         },
 
         async saveCourse() {
+            // Xác định Instructor ID. Giả định ID là 2 như trong các yêu cầu trước.
+            // Trong ứng dụng thực tế, ID này sẽ được lấy từ state/token đăng nhập.
+            const instructorId = 2; 
+
+            // Chuẩn bị payload data từ form
+            const payload = {
+                ...this.courseForm,
+                price: Number(this.courseForm.price), // Đảm bảo giá là số
+                instructor_id: instructorId,
+                // Giả định khóa học mới mặc định là bản nháp
+                status: 'draft', 
+                // Có thể thêm level, currency nếu form có field đó
+                level: 'beginner',
+                currency: 'VND'
+            };
+
             try {
-                // Giả lập API call
+                const url = 'http://localhost:5000/api/courses';
+                let res;
+                let data;
+
                 if (this.editingCourse) {
-                    // Cập nhật khóa học
-                    const courseIndex = this.courses.findIndex(c => c.id === this.editingCourse)
-                    if (courseIndex !== -1) {
-                        this.courses[courseIndex] = { ...this.courses[courseIndex], ...this.courseForm }
-                    }
+                    // --- CHỨC NĂNG CẬP NHẬT (PUT) ---
+                    // Cần có endpoint PUT /api/courses/{id} và xử lý logic backend tương ứng
+                    const updateUrl = `${url}/${this.editingCourse}`;
+                    res = await fetch(updateUrl, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
                 } else {
-                    // Tạo khóa học mới
-                    const newCourse = {
-                        id: Math.max(...this.courses.map(c => c.id)) + 1,
-                        ...this.courseForm,
-                        students: 0,
-                        rating: '0.0',
-                        status: 'draft',
-                        updatedAt: new Date()
-                    }
-                    this.courses.push(newCourse)
+                    // --- CHỨC NĂNG TẠO MỚI (POST) ---
+                    res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
                 }
 
-                this.closeModal()
-                this.filterCourses()
+                data = await res.json();
+
+                if (!res.ok) {
+                    // Xử lý lỗi trả về từ backend (400, 500)
+                    throw new Error(data.message || `Lỗi khi lưu khóa học (HTTP ${res.status})`);
+                }
+
+                // --- Cập nhật UI sau khi Backend thành công ---
+                this.closeModal();
+                // Tải lại toàn bộ danh sách khóa học để hiển thị khóa học mới
+                await this.loadCourses(); 
+                
+                alert(`Khóa học "${data.title}" đã được ${this.editingCourse ? 'cập nhật' : 'tạo'} thành công!`);
+
             } catch (error) {
-                console.error('Lỗi khi lưu khóa học:', error)
+                console.error('Lỗi khi lưu khóa học:', error);
+                alert(`Lỗi: ${error.message}`);
             }
+        },
+
+        goLessons(courseId) {
+            this.$router.push(`/instructor/courses/${courseId}/lessons`)
+        },
+
+        createContent(course) {
+            // deprecated in favor of goLessons route
+            this.$router.push(`/instructor/courses/${course.id}/lessons`)
+        },
+
+        closeContentModal() {
+            this.showContentModal = false
+            this.selectedCourse = null
         },
 
         closeModal() {
@@ -300,7 +366,6 @@ export default {
 .instructor-courses {
     width: 100%;
     padding: 20px;
-
     margin: 0 auto;
 }
 
@@ -428,6 +493,7 @@ export default {
     margin-bottom: 15px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -568,6 +634,75 @@ export default {
 .btn-save {
     background: #3498db;
     color: white;
+}
+
+.btn-content {
+    background: #9b59b6;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.3s;
+}
+
+.btn-content:hover {
+    background: #8e44ad;
+    transform: translateY(-2px);
+}
+
+/* Content Modal Styles */
+.content-modal .modal-content {
+    max-width: 95vw;
+    width: 95vw;
+    max-height: 95vh;
+    height: 95vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.content-modal-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.content-modal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #eee;
+    flex-shrink: 0;
+}
+
+.content-modal .modal-header h2 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 20px;
+}
+
+.btn-close {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: #999;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.3s;
+}
+
+.btn-close:hover {
+    background: #f8f9fa;
+    color: #333;
+}
+
+.content-modal .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
 }
 
 .loading,
