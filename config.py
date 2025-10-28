@@ -1,0 +1,1 @@
+MYSQL_CONN = "mysql+mysqlconnector://root:@localhost/codecourse"
