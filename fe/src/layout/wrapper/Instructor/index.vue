@@ -3,7 +3,7 @@
         <div class="header-wrapper">
             <MenuInstructor></MenuInstructor>
         </div>
-        <router-view> </router-view>
+        <router-view></router-view>
     </div>
 </template>
 <script>
