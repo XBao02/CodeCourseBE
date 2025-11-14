@@ -6,7 +6,6 @@ from flask_jwt_extended import (
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 import bcrypt   # dùng nếu bạn đã lưu hash bằng bcrypt
-from app.routes import resolve_role
 import re
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
@@ -125,6 +124,7 @@ def login():
     if not ok:
         return jsonify({"error": "Sai email hoặc mật khẩu"}), 401
 
+    from app.routes import resolve_role  # Lazy import to avoid circular dependency
     role = resolve_role(user["id"])
     access_token = create_access_token(identity={"user_id": user["id"], "role": role})
 
@@ -138,6 +138,7 @@ def login():
 def me():
     ident = get_jwt_identity()
     # đồng bộ role mới nhất
+    from app.routes import resolve_role  # Lazy import to avoid circular dependency
     current_role = resolve_role(ident["user_id"])
     return jsonify({"user": {**ident, "role": current_role}})
 
@@ -148,3 +149,4 @@ def logout():
     # Nếu muốn blocklist, bạn có thể lưu jti vào DB/Redis tại đây.
     return jsonify({"message": "Logged out (client remove token)"}), 200
  
+

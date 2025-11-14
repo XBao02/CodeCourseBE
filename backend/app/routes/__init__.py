@@ -1,3 +1,4 @@
+
 """Routes package initializer."""
 
 from functools import wraps
@@ -5,6 +6,12 @@ from flask import jsonify, g
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import text
 from app.utils.db import engine
+from .Student import student_bp
+from .Auth import auth_bp
+from .Admin import admin_bp
+from .Instructor import instructor_bp
+
+__all__ = ['student_bp', 'auth_bp', 'admin_bp', 'instructor_bp']
 
 def resolve_role(user_id: int) -> str:
     """Xác định role dựa trên 3 bảng admins/instructors/students."""
@@ -43,3 +50,6 @@ def require_roles(*allowed_roles):
             return fn(*args, **kwargs)
         return wrapper
     return deco
+
+
+

@@ -30,11 +30,11 @@
             🎮 Minigames
           </router-link>
         </li>
-        <li class="nav-item">
+        <!-- <li class="nav-item">
           <router-link to="/student/chat" class="nav-link d-flex align-items-center gap-1 fs-5">
             💬 Instructor Chat
           </router-link>
-        </li>
+        </li> -->
         <li class="nav-item">
           <router-link to="/student/profile" class="nav-link d-flex align-items-center gap-1 fs-5">
             📊 Profile

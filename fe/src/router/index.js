@@ -88,6 +88,12 @@ const routes = [
         component: () => import("../components/Student/Courses.vue"),
       },
       {
+        path: "course/:courseId",
+        name: "StudentCourseLesson",
+        component: () =>
+          import("../components/Student/Course_Section_Lesson.vue"),
+      },
+      {
         path: "minigames",
         name: "StudentMinigames",
         component: () => import("../components/Student/Minigames.vue"),

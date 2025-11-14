@@ -4,27 +4,39 @@ from flask_jwt_extended import JWTManager
 from dotenv import load_dotenv
 import os
 
+# Quan trọng: CHỈ import db – KHÔNG import create_app
+from app.models import db
+
 
 def create_app():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     env_path = os.path.join(base_dir, '.env')
-    # Load environment variables
+
+    # Load .env
     if os.path.exists(env_path):
         load_dotenv(env_path)
 
     app = Flask(__name__)
-    # Load config from environment for secrets and CORS
-    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret")
-    app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", app.config["SECRET_KEY"])  # fallback
 
+    # Config
+    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret")
+    app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", app.config["SECRET_KEY"])
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
+        "DATABASE_URL",
+        "mysql+pymysql://root:@localhost/CodeCourse"
+    )
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+    # Init extensions
+    db.init_app(app)
+    JWTManager(app)
+
+    # CORS
     cors_origins = os.getenv("CORS_ORIGINS")
     if cors_origins:
         CORS(app, origins=[o.strip() for o in cors_origins.split(",") if o.strip()])
     else:
         CORS(app)
-
-    # Init JWT (SECRET_KEY / JWT_SECRET_KEY từ .env)
-    JWTManager(app)
 
     # Register blueprints
     try:
@@ -39,10 +51,11 @@ def create_app():
         app.register_blueprint(admin_bp)
         app.register_blueprint(instructor_bp)
         app.register_blueprint(student_bp)
+
     except Exception as e:
-        # Log error but keep app constructible
         app.logger.error(f"Failed to register blueprints: {e}")
 
+    # Health endpoint
     @app.get('/health')
     def health():
         return {'status': 'ok'}
@@ -50,11 +63,10 @@ def create_app():
     return app
 
 
-# WSGI entrypoint
+# Application entry
 app = create_app()
 
 if __name__ == "__main__":
-    # Enable running with: python app.py
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "5000"))
     debug = os.getenv("FLASK_DEBUG", "1") in ("1", "true", "True")
