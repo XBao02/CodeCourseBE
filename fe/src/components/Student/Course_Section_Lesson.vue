@@ -1,4 +1,4 @@
-// ...existing code...
+
 <template>
     <div class="container py-4" style="min-height: calc(100vh - 120px);">
         <!-- Breadcrumb card -->
@@ -27,16 +27,11 @@
                         <div v-if="sectionsWithLessons.length">
                             <div v-for="section in sectionsWithLessons" :key="section.id" class="mb-2">
                                 <div class="d-flex align-items-center justify-content-between bg-light rounded p-2">
-                                    <div>
+                                    <div class="section-title-toggle" @click="toggleSection(section.id)" style="cursor: pointer;">
                                         <strong>{{ section.title }}</strong>
                                         <div class="small text-muted">Thứ tự: {{ section.sortOrder }}</div>
                                     </div>
                                     <div>
-                                        <button class="btn btn-sm btn-outline-secondary me-2"
-                                            @click="toggleSection(section.id)">
-                                            <span v-if="openSections.has(section.id)">Ẩn</span>
-                                            <span v-else>Hiện</span>
-                                        </button>
                                         <span class="badge bg-secondary">{{ section.lessons.length }} bài</span>
                                     </div>
                                 </div>
@@ -45,7 +40,7 @@
                                     <li v-for="lesson in section.lessons" :key="lesson.id"
                                         class="list-group-item d-flex justify-content-between align-items-center">
                                         <div>
-                                            <div class="fw-semibold">{{ lesson.title }}</div>
+                                            <div class="fw-semibold">{{ (lesson.title || '').toLowerCase() }}</div>
                                             <div class="small text-muted">{{ lesson.type }} · {{
                                                 formatDuration(lesson.durationSeconds) }}
                                                 <span v-if="lesson.isPreview"
@@ -53,6 +48,7 @@
                                             </div>
                                         </div>
                                         <div class="d-flex align-items-center">
+                                            <span v-if="lesson.isCompleted" class="badge bg-success me-2">Đã xong</span>
                                             <button class="btn btn-sm btn-outline-primary me-2"
                                                 @click="selectLesson(lesson)">
                                                 Mở
@@ -76,7 +72,7 @@
                 <div class="card border-0 shadow-sm rounded-4 mb-3 flex-grow-1">
                     <div class="card-header bg-white d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="mb-0">{{ activeLesson ? activeLesson.title : 'Chọn bài học để bắt đầu' }}</h6>
+                            <h6 class="mb-0">{{ activeLesson ? (activeLesson.title || '').toLowerCase() : 'Chọn bài học để bắt đầu' }}</h6>
                             <div class="small text-muted">Module: {{ activeSectionTitle }}</div>
                         </div>
                         <div>
@@ -93,7 +89,15 @@
                         <div v-if="activeLesson">
                             <div v-if="activeLesson.type === 'video' && activeLesson.videoUrl">
                                 <div class="ratio ratio-16x9 mb-3">
-                                    <iframe :src="activeLesson.videoUrl" frameborder="0" allowfullscreen></iframe>
+                                    <template v-if="isDirectVideo(activeLesson.videoUrl)">
+                                        <video :src="activeLesson.videoUrl" controls style="width: 100%; height: 100%;"
+                                            @ended="markDone(activeLesson)"></video>
+                                    </template>
+                                    <template v-else>
+                                        <iframe :src="computeEmbedUrl(activeLesson.videoUrl)" frameborder="0"
+                                            allow="autoplay; encrypted-media" allowfullscreen
+                                            style="width: 100%; height: 100%;"></iframe>
+                                    </template>
                                 </div>
                             </div>
 
@@ -167,62 +171,38 @@
 </template>
 
 <script>
+import axios from 'axios';
+
 export default {
     name: 'CourseSectionLesson',
     data() {
         return {
-            // current user (student)
-            currentUserId: 501,
+            // current user (student) - tạm thời mock
+            currentUserId: 1,
 
-            // Course (from DB Courses)
+            // Course info
             course: {
-                id: 3,
-                instructorId: 13,
-                title: 'Web Development Bootcamp',
-                slug: 'web-development-bootcamp',
-                description: 'Fullstack web development.',
-                level: 'intermediate',
-                price: 750000,
+                id: null,
+                instructorId: null,
+                title: '',
+                slug: '',
+                description: '',
+                level: '',
+                price: 0,
                 currency: 'VND',
                 isPublic: true,
-                createdAt: '2024-03-20 09:00:00',
-                updatedAt: '2024-06-15 12:00:00'
+                createdAt: '',
+                updatedAt: ''
             },
 
-            // Sections (CourseSections)
-            sections: [
-                { id: 201, courseId: 3, title: 'Module 1 - Basics', sortOrder: 1 },
-                { id: 202, courseId: 3, title: 'Module 2 - Frontend', sortOrder: 2 },
-                { id: 203, courseId: 3, title: 'Module 3 - Backend', sortOrder: 3 }
-            ],
+            // Sections + lessons from backend
+            sections: [],
 
-            // Lessons (Lessons)
-            lessons: [
-                { id: 301, sectionId: 201, title: 'Intro & Setup', type: 'video', content: '<p>Giới thiệu</p>', videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ', durationSeconds: 300, sortOrder: 1, isPreview: true },
-                { id: 302, sectionId: 201, title: 'HTML Basics', type: 'article', content: '<p>HTML cơ bản</p>', videoUrl: '', durationSeconds: 600, sortOrder: 2, isPreview: false },
+            // Enrollment info (đơn giản: trạng thái/tiến độ)
+            enrollment: null,
 
-                { id: 303, sectionId: 202, title: 'CSS Flexbox', type: 'video', content: '<p>Flexbox</p>', videoUrl: 'https://www.youtube.com/embed/3JluqTojuME', durationSeconds: 800, sortOrder: 1, isPreview: false },
-                { id: 304, sectionId: 202, title: 'Vue Basics', type: 'video', content: '<p>Vue.js</p>', videoUrl: 'https://www.youtube.com/embed/4deVCNJq3qc', durationSeconds: 1200, sortOrder: 2, isPreview: false },
-
-                { id: 305, sectionId: 203, title: 'Node & Express', type: 'video', content: '<p>Node.js</p>', videoUrl: '', durationSeconds: 1500, sortOrder: 1, isPreview: false },
-            ],
-
-            // Enrollment (Enrollments) - simulate whether student enrolled
-            enrollment: {
-                id: 401,
-                studentId: 501,
-                courseId: 3,
-                status: 'active', // pending | active | completed | cancelled
-                progressPercent: 20,
-                createdAt: '2024-07-01 10:00:00',
-                updatedAt: '2024-07-02 10:00:00'
-            },
-
-            // Messages (Messages)
-            messages: [
-                { id: 1, channel: 'direct', fromUserId: 13, toUserId: 501, courseId: 3, lessonId: 301, content: 'Chào, nếu bạn cần hỗ trợ hãy hỏi.', createdAt: '2024-07-05 09:00:00', readAt: null },
-                { id: 2, channel: 'direct', fromUserId: 501, toUserId: 13, courseId: 3, lessonId: 301, content: 'Cảm ơn thầy, em có câu hỏi về bài 1.', createdAt: '2024-07-05 09:05:00', readAt: null }
-            ],
+            // Messages (mock local)
+            messages: [],
 
             // UI state
             openSections: new Set(),
@@ -231,20 +211,14 @@ export default {
             newMessage: ''
         };
     },
+    mounted() {
+        this.bootstrapData();
+    },
+    beforeUnmount() {},
     computed: {
-        // sections with their lessons
+        // sections with their lessons (đã là dạng tổ hợp từ backend)
         sectionsWithLessons() {
-            const map = this.sections
-                .filter(s => s.courseId === this.course.id)
-                .map(s => {
-                    const lessons = this.lessons
-                        .filter(l => l.sectionId === s.id)
-                        .slice()
-                        .sort((a, b) => a.sortOrder - b.sortOrder);
-                    return { ...s, lessons };
-                })
-                .sort((a, b) => a.sortOrder - b.sortOrder);
-            return map;
+            return (this.sections || []).slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
         },
         isEnrolled() {
             return this.enrollment && this.enrollment.courseId === this.course.id && ['active', 'completed'].includes(this.enrollment.status);
@@ -254,7 +228,7 @@ export default {
         },
         activeSectionTitle() {
             if (!this.activeLesson) return '-';
-            const sec = this.sections.find(s => s.id === this.activeLesson.sectionId);
+            const sec = (this.sections || []).find(s => s.id === this.activeLesson.sectionId);
             return sec ? sec.title : '-';
         },
         chatMessages() {
@@ -265,6 +239,36 @@ export default {
         }
     },
     methods: {
+        async bootstrapData() {
+            const courseId = Number(this.$route.params.courseId);
+            if (!courseId) return;
+            try {
+                const res = await axios.get(`http://localhost:5000/api/student/course/${courseId}/sections-lessons`);
+                const payload = res.data || {};
+                this.course = payload.course || this.course;
+                this.sections = Array.isArray(payload.sections) ? payload.sections : [];
+
+                // Mặc định mở tất cả sections
+                const opened = new Set();
+                for (const s of this.sections) opened.add(s.id);
+                this.openSections = opened;
+
+                // Giả lập enrollment trạng thái active khi vào trang học
+                this.enrollment = {
+                    id: 0,
+                    studentId: this.currentUserId,
+                    courseId,
+                    status: 'active',
+                    progressPercent: 0,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+
+            } catch (e) {
+                // eslint-disable-next-line no-console
+                console.error('Lỗi tải sections-lessons:', e);
+            }
+        },
         goHome() {
             this.$router.push('/student/courses').catch(() => { });
         },
@@ -280,13 +284,8 @@ export default {
             if (!this.openSections.has(lesson.sectionId)) {
                 this.openSections.add(lesson.sectionId);
             }
-            // mark lesson progress (simulate LessonProgress DB)
-            const now = new Date().toISOString();
-            // simulate add/update lesson progress
-            // (in real app call API to persist)
-            // here just console and keep local state
-            // eslint-disable-next-line no-console
-            console.log('Selected lesson', lesson.id, 'at', now);
+
+            // Không còn khởi tạo YouTube Player ở đây, dùng iframe/video trực tiếp
         },
         toggleChat() {
             this.showChat = !this.showChat;
@@ -326,7 +325,7 @@ export default {
             return `#${order}`;
         },
         enrollNow() {
-            // simulate creating enrollment record
+            // Trang học yêu cầu đã đăng ký; ở đây chỉ cập nhật local
             this.enrollment = {
                 id: Math.floor(Math.random() * 1000) + 100,
                 studentId: this.currentUserId,
@@ -337,14 +336,61 @@ export default {
                 updatedAt: new Date().toISOString()
             };
         },
-        markDone(lesson) {
-            // simulate marking lesson progress done
-            // in real app persist to LessonProgress table
-            // here update enrollment.progressPercent crudely
-            if (!this.enrollment) return;
-            const totalLessons = this.lessons.filter(l => this.sections.some(s => s.id === l.sectionId && s.courseId === this.course.id)).length || 1;
-            this.enrollment.progressPercent = Math.min(100, Math.round((this.enrollment.progressPercent + Math.round(100 / totalLessons))));
-            if (this.enrollment.progressPercent >= 100) this.enrollment.status = 'completed';
+        async markDone(lesson) {
+            if (!lesson) return;
+            try {
+                const res = await axios.post('http://localhost:5000/api/student/lesson-progress/complete', {
+                    lessonId: lesson.id
+                });
+                if (res.data && res.data.success) {
+                    // cập nhật cục bộ
+                    const section = (this.sections || []).find(s => s.id === lesson.sectionId);
+                    if (section) {
+                        const l = (section.lessons || []).find(x => x.id === lesson.id);
+                        if (l) l.isCompleted = true;
+                    }
+                }
+            } catch (e) {
+                // eslint-disable-next-line no-console
+                console.error('Lỗi markDone:', e);
+            }
+        },
+        computeEmbedUrl(url) {
+            if (!url) return '';
+            // Google Drive links -> /preview
+            if (url.includes('drive.google.com')) {
+                // Normalize to file/d/{id}/preview if possible
+                // Examples:
+                // - https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+                // - https://drive.google.com/open?id=FILE_ID
+                // - https://drive.google.com/uc?id=FILE_ID&export=download
+                const idMatch =
+                    url.match(/\/file\/d\/([^/]+)/) ||
+                    url.match(/[?&]id=([^&]+)/);
+                const fileId = idMatch && idMatch[1] ? idMatch[1] : null;
+                if (fileId) {
+                    return `https://drive.google.com/file/d/${fileId}/preview`;
+                }
+                // Fallback to original (may already be /preview)
+                if (url.includes('/view')) return url.replace('/view', '/preview');
+                return url;
+            }
+            // YouTube fallbacks
+            if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                // Prefer embed format
+                const id =
+                    (url.match(/[?&]v=([^&#]+)/) || [])[1] ||
+                    (url.match(/youtu\.be\/([^?&#]+)/) || [])[1] ||
+                    (url.match(/embed\/([^?&#]+)/) || [])[1];
+                return id ? `https://www.youtube.com/embed/${id}` : url;
+            }
+            // Otherwise return raw URL (handled by <video> if direct)
+            return url;
+        },
+        isDirectVideo(url) {
+            if (!url) return false;
+            const lower = url.toLowerCase();
+            return lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.endsWith('.ogg');
         }
     }
 };
