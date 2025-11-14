@@ -20,6 +20,16 @@ const routes = [
     path: "/register",
     component: () => import("../components/User/Register.vue"),
   },
+  {
+    path: "/profile",
+    name: "UserProfile",
+    component: () => import("../components/User/Profile.vue"),
+  },
+  {
+    path: "/settings",
+    name: "UserSettings",
+    component: () => import("../components/User/Settings.vue"),
+  },
 
   // ------------------ ADMIN ------------------
   {

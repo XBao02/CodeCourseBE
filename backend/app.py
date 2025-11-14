@@ -1,28 +1,61 @@
 from flask import Flask
-from sqlalchemy import create_engine
-from config import MYSQL_CONN
+from flask_cors import CORS
+from flask_jwt_extended import JWTManager
+from dotenv import load_dotenv
+import os
 
-app = Flask(__name__)
 
-# Tạo engine kết nối MySQL
-engine = create_engine(MYSQL_CONN)
+def create_app():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    env_path = os.path.join(base_dir, '.env')
+    # Load environment variables
+    if os.path.exists(env_path):
+        load_dotenv(env_path)
 
-def test_db_connection():
-    """Hàm test kết nối database khi khởi động app."""
+    app = Flask(__name__)
+    # Load config from environment for secrets and CORS
+    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret")
+    app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", app.config["SECRET_KEY"])  # fallback
+
+    cors_origins = os.getenv("CORS_ORIGINS")
+    if cors_origins:
+        CORS(app, origins=[o.strip() for o in cors_origins.split(",") if o.strip()])
+    else:
+        CORS(app)
+
+    # Init JWT (SECRET_KEY / JWT_SECRET_KEY từ .env)
+    JWTManager(app)
+
+    # Register blueprints
     try:
-        with engine.connect() as conn:
-            print("✅ Kết nối MySQL thành công!")
+        from app.routes.AI import ai_bp
+        from app.routes.Auth import auth_bp
+        from app.routes.Admin import admin_bp
+        from app.routes.Instructor import instructor_bp
+        from app.routes.Student import student_bp
+
+        app.register_blueprint(ai_bp)
+        app.register_blueprint(auth_bp)
+        app.register_blueprint(admin_bp)
+        app.register_blueprint(instructor_bp)
+        app.register_blueprint(student_bp)
     except Exception as e:
-        print("❌ Lỗi kết nối MySQL:")
-        print(e)
-        exit(1)  # Dừng chương trình nếu không kết nối được
+        # Log error but keep app constructible
+        app.logger.error(f"Failed to register blueprints: {e}")
 
-# Gọi test kết nối khi app khởi động
-test_db_connection()
+    @app.get('/health')
+    def health():
+        return {'status': 'ok'}
 
-@app.route("/")
-def home():
-    return "Server đang chạy và đã kết nối DB thành công!"
+    return app
+
+
+# WSGI entrypoint
+app = create_app()
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Enable running with: python app.py
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "5000"))
+    debug = os.getenv("FLASK_DEBUG", "1") in ("1", "true", "True")
+    app.run(host=host, port=port, debug=debug)

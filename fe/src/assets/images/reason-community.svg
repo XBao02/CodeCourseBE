@@ -1,0 +1,13 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="communityGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F43F5E"/>
+      <stop offset="100%" stop-color="#F97316"/>
+    </linearGradient>
+  </defs>
+  <rect rx="24" width="120" height="120" fill="url(#communityGradient)"/>
+  <circle cx="60" cy="44" r="14" fill="#FFF4" stroke="#FFFFFF" stroke-width="4"/>
+  <circle cx="38" cy="60" r="10" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="82" cy="60" r="10" fill="#FFFFFF" opacity="0.6"/>
+  <path d="M34 84C36 72 44 66 60 66C76 66 84 72 86 84" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round"/>
+</svg>

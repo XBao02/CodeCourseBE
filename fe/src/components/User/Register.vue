@@ -1,76 +1,124 @@
 <template>
-  <div class="register-page">
-    <canvas id="matrix"></canvas>
+  <div class="auth-page register-theme">
+    <div class="background-grid"></div>
+    <div class="glow-ring glow-ring-1"></div>
+    <div class="glow-ring glow-ring-2"></div>
 
-    <div class="register-card">
-      <h2 class="register-title">✍️ Create Your Account</h2>
-      <p class="register-subtitle">Join CodeClass today</p>
+    <div class="auth-shell">
+      <div class="auth-card">
+        <section class="card-visual">
+          <p class="eyebrow">CodeCourse Studio</p>
+          <h1>Shape the next version of you.</h1>
+          <p class="subtitle">
+            Clean workspace. Elegant tooling. Classic typography with futuristic flow.
+          </p>
 
-      <form @submit.prevent="handleRegister" class="register-form">
-        <div class="form-group">
-          <label for="username">Username</label>
-          <input
-            v-model="username"
-            type="text"
-            id="username"
-            placeholder="your_username"
-            required
-          />
-        </div>
+          <div class="heritage-list">
+            <article>
+              <h3>Guided tracks</h3>
+              <p>Structured paths that respect your craft and time.</p>
+            </article>
+            <article>
+              <h3>Mentor rooms</h3>
+              <p>Feedback loops with people who’ve shipped real products.</p>
+            </article>
+            <article>
+              <h3>Daily rituals</h3>
+              <p>Minimal prompts that keep the streak alive.</p>
+            </article>
+          </div>
+        </section>
 
-        <div class="form-group">
-          <label for="email">Email</label>
-          <input
-            v-model="email"
-            type="email"
-            id="email"
-            placeholder="you@example.com"
-            required
-          />
-        </div>
+        <section class="card-form">
+          <header>
+            <p class="eyebrow subtle">Create account</p>
+            <h2>Unlock your next chapter</h2>
+            <p class="subtitle">
+              Join the student space and sync progress across every device.
+            </p>
+          </header>
 
-        <div class="form-group">
-          <label for="password">Password</label>
-          <input
-            v-model="password"
-            type="password"
-            id="password"
-            placeholder="********"
-            required
-          />
-        </div>
+          <form @submit.prevent="handleRegister">
+            <label class="field">
+              <span>Full name</span>
+              <input
+                v-model="username"
+                type="text"
+                placeholder="Nguyen Van A"
+                required
+              />
+            </label>
 
-        <div class="form-group">
-          <label for="confirm-password">Confirm Password</label>
-          <input
-            v-model="confirmPassword"
-            type="password"
-            id="confirm-password"
-            placeholder="********"
-            required
-          />
-        </div>
+            <label class="field">
+              <span>Email</span>
+              <input
+                v-model="email"
+                type="email"
+                placeholder="you@example.com"
+                required
+              />
+            </label>
 
-        <div class="form-check">
-          <input type="checkbox" id="terms" v-model="agreedToTerms" required />
-          I agree to CodeClass
-            <a href="#" class="terms-link">Terms of Service</a> and
-            <a href="#" class="terms-link">Privacy Policy</a>.
-          
-        </div>
+            <div class="field-row">
+              <label class="field">
+                <span>Password</span>
+                <input
+                  v-model="password"
+                  type="password"
+                  placeholder="Minimum 6 characters"
+                  required
+                />
+              </label>
+              <label class="field">
+                <span>Confirm password</span>
+                <input
+                  v-model="confirmPassword"
+                  type="password"
+                  placeholder="Repeat password"
+                  required
+                />
+              </label>
+            </div>
 
-        <button type="submit" class="btn-register">Register</button>
-      </form>
+            <label class="inline-check">
+              <input type="checkbox" v-model="agreedToTerms" />
+              <span>
+                I agree to the
+                <a href="#" target="_blank">Terms of Service</a>
+                and
+                <a href="#" target="_blank">Privacy Policy</a>.
+              </span>
+            </label>
 
-      <p class="login-link">
-        Already have an account?
-        <router-link to="/login">Login now</router-link>
-      </p>
+            <p v-if="errorMessage" class="banner error" role="alert">
+              {{ errorMessage }}
+            </p>
+            <p v-if="successMessage" class="banner success" role="status">
+              {{ successMessage }}
+            </p>
+
+            <button type="submit" :disabled="isSubmitting">
+              {{ isSubmitting ? "Creating account..." : "Launch student space" }}
+            </button>
+          </form>
+
+          <footer>
+            Already have an account?
+            <router-link to="/login" class="inline-link">Sign in</router-link>
+          </footer>
+        </section>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
+import {
+  registerUser,
+  persistSession,
+  getRoleLandingPath,
+} from "../../services/authService";
+
 export default {
   name: "Register",
   data() {
@@ -80,181 +128,297 @@ export default {
       password: "",
       confirmPassword: "",
       agreedToTerms: false,
+      isSubmitting: false,
+      errorMessage: "",
+      successMessage: "",
     };
   },
-  mounted() {
-    this.initMatrix();
-  },
   methods: {
-    handleRegister() {
+    async handleRegister() {
+      this.errorMessage = "";
+      this.successMessage = "";
+
+      const trimmedName = this.username.trim();
+      const trimmedEmail = this.email.trim().toLowerCase();
+      const defaultRole = "student";
+
+      if (!trimmedName) {
+        this.errorMessage = "Please provide your full name.";
+        return;
+      }
+
       if (this.password !== this.confirmPassword) {
-        alert("Passwords do not match!");
+        this.errorMessage = "Passwords do not match.";
         return;
       }
-      // Then, check if the user has agreed to the terms
+
       if (!this.agreedToTerms) {
-        alert("You must agree to the Terms of Service and Privacy Policy.");
+        this.errorMessage = "You must agree to the Terms of Service.";
         return;
       }
-      console.log("Registration info:", this.username, this.email, this.password);
-    },
-    initMatrix() {
-      const canvas = document.getElementById("matrix");
-      const ctx = canvas.getContext("2d");
 
-      canvas.height = window.innerHeight;
-      canvas.width = window.innerWidth;
-
-      const letters = "01ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-      const fontSize = 14;
-      const columns = canvas.width / fontSize;
-
-      const drops = [];
-      for (let x = 0; x < columns; x++) drops[x] = 1;
-
-      function draw() {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        ctx.fillStyle = "#00ff99"; // neon green
-        ctx.font = fontSize + "px monospace";
-
-        for (let i = 0; i < drops.length; i++) {
-          const text = letters[Math.floor(Math.random() * letters.length)];
-          ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-
-          if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-            drops[i] = 0;
-          }
-          drops[i]++;
-        }
+      this.isSubmitting = true;
+      try {
+        const payload = await registerUser({
+          email: trimmedEmail,
+          password: this.password,
+          full_name: trimmedName,
+          role: defaultRole,
+        });
+        persistSession(payload, true);
+        this.successMessage = "Account created successfully. Redirecting...";
+        setTimeout(() => {
+          this.$router.push(getRoleLandingPath(payload.user?.role || defaultRole));
+        }, 800);
+      } catch (error) {
+        this.errorMessage =
+          error?.response?.data?.error ||
+          "Unable to register. Please try again.";
+      } finally {
+        this.isSubmitting = false;
       }
-
-      setInterval(draw, 33);
-
-      window.addEventListener("resize", () => {
-        canvas.height = window.innerHeight;
-        canvas.width = window.innerWidth;
-      });
     },
   },
 };
 </script>
 
 <style scoped>
-/* Full page with dark background */
-.register-page {
+:root {
+  color-scheme: dark;
+}
+
+.auth-page {
   position: relative;
   min-height: 100vh;
-  overflow: hidden;
+  padding: 4rem 1.5rem;
   display: flex;
-  justify-content: center;
   align-items: center;
-  font-family: "Fira Code", monospace;
+  justify-content: center;
+  background: radial-gradient(circle at 15% 20%, #232742, #090b17 70%);
+  overflow: hidden;
+  font-family: "Inter", "Space Grotesk", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #f1f5f9;
 }
 
-/* Canvas Matrix */
-#matrix {
+.background-grid {
   position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 0;
-  background: black;
+  inset: 0;
+  background-image: linear-gradient(transparent 94%, rgba(148, 163, 184, 0.08) 6%), linear-gradient(90deg, transparent 94%, rgba(148, 163, 184, 0.08) 6%);
+  background-size: 60px 60px;
+  opacity: 0.35;
 }
 
-/* Card */
-.register-card {
+.glow-ring {
+  position: absolute;
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  filter: blur(45px);
+  opacity: 0.7;
+}
+
+.glow-ring-1 {
+  top: -120px;
+  left: 6%;
+  background: radial-gradient(circle, rgba(96, 165, 250, 0.3), transparent 65%);
+}
+
+.glow-ring-2 {
+  bottom: -110px;
+  right: 10%;
+  background: radial-gradient(circle, rgba(74, 222, 128, 0.28), transparent 65%);
+}
+
+.auth-shell {
+  width: min(1100px, 100%);
   position: relative;
-  z-index: 1;
-  background: rgba(20, 20, 20, 0.85);
-  padding: 40px 30px;
-  border-radius: 12px;
-  box-shadow: 0 0 25px rgba(0, 255, 128, 0.4);
-  width: 100%;
-  max-width: 420px;
-  text-align: center;
-  border: 1px solid rgba(0, 255, 128, 0.3);
-  backdrop-filter: blur(4px);
-  animation: fadeIn 1s ease-in-out;
+  z-index: 2;
 }
 
-/* Title */
-.register-title {
-  font-size: 26px;
-  font-weight: 700;
-  color: #00ff99;
-  margin-bottom: 8px;
-  text-shadow: 0 0 12px rgba(0, 255, 128, 0.8);
-}
-.register-subtitle {
-  font-size: 14px;
-  color: #aaa;
-  margin-bottom: 25px;
+.auth-card {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  border-radius: 34px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(8, 12, 24, 0.92);
+  backdrop-filter: blur(22px);
+  box-shadow: 0 40px 90px rgba(8, 11, 23, 0.8);
 }
 
-/* Inputs */
-.form-group {
-  margin-bottom: 18px;
-  text-align: left;
+.card-visual {
+  padding: 3.25rem;
+  border-right: 1px solid rgba(148, 163, 184, 0.15);
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.28), rgba(15, 23, 42, 0.6));
 }
-.form-group label {
-  font-size: 13px;
-  margin-bottom: 6px;
-  display: block;
-  color: #00ff99;
+
+.card-visual h1 {
+  font-size: clamp(2.2rem, 3.7vw, 3.2rem);
+  margin-bottom: 1rem;
 }
-.form-group input {
-  width: 100%;
-  padding: 10px 12px;
-  background: #111;
-  border: 1px solid #333;
-  border-radius: 6px;
-  font-size: 14px;
-  color: #eee;
+
+.card-visual .subtitle {
+  color: rgba(226, 232, 240, 0.78);
+  margin-bottom: 2.5rem;
+  line-height: 1.65;
+}
+
+.heritage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.3rem;
+}
+
+.heritage-list article {
+  background: rgba(13, 19, 35, 0.75);
+  border-radius: 20px;
+  padding: 1rem 1.2rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.heritage-list h3 {
+  margin: 0 0 0.35rem;
+}
+
+.heritage-list p {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.7);
+  font-size: 0.95rem;
+}
+
+.card-form {
+  padding: 3.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.7rem;
+}
+
+.card-form .subtitle {
+  color: rgba(226, 232, 240, 0.75);
+  margin: 0;
+}
+
+.card-form form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: rgba(226, 232, 240, 0.85);
+}
+
+.field input {
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: rgba(15, 23, 42, 0.85);
+  padding: 0.95rem 1.15rem;
+  color: #f8fafc;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.field input:focus {
+  border-color: #60a5fa;
   outline: none;
-  transition: 0.3s;
-}
-.form-group input:focus {
-  border-color: #00ff99;
-  box-shadow: 0 0 6px #00ff99;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.25);
 }
 
-/* Button */
-.btn-register {
-  width: 100%;
-  padding: 12px;
-  border: none;
-  border-radius: 6px;
-  background: linear-gradient(135deg, #00ff99, #00b894);
-  color: #111;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: 0.3s;
-}
-.btn-register:hover {
-  background: linear-gradient(135deg, #00b894, #00ff99);
-  box-shadow: 0 0 12px #00ff99;
-  transform: translateY(-2px);
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
 }
 
-/* Link */
-.login-link {
-  margin-top: 20px;
-  font-size: 14px;
+.inline-check {
+  display: flex;
+  gap: 0.7rem;
+  color: rgba(226, 232, 240, 0.75);
+  font-size: 0.85rem;
 }
-.login-link a {
-  color: #00ff99;
-  font-weight: 600;
+
+.inline-check input {
+  accent-color: #60a5fa;
+}
+
+.inline-check a {
+  color: #60a5fa;
   text-decoration: none;
 }
-.login-link a:hover {
+
+.inline-check a:hover {
   text-decoration: underline;
 }
 
-/* Animation */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-20px); }
-  to { opacity: 1; transform: translateY(0); }
+.banner {
+  border-radius: 16px;
+  padding: 0.95rem 1rem;
+  font-size: 0.9rem;
+  border: 1px solid transparent;
+}
+
+.banner.error {
+  background: rgba(248, 113, 113, 0.15);
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fecaca;
+}
+
+.banner.success {
+  background: rgba(74, 222, 128, 0.18);
+  border-color: rgba(74, 222, 128, 0.45);
+  color: #bbf7d0;
+}
+
+button[type="submit"] {
+  border: none;
+  border-radius: 999px;
+  padding: 0.95rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+  background: linear-gradient(120deg, #60a5fa, #34d399);
+  box-shadow: 0 18px 38px rgba(20, 83, 45, 0.45);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+button[type="submit"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 24px 42px rgba(20, 83, 45, 0.55);
+}
+
+button[type="submit"]:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.card-form footer {
+  font-size: 0.9rem;
+  color: rgba(226, 232, 240, 0.8);
+}
+
+.inline-link {
+  color: #60a5fa;
+  text-decoration: none;
+}
+
+.inline-link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 960px) {
+  .auth-card {
+    grid-template-columns: 1fr;
+  }
+
+  .card-visual {
+    border-right: none;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  }
 }
 </style>
