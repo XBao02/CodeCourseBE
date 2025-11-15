@@ -23,8 +23,10 @@ def create_app():
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", app.config["SECRET_KEY"])
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
         "DATABASE_URL",
-        "mysql+pymysql://root:@localhost/CodeCourse"
+        #"mysql+pymysql://root:123@localhost:3306/CodeCourse"
+        "mysql+pymysql://root:@localhost:/CodeCourse"
     )
+    
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     # Init extensions

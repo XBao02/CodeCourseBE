@@ -132,6 +132,32 @@ const routes = [
         component: () => import("../components/Instructor/Courses.vue"),
       },
       {
+        path: "courses/:id",
+        name: "InstructorCourseDetail",
+        component: () => import("../components/Instructor/CourseDetail.vue"),
+      },
+      {
+        path: "courses/:id/edit",
+        name: "InstructorCourseEdit",
+        component: () => import("../components/Instructor/CourseEdit.vue"),
+      },
+      {
+        path: "courses/:id/lessons",
+        name: "InstructorCourseLessons",
+        component: () => import("../components/Instructor/CourseLessons.vue"),
+      },
+      {
+        path: "courses/:id/students",
+        name: "InstructorCourseStudents",
+        component: () => import("../components/Instructor/CourseStudents.vue"),
+      },
+      {
+        path: "tests/:id/edit",
+        name: "InstructorTestEdit",
+        component: () => import("../components/Instructor/TestEditor.vue"),
+        props: true,
+      },
+      {
         path: "chat",
         name: "InstructorChat",
         component: () => import("../components/Instructor/Chat.vue"),
