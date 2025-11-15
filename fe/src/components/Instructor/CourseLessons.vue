@@ -31,7 +31,7 @@
         <div class="section-header">
           <input v-model="section.editTitle" class="section-title-input" />
           <div class="section-actions">
-            <button class="btn" @click="section.expanded = !section.expanded">
+            <button class="btn" @click="section.expanded = !section.expanded" :title="section.expanded ? 'Thu gọn chương' : 'Mở rộng chương'">
               <i :class="section.expanded ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
               {{ section.expanded ? 'Thu gọn' : 'Mở rộng' }}
             </button>
@@ -61,7 +61,7 @@
 
         <!-- Add Lesson Inline Card -->
         <div v-if="section.addingLesson" class="add-card lesson">
-          <div class="add-card-title">Thêm bài học vào: {{ section.title }}</div>
+          <div class="add-card-title">Thêm bài học vào: {{ section.editTitle || section.title }}</div>
           <div class="form-row">
             <div class="form-group">
               <label>Tiêu đề bài học</label>
@@ -73,11 +73,7 @@
               <label>Loại bài học</label>
               <select v-model="section.newLesson.type">
                 <option value="video">Video</option>
-                <option value="article">Bài viết</option>
-                <option value="coding">Coding</option>
                 <option value="quiz">Quiz</option>
-                <option value="assignment">Assignment</option>
-                <option value="live">Live</option>
               </select>
             </div>
             <div class="form-group align-end">
@@ -94,12 +90,6 @@
               <input v-model.number="section.newLesson.durationSeconds" type="number" min="0" placeholder="600" />
             </div>
           </div>
-          <div class="form-row" v-if="section.newLesson.type === 'article'">
-            <div class="form-group full">
-              <label>Nội dung bài viết</label>
-              <textarea v-model="section.newLesson.content" rows="4" placeholder="Nhập nội dung bài viết..."></textarea>
-            </div>
-          </div>
           <div class="form-actions">
             <button class="btn" @click="cancelAddLesson(section)">Hủy</button>
             <button class="btn primary" :disabled="!section.newLesson.title" @click="saveNewLesson(section)">Lưu bài học</button>
@@ -111,12 +101,13 @@
           <div v-for="lesson in lessonsBySection[section.id] || []" :key="lesson.id" class="lesson">
             <!-- Compact lesson header -->
             <div class="lesson-top">
-              <button class="btn icon" @click="lesson.expanded = !lesson.expanded" :title="lesson.expanded ? 'Thu gọn' : 'Mở rộng'">
+              <button class="btn icon" @click="lesson.expanded = !lesson.expanded" :title="lesson.expanded ? 'Thu gọn bài học' : 'Mở rộng bài học'">
                 <i :class="lesson.expanded ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
+                <span class="btn-text">{{ lesson.expanded ? 'Thu gọn' : 'Mở rộng' }}</span>
               </button>
-              <div class="lesson-title-display">{{ lesson.editTitle }}</div>
-              <span class="type-pill">{{ lesson.editType }}</span>
-              <span v-if="lesson.editPreview" class="pill preview-pill">Preview</span>
+              <div class="lesson-title-display">{{ lesson.editTitle || lesson.title }}</div>
+              <span class="type-pill">{{ lesson.editType || lesson.type }}</span>
+              <span v-if="lesson.editPreview || lesson.isPreview" class="pill preview-pill">Preview</span>
               <div class="spacer"></div>
               <button class="btn danger" @click="deleteLesson(lesson)"><i class="fas fa-trash"></i></button>
             </div>
@@ -125,8 +116,9 @@
             <div v-if="lesson.expanded" class="lesson-edit">
               <div class="lesson-edit-header">
                 <div class="lesson-edit-title"><i class="fas fa-edit"></i> Chỉnh sửa bài học</div>
-                <button class="btn icon" @click="lesson.expanded = false" title="Đóng">
+                <button class="btn icon" @click="lesson.expanded = false" title="Đóng trình chỉnh sửa">
                   <i class="fas fa-times"></i>
+                  <span class="btn-text">Đóng</span>
                 </button>
               </div>
               <div class="lesson-left">
@@ -138,11 +130,7 @@
                   <div class="mini-label">Loại</div>
                   <select v-model="lesson.editType" class="lesson-type">
                     <option value="video">Video</option>
-                    <option value="article">Bài viết</option>
-                    <option value="coding">Coding</option>
                     <option value="quiz">Quiz</option>
-                    <option value="assignment">Assignment</option>
-                    <option value="live">Live</option>
                   </select>
                 </div>
                 <div class="field">
@@ -164,14 +152,6 @@
                   </div>
                 </div>
               </div>
-              
-              <!-- Article specific fields -->
-              <div v-if="lesson.editType === 'article'" class="lesson-article-fields">
-                <div class="form-group">
-                  <label>Nội dung bài viết</label>
-                  <textarea v-model="lesson.editContent" rows="4" placeholder="Nhập nội dung bài viết..."></textarea>
-                </div>
-              </div>
               <div class="lesson-actions">
                 <button class="btn" @click="saveLesson(lesson)"><i class="fas fa-save"></i> Lưu</button>
               </div>
@@ -182,7 +162,7 @@
               <div class="tests-header">
                 <div class="tests-title">Bài test ({{ (testsByLesson[lesson.id] || []).length }})</div>
                 <div class="tests-actions">
-                  <button class="btn small" @click="lesson.testsExpanded = !lesson.testsExpanded">
+                  <button class="btn small" @click="lesson.testsExpanded = !lesson.testsExpanded" :title="lesson.testsExpanded ? 'Thu gọn danh sách bài test' : 'Mở rộng danh sách bài test'">
                     <i :class="lesson.testsExpanded ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
                     {{ lesson.testsExpanded ? 'Thu gọn' : 'Mở' }}
                   </button>
@@ -318,7 +298,6 @@ export default {
             isPreview: false,
             videoUrl: "",
             durationSeconds: null,
-            content: "",
           },
         }));
         const map = {};
@@ -330,9 +309,15 @@ export default {
             editPreview: !!l.isPreview,
             editVideoUrl: l.videoUrl || '',
             editDurationSeconds: l.durationSeconds || null,
-            editContent: l.content || '',
             expanded: false,
             testsExpanded: false,
+            addingTest: false,
+            newTest: {
+              title: "",
+              timeLimitMinutes: 0,
+              attemptsAllowed: 1,
+              isPlacement: false,
+            },
           }));
           map[s.id] = lessons;
         });
@@ -452,7 +437,6 @@ export default {
         isPreview: false,
         videoUrl: "",
         durationSeconds: null,
-        content: "",
       };
     },
     cancelAddLesson(section) {
@@ -467,10 +451,6 @@ export default {
           isPreview: !!section.newLesson.isPreview,
           videoUrl: section.newLesson.videoUrl || undefined,
           durationSeconds: section.newLesson.durationSeconds || undefined,
-          content:
-            section.newLesson.type === "article"
-              ? section.newLesson.content || ""
-              : undefined,
         };
         const res = await fetch(
           `http://localhost:5000/api/sections/${section.id}/lessons`,
@@ -500,8 +480,6 @@ export default {
         if (lesson.editType === 'video') {
           payload.videoUrl = lesson.editVideoUrl || undefined;
           payload.durationSeconds = lesson.editDurationSeconds || undefined;
-        } else if (lesson.editType === 'article') {
-          payload.content = lesson.editContent || undefined;
         }
         
         const res = await fetch(
@@ -615,383 +593,1046 @@ export default {
 </script>
 
 <style scoped>
+/* ==================== MODERN DESIGN SYSTEM ==================== */
 .course-lessons {
-  padding: 20px;
-  max-width: 1100px;
+  padding: 32px;
+  max-width: 1400px;
   margin: 0 auto;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  position: relative;
 }
+
+/* Background pattern */
+.course-lessons::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(120, 200, 255, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+}
+/* ==================== HEADER DESIGN ==================== */
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 40px;
+  padding: 32px 40px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 24px;
+  color: white;
+  box-shadow: 
+    0 20px 40px rgba(102, 126, 234, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(20px);
 }
+
+.header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 30% 40%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 70% 60%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 800;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  letter-spacing: -0.5px;
+  position: relative;
+  z-index: 1;
+  color: white;
+}
+
 .actions {
   display: flex;
-  gap: 10px;
+  gap: 16px;
+  position: relative;
+  z-index: 1;
 }
+
+/* ==================== MODERN BUTTON SYSTEM ==================== */
 .btn {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  background: #f8f9fa;
-  border-radius: 6px;
+  padding: 14px 24px;
+  border: none;
+  border-radius: 16px;
   cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  min-height: 48px;
+  text-decoration: none;
+  user-select: none;
 }
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn:hover::before {
+  left: 100%;
+}
+
+.btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+  transform: translateY(-1px);
+  transition: transform 0.1s;
+}
+
 .btn.primary {
-  background: #3498db;
-  color: #fff;
-  border-color: #3498db;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: white;
+  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.1);
 }
+
+.btn.primary:hover {
+  background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+  box-shadow: 0 16px 40px rgba(79, 70, 229, 0.4);
+  transform: translateY(-4px) scale(1.02);
+}
+
 .btn.danger {
-  background: #ffebee;
-  color: #d32f2f;
-  border-color: #ffcdd2;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.1);
 }
+
+.btn.danger:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  box-shadow: 0 16px 40px rgba(239, 68, 68, 0.4);
+  transform: translateY(-4px) scale(1.02);
+}
+
+.btn:not(.primary):not(.danger) {
+  background: rgba(255, 255, 255, 0.9);
+  color: #374151;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.btn:not(.primary):not(.danger):hover {
+  background: rgba(255, 255, 255, 1);
+  color: #1f2937;
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  filter: grayscale(100%);
+}
+
+.btn:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+/* ==================== STATUS STATES ==================== */
 .loading,
 .empty {
   text-align: center;
-  padding: 16px;
-  color: #666;
-}
-.empty.small {
-  padding: 8px;
+  padding: 60px 40px;
+  color: #6b7280;
+  font-size: 18px;
+  font-weight: 500;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+  margin: 24px 0;
+  border: 1px solid rgba(255, 255, 255, 0.8);
 }
 
-/* Add cards */
+.empty {
+  border: 3px dashed #cbd5e1;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.empty.small {
+  padding: 24px 20px;
+  font-size: 14px;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: linear-gradient(135deg, #fefefe 0%, #f8fafc 100%);
+}
+
+.loading::before {
+  content: '';
+  width: 24px;
+  height: 24px;
+  border: 3px solid #e5e7eb;
+  border-top: 3px solid #4f46e5;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ==================== ADD CARD COMPONENTS ==================== */
 .add-card {
-  background: #ffffff;
-  border: 1px solid #eaeaea;
-  border-radius: 10px;
-  padding: 16px;
-  margin-bottom: 16px;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+  background: white;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 20px;
+  padding: 32px;
+  margin-bottom: 32px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(20px);
 }
+
+.add-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: #667eea;
+}
+
+.add-card:hover {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+  transform: translateY(-4px);
+}
+
 .add-card.lesson {
-  background: #fcfcff;
+  background: linear-gradient(135deg, #fefcff 0%, #f8faff 100%);
+  border-color: #e0e7ff;
 }
+
+.add-card.test {
+  background: linear-gradient(135deg, #fffef7 0%, #fefce8 100%);
+  border-color: #fef3c7;
+}
+
 .add-card-title {
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 12px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 24px;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
+
+.add-card-title::before {
+  content: '✨';
+  font-size: 24px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+/* ==================== FORM SYSTEM ==================== */
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 24px;
+  margin-bottom: 24px;
 }
+
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
 }
+
 .form-group.full {
   grid-column: 1 / -1;
 }
+
 .form-group label {
-  font-size: 13px;
-  color: #666;
+  font-size: 14px;
+  color: #374151;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
 }
+
 .form-group input,
 .form-group select,
 .form-group textarea {
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  padding: 16px 20px;
+  border: 3px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  font-weight: 500;
 }
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 
+    0 0 0 4px rgba(79, 70, 229, 0.15),
+    0 4px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
 .form-group textarea {
   resize: vertical;
+  min-height: 120px;
+  line-height: 1.6;
 }
+
 .form-group.align-end {
   align-self: end;
 }
+
 .checkbox {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  font-size: 15px;
+  color: #374151;
+  font-weight: 600;
+  padding: 12px 0;
 }
+
+.checkbox input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: #4f46e5;
+  border-radius: 4px;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 16px;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 2px solid #f3f4f6;
 }
 
+/* ==================== SECTION COMPONENTS ==================== */
 .section {
-  background: #fff;
-  border: 1px solid #eee;
-  border-radius: 10px;
-  padding: 12px;
-  margin-bottom: 16px;
+  background: white;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 24px;
+  padding: 32px;
+  margin-bottom: 32px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(20px);
 }
+
+
+
+.section:hover {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+  transform: translateY(-6px);
+}
+
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  gap: 20px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f1f5f9;
 }
+
 .section-title-input {
   flex: 1;
-  padding: 8px 10px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-weight: 600;
+  padding: 16px 20px;
+  border: 3px solid #e5e7eb;
+  border-radius: 16px;
+  font-weight: 700;
+  font-size: 18px;
+  background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
+
+.section-title-input:focus {
+  outline: none;
+  border-color: #4f46e5;
+  background: white;
+  box-shadow: 
+    0 0 0 4px rgba(79, 70, 229, 0.15),
+    0 4px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
 .section-actions {
   display: flex;
-  gap: 8px;
+  gap: 12px;
+  flex-wrap: wrap;
 }
+
 .section-expand {
-  background: #fcfcff;
-  border: 1px solid #eceefe;
-  border-radius: 10px;
-  padding: 12px;
-  margin-top: 10px;
+  background: linear-gradient(135deg, #fefcff 0%, #f8faff 100%);
+  border: 3px solid #e0e7ff;
+  border-radius: 20px;
+  padding: 32px;
+  margin-top: 24px;
+  animation: slideDown 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 32px rgba(79, 70, 229, 0.1);
 }
+
+@keyframes slideDown {
+  from { 
+    opacity: 0; 
+    transform: translateY(-20px) scale(0.95); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+  }
+}
+/* ==================== LESSON COMPONENTS ==================== */
 .lessons {
-  margin-top: 10px;
-  padding-left: 10px;
-  border-left: 3px solid #f0f0f0;
+  margin-top: 24px;
+  padding-left: 24px;
+  border-left: 6px solid #e0e7ff;
+  position: relative;
 }
+
 .lesson {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px;
-  border: 1px solid #f1f1f1;
-  border-radius: 8px;
-  margin-bottom: 8px;
-  background: #fff;
+  background: white;
+  border: 3px solid #f8fafc;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
 }
+
+.lesson::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #10b981, #06b6d4, #8b5cf6);
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.lesson:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.lesson:hover::before {
+  opacity: 1;
+}
+
 .lesson-top {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 6px;
+  gap: 16px;
+  margin-bottom: 12px;
 }
+
 .btn.icon {
-  padding: 6px;
-  min-width: 32px;
+  padding: 12px 16px;
+  min-width: 44px;
+  height: auto;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 2px solid #e2e8f0;
+  color: #64748b;
+  transition: all 0.3s ease;
+  font-size: 16px;
 }
-.lesson-title-display {
-  font-weight: 600;
-  color: #2c3e50;
-}
-.type-pill {
-  background: #f4f6f8;
-  color: #546e7a;
-  padding: 2px 8px;
-  border-radius: 999px;
+
+.btn.icon .btn-text {
+  display: inline;
   font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
 }
+
+.btn.icon:hover {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: white;
+  border-color: #4f46e5;
+  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.3);
+  transform: translateY(-2px) scale(1.05);
+}
+
+.lesson-title-display {
+  font-weight: 700;
+  color: #1f2937;
+  font-size: 16px;
+  letter-spacing: -0.2px;
+}
+
+.type-pill {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+  padding: 6px 16px;
+  border-radius: 25px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 2px solid #93c5fd;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 8px rgba(30, 64, 175, 0.2);
+}
+
 .pill.preview-pill {
-  background: #fff3e0;
-  color: #ef6c00;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #d97706;
+  border: 2px solid #fbbf24;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.2);
 }
+
 .spacer {
   flex: 1;
 }
+/* ==================== LESSON EDIT INTERFACE ==================== */
 .lesson-edit {
-  margin: 8px 0;
-  padding: 12px;
-  background: #fcfcff;
-  border: 1px solid #eceefe;
-  border-radius: 10px;
+  margin: 24px 0;
+  padding: 32px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 3px solid #e2e8f0;
+  border-radius: 20px;
+  animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
 }
+
+.lesson-edit::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: #4f46e5;
+}
+
+@keyframes slideIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(-20px) scale(0.98); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+  }
+}
+
 .lesson-edit-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 3px solid #e2e8f0;
 }
+
 .lesson-edit-title {
-  font-weight: 600;
-  color: #2c3e50;
+  font-weight: 800;
+  color: #1e293b;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
+
+.lesson-edit-title i {
+  color: #4f46e5;
+  font-size: 22px;
+}
+
 .lesson-title-input,
 .lesson-type {
-  padding: 8px 10px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  padding: 16px 20px;
+  border: 3px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 15px;
+  background: white;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
+
+.lesson-title-input:focus,
+.lesson-type:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 
+    0 0 0 4px rgba(79, 70, 229, 0.15),
+    0 4px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
 .lesson-left {
   display: grid;
-  grid-template-columns: 1fr 200px 140px;
-  gap: 12px;
+  grid-template-columns: 2fr 200px 140px;
+  gap: 20px;
   align-items: end;
+  margin-bottom: 24px;
 }
+
 .lesson-actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 10px;
+  gap: 16px;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 3px solid #e2e8f0;
 }
+/* ==================== LESSON CONTENT FIELDS ==================== */
 .lesson-video-fields,
 .lesson-article-fields {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #eceefe;
+  margin-top: 24px;
+  padding: 24px;
+  background: white;
+  border: 3px solid #e0e7ff;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(224, 231, 255, 0.3);
+  position: relative;
 }
+
+.lesson-video-fields::before {
+  content: '🎥';
+  position: absolute;
+  top: -12px;
+  left: 20px;
+  background: white;
+  padding: 0 8px;
+  font-size: 20px;
+}
+
+.lesson-article-fields::before {
+  content: '📝';
+  position: absolute;
+  top: -12px;
+  left: 20px;
+  background: white;
+  padding: 0 8px;
+  font-size: 20px;
+}
+
 .lesson-video-fields .form-row {
   display: grid;
   grid-template-columns: 2fr 1fr;
-  gap: 12px;
+  gap: 20px;
+  margin-bottom: 0;
 }
+
 .lesson-article-fields .form-group {
   margin-bottom: 0;
 }
+
 .lesson-article-fields textarea {
   width: 100%;
-  padding: 8px 10px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  padding: 16px 20px;
+  border: 3px solid #e2e8f0;
+  border-radius: 12px;
   resize: vertical;
+  min-height: 140px;
+  font-size: 15px;
+  line-height: 1.6;
+  background: white;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-/* mini labels */
+.lesson-article-fields textarea:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 
+    0 0 0 4px rgba(79, 70, 229, 0.15),
+    0 4px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+/* ==================== FIELD LABELS ==================== */
 .field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-}
-.field.small {
-  min-width: 120px;
-}
-.mini-label {
-  font-size: 11px;
-  color: #8a8a8a;
+  gap: 10px;
 }
 
-/***** tests & questions *****/
-.tests {
-  margin-top: 8px;
-  padding: 10px;
-  background: #fafbff;
-  border: 1px dashed #e5e7fb;
-  border-radius: 10px;
+.field.small {
+  min-width: 160px;
 }
+
+.mini-label {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 4px;
+}
+
+/* ==================== TEST SYSTEM ==================== */
+.tests {
+  margin-top: 24px;
+  padding: 24px;
+  background: linear-gradient(135deg, #fefce8 0%, #fef3c7 100%);
+  border: 3px solid #fbbf24;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(251, 191, 36, 0.2);
+  position: relative;
+}
+
+.tests::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: #f59e0b;
+  border-radius: 16px 16px 0 0;
+}
+
 .tests-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #fbbf24;
 }
+
 .tests-title {
-  font-weight: 600;
-  color: #2c3e50;
+  font-weight: 800;
+  color: #92400e;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
+
+.tests-title::before {
+  content: '📝';
+  font-size: 22px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
 .test-item {
-  background: #fff;
-  border: 1px solid #eceefe;
-  border-radius: 10px;
-  padding: 10px;
-  margin-top: 8px;
+  background: white;
+  border: 3px solid #fed7aa;
+  border-radius: 16px;
+  padding: 24px;
+  margin-top: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  position: relative;
 }
+
+.test-item:hover {
+  border-color: #fb923c;
+  box-shadow: 0 12px 32px rgba(251, 146, 60, 0.2);
+  transform: translateY(-2px);
+}
+
 .test-row {
   display: flex;
-  gap: 12px;
+  gap: 20px;
   align-items: flex-end;
   flex-wrap: wrap;
 }
+
 .test-title-input {
   flex: 1;
-  padding: 6px 8px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-}
-.test-number-input {
-  width: 110px;
-  padding: 6px 8px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-}
-.pill {
-  background: #eef7ff;
-  color: #1976d2;
-  padding: 2px 8px;
-  border-radius: 999px;
+  padding: 14px 18px;
+  border: 3px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 15px;
+  background: white;
+  transition: all 0.3s ease;
   font-weight: 600;
-  font-size: 12px;
-  display: inline-block;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
+
+.test-title-input:focus {
+  outline: none;
+  border-color: #f59e0b;
+  box-shadow: 
+    0 0 0 4px rgba(245, 158, 11, 0.15),
+    0 4px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.test-number-input {
+  width: 140px;
+  padding: 14px 18px;
+  border: 3px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 15px;
+  background: white;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.test-number-input:focus {
+  outline: none;
+  border-color: #f59e0b;
+  box-shadow: 
+    0 0 0 4px rgba(245, 158, 11, 0.15),
+    0 4px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.pill {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+  padding: 8px 16px;
+  border-radius: 25px;
+  font-weight: 700;
+  font-size: 13px;
+  display: inline-block;
+  border: 2px solid #93c5fd;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.2);
+}
+
 .qcount {
   display: flex;
   align-items: flex-end;
-  gap: 6px;
+  gap: 12px;
 }
 
+/* ==================== QUESTIONS SECTION ==================== */
 .questions {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px dashed #eee;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 2px dashed #fbbf24;
 }
+
 .questions-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 12px;
 }
+
 .questions-title {
-  font-weight: 600;
-  color: #2c3e50;
+  font-weight: 700;
+  color: #92400e;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
+
 .question-item {
-  border: 1px solid #f1f1f1;
-  border-radius: 8px;
-  padding: 8px;
-  margin-top: 6px;
-  background: #fff;
+  border: 2px solid #fef3c7;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 12px;
+  background: #fffbeb;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
+
+.question-item:hover {
+  border-color: #fbbf24;
+  box-shadow: 0 4px 16px rgba(251, 191, 36, 0.1);
+}
+
 .question-row {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   align-items: center;
 }
+
 .badge {
-  background: #eef7ff;
-  color: #1976d2;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border: 1px solid #93c5fd;
 }
+
 .q-content {
   flex: 1;
-  color: #34495e;
+  color: #374151;
+  font-weight: 500;
 }
+
 .q-meta {
-  color: #888;
+  color: #6b7280;
   font-size: 12px;
-}
-.choices-list {
-  margin: 6px 0 0 18px;
-}
-.choice {
-  color: #555;
-}
-.choice.correct {
-  color: #2e7d32;
   font-weight: 600;
 }
-.empty.tiny {
-  padding: 6px;
-  font-size: 13px;
-  color: #888;
+
+.choices-list {
+  margin: 12px 0 0 24px;
 }
+
+.choice {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.choice.correct {
+  color: #059669;
+  font-weight: 700;
+}
+
+.empty.tiny {
+  padding: 12px;
+  font-size: 14px;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
 .btn.small {
-  padding: 5px 8px;
-  font-size: 12px;
+  padding: 10px 16px;
+  font-size: 13px;
+  border-radius: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+/* Loading and empty states */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 16px;
+  color: #6b7280;
+}
+.loading::before {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e5e7eb;
+  border-top: 2px solid #4f46e5;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+  .course-lessons {
+    padding: 16px;
+  }
+  .section-actions {
+    flex-wrap: wrap;
+  }
 }
 
 @media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+    padding: 16px 20px;
+  }
   .form-row {
     grid-template-columns: 1fr;
   }
-}
-@media (max-width: 768px) {
   .lesson-left {
     grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .lesson-video-fields .form-row {
+    grid-template-columns: 1fr;
+  }
+  .test-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .test-title-input,
+  .test-number-input {
+    width: 100%;
+  }
+  .section-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .section-actions {
+    justify-content: center;
   }
 }
 </style>

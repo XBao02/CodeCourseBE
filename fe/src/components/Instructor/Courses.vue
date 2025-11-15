@@ -63,7 +63,7 @@
                         <button @click="goLessons(course.id)" class="btn-content">
                             <i class="fas fa-pen-nib"></i> Soạn nội dung
                         </button>
-                        <button @click="viewCourse(course.id)" class="btn-view">
+                        <!-- <button @click="viewCourse(course.id)" class="btn-view">
                             <i class="fas fa-eye"></i> Xem
                         </button>
                         <button @click="manageStudents(course.id)" class="btn-students">
@@ -73,7 +73,7 @@
                             :class="['btn-archive', course.status === 'archived' ? 'btn-unarchive' : '']">
                             <i :class="course.status === 'archived' ? 'fas fa-box-open' : 'fas fa-archive'"></i>
                             {{ course.status === 'archived' ? 'Bỏ lưu trữ' : 'Lưu trữ' }}
-                        </button>
+                        </button> -->
                     </div>
                 </div>
             </div>
@@ -253,7 +253,7 @@ export default {
         },
 
         viewCourse(courseId) {
-            this.$router.push(`/instructor/courses/${courseId}`)
+            this.$router.push(`/instructor/courses/${courseId}/lessons`)
         },
 
         manageStudents(courseId) {
@@ -342,10 +342,6 @@ export default {
 
         goLessons(courseId) {
             this.$router.push(`/instructor/courses/${courseId}/lessons`)
-        },
-
-        viewCourse(courseId) {
-            this.$router.push(`/instructor/courses/${courseId}`)
         },
 
         manageStudents(courseId) {
