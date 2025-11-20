@@ -16,7 +16,7 @@
             <ul class="navbar-nav mx-auto d-flex align-items-center gap-4">
                 <li class="nav-item">
                     <router-link to="/admin" class="nav-link d-flex align-items-center gap-2 fs-5">
-                        🏠 Dashboard
+                        <font-awesome-icon :icon="['fas', 'house']" /> Dashboard
                     </router-link>
                 </li>
 
@@ -24,19 +24,19 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle d-flex align-items-center gap-1 fs-5" href="#"
                         id="accountDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        👤 Account Manager
+                        <font-awesome-icon :icon="['fas', 'user']" /> Account Manager
                     </a>
                     <ul class="dropdown-menu shadow" aria-labelledby="accountDropdown">
                         <li>
                             <router-link to="/admin/students_manager"
                                 class="dropdown-item d-flex align-items-center gap-2">
-                                🎓 Student Management
+                                <font-awesome-icon :icon="['fas', 'user-graduate']" /> Student Management
                             </router-link>
                         </li>
                         <li>
                             <router-link to="/admin/instructors_manager"
                                 class="dropdown-item d-flex align-items-center gap-2">
-                                👨‍🏫 Instructor Management
+                                <font-awesome-icon :icon="['fas', 'chalkboard-teacher']" /> Instructor Management
                             </router-link>
                         </li>
                     </ul>
@@ -44,22 +44,22 @@
 
                 <li class="nav-item">
                     <router-link to="/admin/courses" class="nav-link d-flex align-items-center gap-1 fs-5">
-                        📚 Course Management
+                        <font-awesome-icon :icon="['fas', 'book']" /> Course Management
                     </router-link>
                 </li>
                 <li class="nav-item">
                     <router-link to="/admin/reports" class="nav-link d-flex align-items-center gap-1 fs-5">
-                        📊 Reporting & Statistics
+                        <font-awesome-icon :icon="['fas', 'chart-line']" /> Reporting & Statistics
                     </router-link>
                 </li>
                 <li class="nav-item">
                     <router-link to="/admin/decentralization" class="nav-link d-flex align-items-center gap-1 fs-5">
-                        🔑 Decentralization
+                        <font-awesome-icon :icon="['fas', 'project-diagram']" /> Decentralization
                     </router-link>
                 </li>
                 <li class="nav-item">
                     <router-link to="/admin/assistant" class="nav-link d-flex align-items-center gap-1 fs-5">
-                        🤖 AI Assistant
+                        <font-awesome-icon :icon="['fas', 'robot']" /> AI Assistant
                     </router-link>
                 </li>
             </ul>
@@ -75,7 +75,7 @@
                     </div>
                 </div>
                 <button class="btn btn-light position-relative rounded-circle">
-                    🔔
+                    <font-awesome-icon :icon="['fas', 'bell']" />
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
                         3
                     </span>
