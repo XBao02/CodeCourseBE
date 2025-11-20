@@ -18,27 +18,27 @@
             <ul class="navbar-nav mx-auto d-flex align-items-center gap-4">
                 <li class="nav-item">
                     <router-link to="/instructor" class="nav-link d-flex align-items-center gap-2 fs-5">
-                        🏠 Dashboard
+                        <font-awesome-icon :icon="['fas', 'house']" /> Dashboard
                     </router-link>
                 </li>
                 <li class="nav-item">
                     <router-link to="/instructor/courses" class="nav-link d-flex align-items-center gap-1 fs-5">
-                        📚 Course Management
+                        <font-awesome-icon :icon="['fas', 'book']" /> Course Management
                     </router-link>
                 </li>
                 <li class="nav-item">
                     <router-link to="/instructor/chat" class="nav-link d-flex align-items-center gap-1 fs-5">
-                        💬 Student Chat
+                        <font-awesome-icon :icon="['fas', 'message']" /> Student Chat
                     </router-link>
                 </li>
                 <li class="nav-item">
                     <router-link to="/instructor/reports" class="nav-link d-flex align-items-center gap-1 fs-5">
-                        📊 Reporting & Statistics
+                        <font-awesome-icon :icon="['fas', 'chart-line']" /> Reporting & Statistics
                     </router-link>
                 </li>
                 <li class="nav-item">
                     <router-link to="/instructor/assistant" class="nav-link d-flex align-items-center gap-1 fs-5">
-                        🤖 AI Assistant
+                        <font-awesome-icon :icon="['fas', 'robot']" /> AI Assistant
                     </router-link>
                 </li>
             </ul>
@@ -54,7 +54,7 @@
                     </div>
                 </div>
                 <button class="btn btn-light position-relative rounded-circle">
-                    🔔
+                    <font-awesome-icon :icon="['fas', 'bell']" />
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
                         3
                     </span>
