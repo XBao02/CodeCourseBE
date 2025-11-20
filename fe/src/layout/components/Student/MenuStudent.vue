@@ -17,32 +17,32 @@
       <ul class="navbar-nav mx-auto d-flex align-items-center gap-4">
         <li class="nav-item">
           <router-link to="/student" class="nav-link d-flex align-items-center gap-2 fs-5">
-            🏠 Dashboard
+            <font-awesome-icon :icon="['fas', 'house']" /> Dashboard
           </router-link>
         </li>
         <li class="nav-item">
           <router-link to="/student/courses" class="nav-link d-flex align-items-center gap-1 fs-5">
-            📚 Courses
+            <font-awesome-icon :icon="['fas', 'book']" /> Courses
           </router-link>
         </li>
         <li class="nav-item">
           <router-link to="/student/minigames" class="nav-link d-flex align-items-center gap-1 fs-5">
-            🎮 Minigames
+            <font-awesome-icon :icon="['fas', 'gamepad']" /> Minigames
           </router-link>
         </li>
         <li class="nav-item">
           <router-link to="/student/chat" class="nav-link d-flex align-items-center gap-1 fs-5">
-            💬 Instructor Chat
+            <font-awesome-icon :icon="['fas', 'message']" /> Instructor Chat
           </router-link>
         </li>
         <li class="nav-item">
           <router-link to="/student/profile" class="nav-link d-flex align-items-center gap-1 fs-5">
-            📊 Profile
+            <font-awesome-icon :icon="['fas', 'user']" /> Profile
           </router-link>
         </li>
         <li class="nav-item">
           <router-link to="/student/assistant" class="nav-link d-flex align-items-center gap-1 fs-5">
-            🤖 AI Assistant
+            <font-awesome-icon :icon="['fas', 'robot']" /> AI Assistant
           </router-link>
         </li>
       </ul>
@@ -58,7 +58,7 @@
           </div>
         </div>
         <button class="btn btn-light position-relative rounded-circle">
-          🔔
+          <font-awesome-icon :icon="['fas', 'bell']" />
           <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
             3
           </span>
