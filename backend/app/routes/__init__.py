@@ -10,8 +10,9 @@ from .Student import student_bp
 from .Auth import auth_bp
 from .Admin import admin_bp
 from .Instructor import instructor_bp
+from .AIQuiz import ai_quiz_bp
 
-__all__ = ['student_bp', 'auth_bp', 'admin_bp', 'instructor_bp']
+__all__ = ['student_bp', 'auth_bp', 'admin_bp', 'instructor_bp', 'ai_quiz_bp']
 
 def resolve_role(user_id: int) -> str:
     """Xác định role dựa trên 3 bảng admins/instructors/students."""

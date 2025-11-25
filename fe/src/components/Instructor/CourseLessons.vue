@@ -31,31 +31,9 @@
         <div class="section-header">
           <input v-model="section.editTitle" class="section-title-input" />
           <div class="section-actions">
-            <button class="btn" @click="section.expanded = !section.expanded" :title="section.expanded ? 'Thu gọn chương' : 'Mở rộng chương'">
-              <i :class="section.expanded ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
-              {{ section.expanded ? 'Thu gọn' : 'Mở rộng' }}
-            </button>
             <button class="btn" @click="saveSection(section)"><i class="fas fa-save"></i> Lưu</button>
             <button class="btn danger" @click="deleteSection(section)"><i class="fas fa-trash"></i> Xóa</button>
             <button class="btn" @click="promptAddLesson(section)"><i class="fas fa-plus"></i> Thêm bài học</button>
-          </div>
-        </div>
-
-        <!-- Expanded section config -->
-        <div v-if="section.expanded" class="section-expand">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Tiêu đề chương</label>
-              <input v-model.trim="section.editTitle" type="text" />
-            </div>
-            <div class="form-group">
-              <label>Thứ tự hiển thị</label>
-              <input v-model.number="section.editOrder" type="number" min="0" />
-            </div>
-          </div>
-          <div class="form-actions">
-            <button class="btn" @click="section.expanded = false">Đóng</button>
-            <button class="btn primary" @click="saveSection(section)">Lưu thay đổi</button>
           </div>
         </div>
 
@@ -158,7 +136,7 @@
             </div>
 
             <!-- Tests block -->
-            <div class="tests">
+            <div v-if="lesson.expanded" class="tests">
               <div class="tests-header">
                 <div class="tests-title">Bài test ({{ (testsByLesson[lesson.id] || []).length }})</div>
                 <div class="tests-actions">
@@ -167,6 +145,9 @@
                     {{ lesson.testsExpanded ? 'Thu gọn' : 'Mở' }}
                   </button>
                   <button class="btn small" v-if="lesson.testsExpanded" @click="toggleAddTest(lesson)"><i class="fas fa-plus"></i> Thêm test</button>
+                  <button class="btn small ai-btn" v-if="lesson.testsExpanded" @click="openAIQuizGenerator(lesson)" :disabled="aiGenerating" :title="aiGenerating ? 'Đang tạo câu hỏi...' : 'Tạo câu hỏi bằng AI'">
+                    <i :class="aiGenerating ? 'fas fa-spinner fa-spin' : 'fas fa-magic'"></i> {{ aiGenerating ? 'Đang tạo...' : 'Tạo bằng AI' }}
+                  </button>
                 </div>
               </div>
 
@@ -231,6 +212,103 @@
           </div>
         </div>
     </div>
+
+    <!-- AI Quiz Generator Modal -->
+    <div v-if="showAIQuizModal" class="ai-modal-overlay">
+      <div class="ai-modal-content">
+        <div class="ai-modal-header">
+          <h3><i class="fas fa-magic"></i> Tạo Câu Hỏi Bằng AI</h3>
+          <button class="ai-close-btn" @click="closeAIQuizModal"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div class="ai-modal-body">
+          <!-- Config Section -->
+          <div v-if="!aiQuizGenerated" class="ai-config">
+            <div class="form-group">
+              <label>Tiêu đề bài học</label>
+              <input v-model="aiQuizConfig.lesson_title" type="text" placeholder="VD: Vòng lặp for trong Python" readonly />
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Số lượng câu hỏi</label>
+                <input v-model.number="aiQuizConfig.num_questions" type="number" min="1" max="20" />
+              </div>
+              <div class="form-group">
+                <label>Độ khó</label>
+                <select v-model="aiQuizConfig.difficulty">
+                  <option value="easy">Dễ</option>
+                  <option value="medium">Trung bình</option>
+                  <option value="hard">Khó</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn" @click="closeAIQuizModal">Hủy</button>
+              <button class="btn primary ai-generate-btn" @click="generateAIQuestions" :disabled="aiGenerating">
+                <i :class="aiGenerating ? 'fas fa-spinner fa-spin' : 'fas fa-magic'"></i>
+                {{ aiGenerating ? 'Đang tạo...' : 'Tạo Câu Hỏi' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Generated Questions Section -->
+          <div v-else class="ai-questions">
+            <div class="ai-success-message">
+              <i class="fas fa-check-circle"></i> Đã tạo {{ generatedQuestions.length }} câu hỏi!
+            </div>
+
+            <div v-for="(q, qIndex) in generatedQuestions" :key="qIndex" class="ai-question-card">
+              <div class="ai-question-header">
+                <span class="q-number">Câu {{ qIndex + 1 }}</span>
+                <button class="btn-small" @click="toggleQuestionPreview(qIndex)" :title="expandedQuestions.includes(qIndex) ? 'Thu gọn' : 'Mở rộng'">
+                  <i :class="expandedQuestions.includes(qIndex) ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
+                </button>
+              </div>
+
+              <div v-if="expandedQuestions.includes(qIndex)" class="ai-question-details">
+                <div class="q-text">{{ q.question }}</div>
+
+                <div class="q-options">
+                  <div v-for="(opt, optIndex) in q.options" :key="optIndex" class="q-option" :class="{ correct: q.correctAnswer === optIndex }">
+                    <span class="option-letter">{{ String.fromCharCode(65 + optIndex) }}</span>
+                    <span class="option-text">{{ opt }}</span>
+                    <span v-if="q.correctAnswer === optIndex" class="correct-badge"><i class="fas fa-check"></i></span>
+                  </div>
+                </div>
+
+                <div class="q-explanation">
+                  <strong>Giải thích:</strong> {{ q.explanation }}
+                </div>
+
+                <div class="q-actions">
+                  <button class="btn-small danger" @click="removeQuestion(qIndex)">
+                    <i class="fas fa-trash"></i> Xóa
+                  </button>
+                  <button class="btn-small" @click="regenerateQuestion(qIndex)" :disabled="aiGenerating">
+                    <i class="fas fa-redo"></i> Tạo lại
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="ai-final-actions">
+              <button class="btn" @click="resetAIQuizModal">Tạo Lại</button>
+              <button class="btn danger" @click="closeAIQuizModal">Hủy</button>
+              <button class="btn primary" @click="saveGeneratedQuestions" :disabled="generatedQuestions.length === 0">
+                <i class="fas fa-save"></i> Lưu Câu Hỏi
+              </button>
+            </div>
+          </div>
+
+          <!-- Error Message -->
+          <div v-if="aiError" class="ai-error-message">
+            <i class="fas fa-exclamation-circle"></i> {{ aiError }}
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 </template>
@@ -248,6 +326,19 @@ export default {
       addingSection: false,
       newSectionTitle: "",
       testsByLesson: {},
+      // AI Quiz states
+      showAIQuizModal: false,
+      aiGenerating: false,
+      aiError: null,
+      aiQuizGenerated: false,
+      aiQuizConfig: {
+        lesson_title: "",
+        num_questions: 5,
+        difficulty: "medium",
+      },
+      generatedQuestions: [],
+      expandedQuestions: [],
+      selectedLessonForAI: null,
     };
   },
   async mounted() {
@@ -290,7 +381,6 @@ export default {
           ...s,
           editTitle: s.title,
           editOrder: s.sortOrder || 0,
-          expanded: false,
           addingLesson: false,
           newLesson: {
             title: "",
@@ -586,6 +676,221 @@ export default {
         });
       } catch (e) {
         alert(e.message);
+      }
+    },
+    // AI Quiz Methods
+    openAIQuizGenerator(lesson) {
+      this.selectedLessonForAI = lesson;
+      this.aiQuizConfig = {
+        lesson_title: lesson.editTitle || lesson.title,
+        num_questions: 5,
+        difficulty: "medium",
+      };
+      this.showAIQuizModal = true;
+      this.aiQuizGenerated = false;
+      this.generatedQuestions = [];
+      this.expandedQuestions = [];
+      this.aiError = null;
+    },
+    async generateAIQuestions() {
+      if (!this.aiQuizConfig.lesson_title) {
+        this.aiError = "Tiêu đề bài học không được để trống";
+        return;
+      }
+
+      this.aiGenerating = true;
+      this.aiError = null;
+
+      try {
+        const payload = {
+          lesson_title: this.aiQuizConfig.lesson_title,
+          num_questions: this.aiQuizConfig.num_questions,
+          difficulty: this.aiQuizConfig.difficulty,
+        };
+
+        const res = await fetch("http://localhost:5000/api/ai/quiz/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.questions) {
+          throw new Error(data.error || "Lỗi khi tạo câu hỏi");
+        }
+
+        this.generatedQuestions = data.questions || [];
+        this.aiQuizGenerated = true;
+        
+        // Tự động mở rộng tất cả câu hỏi
+        this.expandedQuestions = this.generatedQuestions.map((_, i) => i);
+      } catch (e) {
+        console.error("Error generating AI questions:", e);
+        this.aiError = e.message || "Lỗi không xác định khi tạo câu hỏi";
+      } finally {
+        this.aiGenerating = false;
+      }
+    },
+    toggleQuestionPreview(qIndex) {
+      const idx = this.expandedQuestions.indexOf(qIndex);
+      if (idx > -1) {
+        this.expandedQuestions.splice(idx, 1);
+      } else {
+        this.expandedQuestions.push(qIndex);
+      }
+    },
+    removeQuestion(qIndex) {
+      this.generatedQuestions.splice(qIndex, 1);
+      this.expandedQuestions = this.expandedQuestions
+        .filter(i => i !== qIndex)
+        .map(i => i > qIndex ? i - 1 : i);
+    },
+    async regenerateQuestion(qIndex) {
+      this.aiGenerating = true;
+      this.aiError = null;
+
+      try {
+        const payload = {
+          lesson_title: this.aiQuizConfig.lesson_title,
+          num_questions: 1,
+          difficulty: this.aiQuizConfig.difficulty,
+        };
+
+        const res = await fetch("http://localhost:5000/api/ai/quiz/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.questions || data.questions.length === 0) {
+          throw new Error(data.error || "Lỗi khi tạo lại câu hỏi");
+        }
+
+        this.generatedQuestions[qIndex] = data.questions[0];
+      } catch (e) {
+        console.error("Error regenerating question:", e);
+        this.aiError = e.message || "Lỗi khi tạo lại câu hỏi";
+      } finally {
+        this.aiGenerating = false;
+      }
+    },
+    resetAIQuizModal() {
+      this.aiQuizGenerated = false;
+      this.generatedQuestions = [];
+      this.expandedQuestions = [];
+      this.aiError = null;
+    },
+    closeAIQuizModal() {
+      this.showAIQuizModal = false;
+      this.resetAIQuizModal();
+    },
+    async saveGeneratedQuestions() {
+      if (this.generatedQuestions.length === 0) {
+        alert("Không có câu hỏi nào để lưu");
+        return;
+      }
+
+      if (!this.selectedLessonForAI) {
+        alert("Không có bài học được chọn");
+        return;
+      }
+
+      // Tạo test từ câu hỏi được tạo
+      const testTitle = `${this.aiQuizConfig.lesson_title} - Quiz (AI)`;
+      const lesson = this.selectedLessonForAI;
+
+      try {
+        // Tạo test
+        const testPayload = {
+          title: testTitle,
+          timeLimitMinutes: this.generatedQuestions.length * 3, // ~3 phút/câu
+          attemptsAllowed: 1,
+          isPlacement: false,
+        };
+
+        console.log("Creating test with payload:", testPayload);
+        const testRes = await fetch(
+          `http://localhost:5000/api/lessons/${lesson.id}/tests`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(testPayload),
+          }
+        );
+
+        console.log("Test response status:", testRes.status);
+        console.log("Test response headers:", testRes.headers);
+        
+        // Check if response is JSON
+        const contentType = testRes.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          const text = await testRes.text();
+          console.error("Invalid response type. Expected JSON, got:", contentType);
+          console.error("Response body:", text);
+          throw new Error(`Server returned invalid response: ${contentType}. Check backend logs.`);
+        }
+
+        const testData = await testRes.json();
+        console.log("Test data:", testData);
+        if (!testRes.ok) throw new Error(testData.message || "Không thể tạo test");
+
+        const testId = testData.id;
+        console.log("Created test with ID:", testId);
+
+        // Lưu từng câu hỏi vào test
+        for (const q of this.generatedQuestions) {
+          // Build choices array với đáp án đúng được đánh dấu
+          const choices = q.options.map((opt, idx) => ({
+            content: opt,
+            text: opt,
+            is_correct: q.correctAnswer === idx,
+            isCorrect: q.correctAnswer === idx,
+            sort_order: idx,
+          }));
+
+          const qPayload = {
+            type: 'single_choice',
+            content: q.question,
+            points: 1,
+            choices: choices,
+          };
+
+          console.log("Creating question with payload:", qPayload);
+          const qRes = await fetch(
+            `http://localhost:5000/api/tests/${testId}/questions`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(qPayload),
+            }
+          );
+
+          console.log("Question response status:", qRes.status);
+          console.log("Question response headers:", qRes.headers);
+          
+          // Check if response is JSON
+          const qContentType = qRes.headers.get("content-type");
+          if (!qContentType || !qContentType.includes("application/json")) {
+            const text = await qRes.text();
+            console.error("Invalid question response type. Expected JSON, got:", qContentType);
+            console.error("Response body:", text);
+            throw new Error(`Server returned invalid response: ${qContentType}. Check backend logs.`);
+          }
+          
+          if (!qRes.ok) {
+            const errData = await qRes.json();
+            console.error("Error saving question:", errData);
+            throw new Error(errData.message || "Lỗi khi lưu câu hỏi");
+          }
+          console.log("Question saved successfully");
+        }
+
+        // Close modal immediately without showing alert
+        this.closeAIQuizModal();
+        await this.loadTestsForLesson(lesson.id);
+      } catch (e) {
+        alert(`Lỗi khi lưu câu hỏi: ${e.message}`);
       }
     },
   },
@@ -1021,8 +1326,8 @@ export default {
   background: linear-gradient(135deg, #fefcff 0%, #f8faff 100%);
   border: 3px solid #e0e7ff;
   border-radius: 20px;
-  padding: 32px;
-  margin-top: 24px;
+  padding: 16px;
+  margin-top: 12px;
   animation: slideDown 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 8px 32px rgba(79, 70, 229, 0.1);
 }
@@ -1036,6 +1341,15 @@ export default {
     opacity: 1; 
     transform: translateY(0) scale(1); 
   }
+}
+
+.section-expand .form-row {
+  margin-bottom: 12px;
+}
+
+.section-expand .form-actions {
+  margin-top: 12px;
+  padding-top: 12px;
 }
 /* ==================== LESSON COMPONENTS ==================== */
 .lessons {
@@ -1134,7 +1448,7 @@ export default {
   border: 2px solid #93c5fd;
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  box-shadow: 0 2px 8px rgba(30, 64, 175, 0.2);
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.2);
 }
 
 .pill.preview-pill {
@@ -1460,179 +1774,342 @@ export default {
   box-shadow: 0 4px 12px rgba(30, 64, 175, 0.2);
 }
 
-.qcount {
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
+/* ==================== AI QUIZ STYLES ==================== */
+.ai-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.3) !important;
 }
 
-/* ==================== QUESTIONS SECTION ==================== */
-.questions {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 2px dashed #fbbf24;
+.ai-btn:hover:not(:disabled) {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 10px 24px rgba(102, 126, 234, 0.4) !important;
 }
 
-.questions-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
+.ai-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-.questions-title {
-  font-weight: 700;
-  color: #92400e;
-  font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.question-item {
-  border: 2px solid #fef3c7;
-  border-radius: 12px;
-  padding: 16px;
-  margin-top: 12px;
-  background: #fffbeb;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-.question-item:hover {
-  border-color: #fbbf24;
-  box-shadow: 0 4px 16px rgba(251, 191, 36, 0.1);
-}
-
-.question-row {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.badge {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  color: #1e40af;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  border: 1px solid #93c5fd;
-}
-
-.q-content {
-  flex: 1;
-  color: #374151;
-  font-weight: 500;
-}
-
-.q-meta {
-  color: #6b7280;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.choices-list {
-  margin: 12px 0 0 24px;
-}
-
-.choice {
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.choice.correct {
-  color: #059669;
-  font-weight: 700;
-}
-
-.empty.tiny {
-  padding: 12px;
-  font-size: 14px;
-  color: #9ca3af;
-  font-weight: 500;
-}
-
-.btn.small {
-  padding: 10px 16px;
-  font-size: 13px;
-  border-radius: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-}
-
-/* Loading and empty states */
-.loading {
+.ai-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.ai-modal-content {
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  max-width: 800px;
+  width: 90%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ai-modal-header {
+  padding: 24px;
+  border-bottom: 2px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 24px 24px 0 0;
+}
+
+.ai-modal-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
   gap: 12px;
-  font-size: 16px;
-  color: #6b7280;
 }
-.loading::before {
-  content: '';
-  width: 20px;
-  height: 20px;
+
+.ai-close-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+
+.ai-close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+.ai-modal-body {
+  padding: 32px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.ai-config {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ai-config .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.ai-config .form-group input,
+.ai-config .form-group select {
+  padding: 12px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.ai-config .form-group input:focus,
+.ai-config .form-group select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+
+.ai-config .form-group input:read-only {
+  background: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.ai-config .form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding-top: 20px;
+  border-top: 2px solid #f0f0f0;
+}
+
+.ai-generate-btn {
+  min-width: 180px;
+}
+
+.ai-success-message {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: 16px 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(-20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.ai-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ai-question-card {
+  background: #f9fafb;
   border: 2px solid #e5e7eb;
-  border-top: 2px solid #4f46e5;
+  border-radius: 16px;
+  padding: 16px;
+  transition: all 0.3s;
+}
+
+.ai-question-card:hover {
+  border-color: #667eea;
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.1);
+}
+
+.ai-question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.q-number {
+  font-weight: 700;
+  color: #667eea;
+  font-size: 14px;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  background: #e5e7eb;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.3s;
+}
+
+.btn-small:hover {
+  background: #d1d5db;
+  transform: scale(1.05);
+}
+
+.btn-small.danger {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.btn-small.danger:hover {
+  background: #fecaca;
+}
+
+.ai-question-details {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.q-text {
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 16px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.q-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.q-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: white;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+
+.q-option:hover {
+  border-color: #667eea;
+}
+
+.q-option.correct {
+  background: #f0fdf4;
+  border-color: #10b981;
+}
+
+.option-letter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: #667eea;
+  color: white;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.q-option.correct .option-letter {
+  background: #10b981;
+}
+
+.option-text {
+  flex: 1;
+  color: #374151;
+  font-size: 14px;
+}
+
+.correct-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: #10b981;
+  color: white;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  font-size: 12px;
+  flex-shrink: 0;
 }
 
-/* Responsive design */
-@media (max-width: 1024px) {
-  .course-lessons {
-    padding: 16px;
-  }
-  .section-actions {
-    flex-wrap: wrap;
-  }
+.q-explanation {
+  background: #fffbeb;
+  border-left: 4px solid #f59e0b;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #92400e;
+  margin-bottom: 12px;
 }
 
-@media (max-width: 768px) {
-  .header {
-    flex-direction: column;
-    gap: 16px;
-    text-align: center;
-    padding: 16px 20px;
-  }
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-  .lesson-left {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  .lesson-video-fields .form-row {
-    grid-template-columns: 1fr;
-  }
-  .test-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-  .test-title-input,
-  .test-number-input {
-    width: 100%;
-  }
-  .section-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-  .section-actions {
-    justify-content: center;
-  }
+.q-explanation strong {
+  color: #b45309;
+}
+
+.q-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.ai-final-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding-top: 20px;
+  border-top: 2px solid #f0f0f0;
+}
+
+.ai-error-message {
+  background: #fee2e2;
+  color: #dc2626;
+  padding: 16px 20px;
+  border-radius: 12px;
+  margin-top: 20px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+   border: 2px solid #fca5a5;
 }
 </style>

@@ -1,6 +1,6 @@
 from flask import Flask
 from flask_cors import CORS
-from app.routes import student_bp, auth_bp, admin_bp, instructor_bp
+from app.routes import student_bp, auth_bp, admin_bp, instructor_bp, ai_quiz_bp
 from app.models import db
 from config import MYSQL_CONN
 def create_app():
@@ -21,5 +21,6 @@ def create_app():
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
     app.register_blueprint(instructor_bp, url_prefix="/api/instructor")
+    app.register_blueprint(ai_quiz_bp)
 
     return app

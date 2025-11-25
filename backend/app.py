@@ -23,9 +23,9 @@ def create_app():
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", app.config["SECRET_KEY"])
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
         "DATABASE_URL",
-        "mysql+pymysql://root:@localhost:/CodeCourse"
+        # "mysql+pymysql://root:@localhost:/CodeCourse"
+        "mysql+pymysql://root:123@localhost:3306/CodeCourse"
     )
-            #"mysql+pymysql://root:123@localhost:3306/CodeCourse"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     # Init extensions
@@ -46,12 +46,14 @@ def create_app():
         from app.routes.Admin import admin_bp
         from app.routes.Instructor import instructor_bp
         from app.routes.Student import student_bp
-
+        from app.routes.AIQuiz import ai_quiz_bp
+        
         app.register_blueprint(ai_bp)
         app.register_blueprint(auth_bp)
         app.register_blueprint(admin_bp)
         app.register_blueprint(instructor_bp)
         app.register_blueprint(student_bp)
+        app.register_blueprint(ai_quiz_bp)
 
     except Exception as e:
         app.logger.error(f"Failed to register blueprints: {e}")

@@ -596,6 +596,7 @@ def list_tests(lesson_id):
         return jsonify({"message": "Lỗi server nội bộ"}), 500
 
 
+@instructor_bp.route("/api/lessons/<int:lesson_id>/tests", methods=['POST'])
 @instructor_bp.route("/lessons/<int:lesson_id>/tests", methods=['POST'])
 def create_test(lesson_id):
     try:
