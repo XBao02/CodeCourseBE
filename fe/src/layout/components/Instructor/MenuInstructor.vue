@@ -1,82 +1,58 @@
 <template>
-    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm px-3">
-        <div class="container-fluid">
+    <nav class="navbar">
+        <div class="navbar-container">
 
             <!-- Logo -->
-            <a class="navbar-brand d-flex align-items-center gap-2" href="#">
-                <div class="d-flex align-items-center justify-content-center bg-success text-white fw-bold rounded"
-                    style="width: 35px; height: 35px;">
-                    CC
-                </div>
-                <div>
-                    <div class="fw-bold">CodeClass</div>
-                    <small class="text-muted">Manager</small>
+            <a class="navbar-logo" href="/">
+                <div class="logo-box">CC</div>
+                <div class="logo-text">
+                    <div class="logo-title">CodeClass</div>
+                    <small class="logo-subtitle">Manager</small>
                 </div>
             </a>
 
             <!-- Menu items -->
-            <ul class="navbar-nav mx-auto d-flex align-items-center gap-4">
+            <ul class="navbar-menu">
                 <li class="nav-item">
-                    <router-link to="/instructor" class="nav-link d-flex align-items-center gap-2 fs-5">
-                        🏠 Dashboard
-                    </router-link>
+                    <router-link to="/instructor" exact class="nav-link">Dashboard</router-link>
                 </li>
                 <li class="nav-item">
-                    <router-link to="/instructor/courses" class="nav-link d-flex align-items-center gap-1 fs-5">
-                        📚 Course Management
-                    </router-link>
+                    <router-link to="/instructor/courses" class="nav-link">Course Management</router-link>
                 </li>
                 <li class="nav-item">
-                    <router-link to="/instructor/chat" class="nav-link d-flex align-items-center gap-1 fs-5">
-                        💬 Student Chat
-                    </router-link>
+                    <router-link to="/instructor/chat" class="nav-link">Student Chat</router-link>
                 </li>
                 <li class="nav-item">
-                    <router-link to="/instructor/reports" class="nav-link d-flex align-items-center gap-1 fs-5">
-                        📊 Reporting & Statistics
-                    </router-link>
+                    <router-link to="/instructor/reports" class="nav-link">Reporting & Statistics</router-link>
                 </li>
                 <li class="nav-item">
-                    <router-link to="/instructor/assistant" class="nav-link d-flex align-items-center gap-1 fs-5">
-                        🤖 AI Assistant
-                    </router-link>
+                    <router-link to="/instructor/assistant" class="nav-link">AI Assistant</router-link>
                 </li>
             </ul>
 
             <!-- Search and Right section -->
-            <div class="d-flex align-items-center gap-3">
+            <div class="navbar-right">
                 <div class="search-container">
-                    <div class="input-group">
-                        <input type="text" class="form-control" placeholder="Search course or instruction,..." />
-                        <span class="input-group-text">
-                            <i class="fas fa-search"></i>
-                        </span>
-                    </div>
+                    <input type="text" class="search-input" placeholder="Search course or instruction...">
                 </div>
-                <button class="btn btn-light position-relative rounded-circle">
-                    🔔
-                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                        3
-                    </span>
+                <button class="notification-btn">
+                    Notifications
+                    <span class="notification-badge">3</span>
                 </button>
 
                 <!-- User dropdown -->
                 <div class="dropdown">
-                    <button class="btn btn-light d-flex align-items-center gap-2" type="button"
-                        data-bs-toggle="dropdown" aria-expanded="false">
-                        <div class="rounded-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center"
-                            style="width: 35px; height: 35px;">A</div>
-                        <div class="text-start">
-                            <div class="fw-bold">Demo User</div>
-                            <small class="text-muted">Instructor</small>
+                    <button class="user-btn" @click="toggleDropdown">
+                        <div class="user-avatar">A</div>
+                        <div class="user-info">
+                            <div class="user-name">Demo User</div>
+                            <small class="user-role">Instructor</small>
                         </div>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow">
-                        <li><a class="dropdown-item" href="#">Settings</a></li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        <li><a class="dropdown-item text-danger" href="#" @click="logout">Logout</a></li>
+                    <ul v-if="showDropdown" class="dropdown-menu">
+                        <li><a href="#" @click.prevent="goToSettings">Settings</a></li>
+                        <li class="divider"></li>
+                        <li><a href="#" @click.prevent="logout" class="logout">Logout</a></li>
                     </ul>
                 </div>
             </div>
@@ -89,70 +65,329 @@
 export default {
     data() {
         return {
-            // Thêm dữ liệu nếu cần
+            showDropdown: false
         }
     },
     methods: {
+        toggleDropdown() {
+            this.showDropdown = !this.showDropdown;
+        },
+        goToSettings() {
+            this.showDropdown = false;
+            this.$router.push('/instructor/settings');
+        },
         logout() {
-            // localStorage.removeItem('token'); -> cái này khi làm bé hay mở ra
+            this.showDropdown = false;
+            localStorage.removeItem('token');
+            localStorage.removeItem('userInfo');
             this.$router.push('/');
         }
     },
+    mounted() {
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.dropdown')) {
+                this.showDropdown = false;
+            }
+        });
+    }
 };
 </script>
 
 <style scoped>
+.navbar {
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.navbar-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 70px;
+    gap: 24px;
+}
+
+.navbar-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: #1a1a1a;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.logo-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1f2937;
+    color: white;
+    font-weight: 700;
+    font-size: 14px;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+}
+
+.logo-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+.logo-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0;
+}
+
+.logo-subtitle {
+    font-size: 12px;
+    color: #999;
+    margin: 0;
+}
+
+.navbar-menu {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    flex: 1;
+    justify-content: center;
+}
+
+.nav-item {
+    margin: 0;
+}
+
 .nav-link {
+    font-size: 14px;
     font-weight: 500;
-    color: #444 !important;
+    color: #666;
+    text-decoration: none;
+    transition: color 0.2s ease;
+    position: relative;
+    padding-bottom: 4px;
 }
 
 .nav-link:hover {
-    color: #0d6efd !important;
+    color: #1a1a1a;
+}
+
+.nav-link.router-link-exact-active {
+    color: #1a1a1a;
+}
+
+.nav-link.router-link-exact-active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #1f2937;
+}
+
+.navbar-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
 }
 
 .search-container {
-    margin-left: 10px;
+    position: relative;
 }
 
-.input-group {
-    width: 400px;
-    /* Tăng chiều rộng để to hơn */
-    height: 50px;
-    /* Tăng chiều cao để hình vuông */
+.search-input {
+    width: 300px;
+    padding: 10px 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    background: #f9fafb;
+    transition: all 0.2s ease;
 }
 
-.input-group .form-control {
-    border-radius: 0;
-    /* Loại bỏ bo góc để thành hình vuông */
-    border-right: none;
-    padding: 12px 16px;
-    /* Tăng padding cho to hơn */
-    height: 100%;
-    /* Đảm bảo chiều cao khớp với input-group */
-    font-size: 16px;
-    /* Tăng kích thước chữ */
-    border: 3px solid #ddd;
-    /* Viền đậm hơn */
+.search-input::placeholder {
+    color: #9ca3af;
 }
 
-.input-group-text {
-    background-color: #fff;
-    border: 3px solid #ddd;
-    /* Viền đậm hơn */
-    border-left: none;
-    border-radius: 0;
-    /* Loại bỏ bo góc để thành hình vuông */
-    padding: 12px 16px;
-    /* Tăng padding cho to hơn */
-    height: 100%;
-    /* Đảm bảo chiều cao khớp với input-group */
+.search-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.notification-btn {
+    background: none;
+    border: 1px solid #d1d5db;
+    padding: 8px 12px;
+    border-radius: 6px;
     cursor: pointer;
+    font-size: 18px;
+    position: relative;
+    transition: all 0.2s ease;
 }
 
-.input-group-text .fas {
-    color: #666;
-    font-size: 18px;
-    /* Tăng kích thước icon */
+.notification-btn:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #ef4444;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 50%;
+    min-width: 20px;
+    text-align: center;
+}
+
+.dropdown {
+    position: relative;
+}
+
+.user-btn {
+    background: none;
+    border: 1px solid #d1d5db;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.2s ease;
+}
+
+.user-btn:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+}
+
+.user-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: #3b82f6;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    border-radius: 6px;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+.user-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0;
+}
+
+.user-role {
+    font-size: 12px;
+    color: #999;
+    margin: 0;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    margin-top: 8px;
+    padding: 6px 0;
+    list-style: none;
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    min-width: 160px;
+}
+
+.dropdown-menu li a {
+    display: block;
+    padding: 10px 16px;
+    color: #374151;
+    text-decoration: none;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.dropdown-menu li a:hover {
+    background: #f9fafb;
+    color: #1a1a1a;
+}
+
+.dropdown-menu li a.logout {
+    color: #ef4444;
+}
+
+.dropdown-menu li a.logout:hover {
+    background: #fef2f2;
+}
+
+.dropdown-menu .divider {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 6px 0;
+}
+
+@media (max-width: 1024px) {
+    .navbar-menu {
+        gap: 20px;
+    }
+
+    .search-input {
+        width: 200px;
+    }
+}
+
+@media (max-width: 768px) {
+    .navbar-container {
+        padding: 0 16px;
+        height: 60px;
+        gap: 12px;
+    }
+
+    .navbar-menu {
+        display: none;
+    }
+
+    .search-input {
+        width: 150px;
+        font-size: 13px;
+    }
+
+    .logo-title {
+        font-size: 13px;
+    }
+
+    .logo-subtitle {
+        display: none;
+    }
 }
 </style>

@@ -8,13 +8,13 @@
           size="medium"
         />
         <div class="ms-3">
-          <h6 class="mb-0">Chat với Giảng viên</h6>
-          <small class="text-muted">{{ onlineStatus ? 'Đang hoạt động' : 'Không hoạt động' }}</small>
+          <h6 class="mb-0">Chat with Instructor</h6>
+          <small class="text-muted">{{ onlineStatus ? 'Active' : 'Offline' }}</small>
         </div>
       </div>
       <div>
-        <button class="btn btn-sm btn-outline-primary" @click="refreshChat">
-          <i class="bx bx-refresh"></i>
+        <button class="btn-refresh" @click="refreshChat">
+          Refresh
         </button>
       </div>
     </div>
@@ -59,16 +59,15 @@
           @input="handleTyping"
           type="text" 
           class="form-control" 
-          placeholder="Nhập tin nhắn của bạn..."
+          placeholder="Type your message..."
           :disabled="sending"
         >
         <button 
-          class="btn btn-primary" 
+          class="btn-send" 
           @click="sendMessage"
           :disabled="!newMessage.trim() || sending"
         >
-          <i v-if="sending" class="bx bx-loader bx-spin"></i>
-          <i v-else class="bx bx-send"></i>
+          {{ sending ? 'Sending...' : 'Send' }}
         </button>
       </div>
     </div>
@@ -269,12 +268,28 @@ export default {
 
 .chat-head {
   padding: 1rem 1.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+}
+
+.btn-refresh {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-refresh:hover {
+  background: rgba(255, 255, 255, 0.3);
 } 
 
 .chat-header .status-indicator {
@@ -316,7 +331,7 @@ export default {
 }
 
 .message-sent .message-content {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
   border-bottom-right-radius: 4px;
 }
@@ -373,10 +388,24 @@ export default {
   box-shadow: none;
 }
 
-.chat-input .btn {
+.btn-send {
   border: none;
   padding: 0.75rem 1.25rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-send:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.btn-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Typing indicator */

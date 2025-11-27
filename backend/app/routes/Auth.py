@@ -88,9 +88,27 @@ def register():
             pass  # ignore if table/column not exist
 
     access_token = create_access_token(identity={"user_id": user_id, "role": role})
+    
+    # Lấy instructor ID nếu là giảng viên
+    instructor_id = None
+    if role == "instructor":
+        try:
+            from app.models.model import db, Instructor
+            instructor = Instructor.query.filter_by(user_id=user_id).first()
+            if instructor:
+                instructor_id = instructor.id
+        except Exception as e:
+            print(f"Error fetching instructor: {e}")
+    
     return jsonify({
         "access_token": access_token,
-        "user": {"id": user_id, "email": email, "role": role, "full_name": full_name},
+        "user": {
+            "id": user_id,
+            "email": email,
+            "role": role,
+            "full_name": full_name,
+            "instructorId": instructor_id
+        },
     }), 201
 
 @auth_bp.post("/login")
@@ -128,10 +146,28 @@ def login():
     role = resolve_role(user["id"])
     access_token = create_access_token(identity={"user_id": user["id"], "role": role})
 
-    return jsonify({
+    # Lấy instructor ID nếu là giảng viên
+    instructor_id = None
+    if role == "instructor":
+        try:
+            from app.models.model import Instructor
+            instructor = Instructor.query.filter_by(user_id=user["id"]).first()
+            if instructor:
+                instructor_id = instructor.id
+        except Exception as e:
+            print(f"Error fetching instructor: {e}")
+
+    response = {
         "access_token": access_token,
-        "user": {"id": user["id"], "email": user["email"], "role": role}
-    })
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "role": role,
+            "instructorId": instructor_id
+        }
+    }
+    
+    return jsonify(response)
 
 @auth_bp.get("/me")
 @jwt_required()

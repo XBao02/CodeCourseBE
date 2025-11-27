@@ -1,162 +1,391 @@
 <template>
-  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm px-3">
-    <div class="container-fluid">
-      <!-- Logo -->
-      <a class="navbar-brand d-flex align-items-center gap-2" href="#">
-        <div class="d-flex align-items-center justify-content-center bg-success text-white fw-bold rounded"
-          style="width: 35px; height: 35px;">
-          CC
-        </div>
-        <div>
-          <div class="fw-bold">CodeCourse</div>
+    <nav class="navbar">
+        <div class="navbar-container">
 
-        </div>
-      </a>
+            <!-- Logo -->
+            <a class="navbar-logo" href="/">
+                <div class="logo-box student">CC</div>
+                <div class="logo-text">
+                    <div class="logo-title">CodeClass</div>
+                    <small class="logo-subtitle">Learning</small>
+                </div>
+            </a>
 
-      <!-- Menu items -->
-      <ul class="navbar-nav mx-auto d-flex align-items-center gap-4">
-        <li class="nav-item">
-          <router-link to="/student" class="nav-link d-flex align-items-center gap-2 fs-5">
-            🏠 Dashboard
-          </router-link>
-        </li>
-        <li class="nav-item">
-          <router-link to="/student/courses" class="nav-link d-flex align-items-center gap-1 fs-5">
-            📚 Courses
-          </router-link>
-        </li>
-        <li class="nav-item">
-          <router-link to="/student/minigames" class="nav-link d-flex align-items-center gap-1 fs-5">
-            🎮 Minigames
-          </router-link>
-        </li>
-        <!-- <li class="nav-item">
-          <router-link to="/student/chat" class="nav-link d-flex align-items-center gap-1 fs-5">
-            💬 Instructor Chat
-          </router-link>
-        </li> -->
-        <li class="nav-item">
-          <router-link to="/student/profile" class="nav-link d-flex align-items-center gap-1 fs-5">
-            📊 Profile
-          </router-link>
-        </li>
-        <li class="nav-item">
-          <router-link to="/student/assistant" class="nav-link d-flex align-items-center gap-1 fs-5">
-            🤖 AI Assistant
-          </router-link>
-        </li>
-      </ul>
+            <!-- Menu items -->
+            <ul class="navbar-menu">
+                <li class="nav-item">
+                    <router-link to="/student" exact class="nav-link">Dashboard</router-link>
+                </li>
+                <li class="nav-item">
+                    <router-link to="/student/courses" class="nav-link">My Courses</router-link>
+                </li>
+                <li class="nav-item">
+                    <router-link to="/student/minigames" class="nav-link">Minigames</router-link>
+                </li>
+                <li class="nav-item">
+                    <router-link to="/student/profile" class="nav-link">Profile</router-link>
+                </li>
+                <li class="nav-item">
+                    <router-link to="/student/assistant" class="nav-link">AI Assistant</router-link>
+                </li>
+            </ul>
 
-      <!-- Search and Right section -->
-      <div class="d-flex align-items-center gap-3">
-        <div class="search-container">
-          <div class="input-group">
-            <input type="text" class="form-control" placeholder="Search course or instruction,..." />
-            <span class="input-group-text">
-              <i class="fas fa-search"></i>
-            </span>
-          </div>
-        </div>
-        <button class="btn btn-light position-relative rounded-circle">
-          🔔
-          <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-            3
-          </span>
-        </button>
+            <!-- Search and Right section -->
+            <div class="navbar-right">
+                <div class="search-container">
+                    <input type="text" class="search-input" placeholder="Search courses...">
+                </div>
+                <button class="notification-btn" @click="toggleNotifications">
+                    Notifications
+                    <span class="notification-badge">3</span>
+                </button>
 
-        <!-- User dropdown -->
-        <div class="dropdown">
-          <button class="btn btn-light d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown"
-            aria-expanded="false">
-            <div class="rounded-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center"
-              style="width: 35px; height: 35px;">A</div>
-            <div class="text-start">
-              <div class="fw-bold">Demo User</div>
-              <small class="text-muted">Student</small>
+                <!-- User dropdown -->
+                <div class="dropdown">
+                    <button class="user-btn" @click="toggleDropdown">
+                        <div class="user-avatar">A</div>
+                        <div class="user-info">
+                            <div class="user-name">Demo User</div>
+                            <small class="user-role">Student</small>
+                        </div>
+                    </button>
+                    <ul v-if="showDropdown" class="dropdown-menu">
+                        <li><a href="#" @click.prevent="goToSettings">Settings</a></li>
+                        <li class="divider"></li>
+                        <li><a href="#" @click.prevent="logout" class="logout">Logout</a></li>
+                    </ul>
+                </div>
             </div>
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end shadow">
-            <li><a class="dropdown-item" href="#">Settings</a></li>
-            <li>
-              <hr class="dropdown-divider">
-            </li>
-            <li><a class="dropdown-item text-danger" href="#" @click="logout">Logout</a></li>
-          </ul>
-        </div>
-      </div>
 
-    </div>
-  </nav>
+        </div>
+    </nav>
 </template>
 
 <script>
 export default {
-  data() {
-    return {
-      // Thêm dữ liệu nếu cần
+    data() {
+        return {
+            showDropdown: false
+        }
+    },
+    methods: {
+        toggleDropdown() {
+            this.showDropdown = !this.showDropdown;
+        },
+        toggleNotifications() {
+            // Handle notifications
+            console.log('Show notifications');
+        },
+        goToSettings() {
+            this.showDropdown = false;
+            this.$router.push('/student/settings');
+        },
+        logout() {
+            this.showDropdown = false;
+            localStorage.removeItem('token');
+            localStorage.removeItem('userInfo');
+            this.$router.push('/');
+        }
+    },
+    mounted() {
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.dropdown')) {
+                this.showDropdown = false;
+            }
+        });
     }
-  },
-  methods: {
-    logout() {
-      // localStorage.removeItem('token'); -> cái này khi làm bé hay mở ra
-      this.$router.push('/');
-    }
-  },
 };
 </script>
 
 <style scoped>
+.navbar {
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.navbar-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+}
+
+.navbar-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: inherit;
+}
+
+.logo-box {
+    width: 40px;
+    height: 40px;
+    background: #1f2937;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.logo-box.student {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.logo-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.logo-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a1a1a;
+    line-height: 1.2;
+}
+
+.logo-subtitle {
+    font-size: 11px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.navbar-menu {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.nav-item {
+    position: relative;
+}
+
 .nav-link {
-  font-weight: 500;
-  color: #444 !important;
+    display: block;
+    padding: 8px 16px;
+    color: #666;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    position: relative;
 }
 
 .nav-link:hover {
-  color: #0d6efd !important;
+    color: #1a1a1a;
+    background: #f8f9fa;
+}
+
+.nav-link.router-link-exact-active {
+    color: #1a1a1a;
+    background: #f8f9fa;
+}
+
+.nav-link.router-link-exact-active::after {
+    content: '';
+    position: absolute;
+    bottom: -16px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #3b82f6, #2563eb);
+}
+
+.navbar-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
 }
 
 .search-container {
-  margin-left: 10px;
+    position: relative;
 }
 
-.input-group {
-  width: 400px;
-  /* Tăng chiều rộng để to hơn */
-  height: 50px;
-  /* Tăng chiều cao để hình vuông */
+.search-input {
+    width: 280px;
+    padding: 8px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.2s ease;
 }
 
-.input-group .form-control {
-  border-radius: 0;
-  /* Loại bỏ bo góc để thành hình vuông */
-  border-right: none;
-  padding: 12px 16px;
-  /* Tăng padding cho to hơn */
-  height: 100%;
-  /* Đảm bảo chiều cao khớp với input-group */
-  font-size: 16px;
-  /* Tăng kích thước chữ */
-  border: 3px solid #ddd;
-  /* Viền đậm hơn */
+.search-input:focus {
+    outline: none;
+    border-color: #1f2937;
+    box-shadow: 0 0 0 3px rgba(31, 41, 55, 0.1);
 }
 
-.input-group-text {
-  background-color: #fff;
-  border: 3px solid #ddd;
-  /* Viền đậm hơn */
-  border-left: none;
-  border-radius: 0;
-  /* Loại bỏ bo góc để thành hình vuông */
-  padding: 12px 16px;
-  /* Tăng padding cho to hơn */
-  height: 100%;
-  /* Đảm bảo chiều cao khớp với input-group */
-  cursor: pointer;
+.notification-btn {
+    position: relative;
+    padding: 8px 16px;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #1a1a1a;
+    transition: all 0.2s ease;
 }
 
-.input-group-text .fas {
-  color: #666;
-  font-size: 18px;
-  /* Tăng kích thước icon */
+.notification-btn:hover {
+    background: #f8f9fa;
+    border-color: #9ca3af;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 20px;
+    height: 20px;
+    background: #ef4444;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    padding: 0 6px;
+}
+
+.dropdown {
+    position: relative;
+}
+
+.user-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 12px;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.user-btn:hover {
+    background: #f8f9fa;
+    border-color: #9ca3af;
+}
+
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.user-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1a1a;
+    line-height: 1.2;
+}
+
+.user-role {
+    font-size: 12px;
+    color: #666;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    min-width: 180px;
+    list-style: none;
+    margin: 0;
+    padding: 8px 0;
+    z-index: 1000;
+}
+
+.dropdown-menu li a {
+    display: block;
+    padding: 10px 16px;
+    color: #1a1a1a;
+    text-decoration: none;
+    font-size: 14px;
+    transition: background 0.2s ease;
+}
+
+.dropdown-menu li a:hover {
+    background: #f8f9fa;
+}
+
+.dropdown-menu li a.logout {
+    color: #ef4444;
+}
+
+.dropdown-menu li a.logout:hover {
+    background: #fef2f2;
+}
+
+.divider {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 8px 0;
+}
+
+@media (max-width: 1024px) {
+    .search-input {
+        width: 200px;
+    }
+
+    .navbar-menu {
+        gap: 4px;
+    }
+
+    .nav-link {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 768px) {
+    .navbar-container {
+        padding: 0 16px;
+    }
+
+    .search-container {
+        display: none;
+    }
+
+    .navbar-menu {
+        display: none;
+    }
 }
 </style>

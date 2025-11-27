@@ -1,224 +1,149 @@
 <template>
-    <div class="container py-4" style="min-height: calc(100vh - 120px);">
-        <!-- Breadcrumb card trên đầu -->
-        <div class="card mb-4 border-0 shadow-sm rounded-4">
-            <div class="card-body d-flex align-items-center justify-content-between">
-                <div>
-                    <nav aria-label="breadcrumb" class="mb-0">
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item">
-                                <a href="#" @click.prevent="goHome">Home</a>
-                            </li>
-                        </ol>
-                    </nav>
-                </div>
-                <div class="text-end small text-muted">
-                    <div v-if="selectedCourse">Slug: <strong>{{ selectedCourse.slug }}</strong></div>
-                    <div v-else>Hiện có <strong>{{ availableCourses.length }}</strong> khóa học</div>
-                </div>
+    <div class="courses-wrapper">
+        <!-- Header -->
+        <div class="courses-header">
+            <div>
+                <h1>Course Catalog</h1>
+                <p>Browse and enroll in available courses</p>
+            </div>
+            <div class="header-info">
+                <span>{{ availableCourses.length }} courses available</span>
             </div>
         </div>
 
-        <div class="row g-4 h-100">
-            <!-- Left: danh sách khóa học (chiếm 50%) -->
-            <div class="col-md-6 h-100">
-                <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
-                    <div class="card-header bg-white d-flex align-items-center justify-content-between">
-                        <h5 class="mb-0 fw-semibold">📚 Danh sách khóa học</h5>
-                        <span class="text-muted small">{{ availableCourses.length }} khóa học</span>
+        <div class="courses-layout">
+            <!-- Left: Available Courses -->
+            <div class="courses-column">
+                <div class="content-card">
+                    <div class="card-header">
+                        <h5>Available Courses</h5>
+                        <span class="count">{{ availableCourses.length }}</span>
                     </div>
-                    <div class="card-body overflow-auto p-3">
-                        <div v-if="availableCourses.length" class="list-group">
-                            <div v-for="(value, index) in availableCourses" :key="value.id"
-                                class="list-group-item mb-3 rounded-3 border-0 shadow-sm hover-scale">
-                                <div class="d-flex align-items-center">
-                                    <img :src="value.image" class="me-3 rounded object-fit-cover" width="100"
-                                        height="70" />
-                                    <div class="flex-grow-1">
-                                        <h6 class="mb-1 fw-bold text-dark">{{ value.title }}</h6>
-                                        <p class="text-muted small mb-1">{{ value.instructorName || 'N/A' }} · <span
-                                                class="badge bg-info text-dark text-uppercase">{{ value.level }}</span>
-                                        </p>
-
-                                        <div class="small text-muted mb-2">
-                                            <span class="me-3">Trạng thái: <strong>{{ value.isPublic ? 'Public' :
-                                                'Private' }}</strong></span>
-                                            <span>Giá: <strong class="text-primary">{{ formatPrice(value.price,
-                                                value.currency) }}</strong></span>
-                                        </div>
-
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div class="text-muted small"><i class="fas fa-link me-1"></i>Slug: {{
-                                                value.slug }}</div>
-                                            <div class="text-end">
-                                                <div v-if="value.price == 0" class="mb-2">
-                                                    <button class="btn btn-success btn-sm"
-                                                        @click="openPayment(value)"><i
-                                                            class="fas fa-check-circle me-1"></i>Đăng ký</button>
-                                                </div>
-                                                <div v-else>
-                                                    <button class="btn btn-outline-primary btn-sm"
-                                                        @click="openPayment(value)"><i
-                                                            class="fas fa-credit-card me-1"></i>Thanh toán</button>
-                                                </div>
-                                            </div>
-                                        </div>
-
+                    <div class="card-body">
+                        <div v-if="availableCourses.length" class="courses-list">
+                            <div v-for="value in availableCourses" :key="value.id" class="course-item">
+                                <img :src="value.image" class="course-image" />
+                                <div class="course-details">
+                                    <h6>{{ value.title }}</h6>
+                                    <p class="course-meta">
+                                        {{ value.instructorName || 'N/A' }} · 
+                                        <span class="course-level">{{ value.level }}</span>
+                                    </p>
+                                    <div class="course-info">
+                                        <span class="course-status">{{ value.isPublic ? 'Public' : 'Private' }}</span>
+                                        <span class="course-price">{{ formatPrice(value.price, value.currency) }}</span>
+                                    </div>
+                                    <div class="course-actions">
+                                        <button class="action-button" :class="{ 'free': value.price == 0 }" @click="openPayment(value)">
+                                            {{ value.price == 0 ? 'Enroll Now' : 'Purchase' }}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div v-else class="text-center text-muted py-4">
-                            <i class="fas fa-info-circle me-2"></i>Không có khóa học mới.
+                        <div v-else class="empty-state">
+                            <p>No courses available</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Right: 2 card (mỗi card chiếm 50% chiều cao của cột phải) -->
-            <div class="col-md-6 h-100 d-flex flex-column">
-                <!-- Card 1: Lộ trình học (hiển thị StudyPlans & PlanItems) -->
-                <div class="card border-0 shadow-sm rounded-4 mb-3 h-50 overflow-auto">
-                    <!-- <div class="card-header bg-white d-flex align-items-center justify-content-between">
-                        <h6 class="mb-0 fw-semibold">🗺️ Lộ trình học</h6>
-                        <small class="text-muted">Kế hoạch cho học viên</small>
+            <!-- Right: My Courses -->
+            <div class="courses-column">
+                <div class="content-card">
+                    <div class="card-header">
+                        <h5>My Courses</h5>
+                        <span class="count">{{ registeredCourses.length }}</span>
                     </div>
                     <div class="card-body">
-                        <div v-if="studyPlans.length">
-                            <div v-for="plan in studyPlans" :key="plan.id" class="mb-3">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <div class="fw-bold">Plan #{{ plan.id }} — created by {{ plan.createdBy }}</div>
-                                    <div class="small text-muted">{{ formatDateTime(plan.createdAt) }}</div>
+                        <div v-if="registeredCourses.length" class="enrolled-courses-list">
+                            <div v-for="course in registeredCourses" :key="'reg-' + course.id" class="enrolled-course-item">
+                                <img :src="course.image" class="enrolled-course-image" />
+                                <div class="enrolled-course-details">
+                                    <h6>{{ course.title }}</h6>
+                                    <p class="enrolled-course-meta">
+                                        Level: {{ course.level }} · {{ formatPrice(course.price, course.currency) }}
+                                    </p>
                                 </div>
-
-                                <ul class="list-group mb-2">
-                                    <li v-for="item in sortedPlanItems(plan.items)" :key="item.id"
-                                        class="list-group-item d-flex justify-content-between align-items-start">
-                                        <div>
-                                            <div class="fw-semibold">{{ getCourseTitle(item.courseId) }}
-
-                                            </div>
-                                            <div class="small text-muted">Mục tiêu: {{ item.targetLevel }} ·
-                                                Hạn: {{ item.deadline }}</div>
-                                        </div>
-                                        <div class="text-end small">
-                                            <div>Thứ tự: {{ item.sortOrder }}</div>
-                                            <div :class="statusClass(item.status)">{{ item.status }}</div>
-                                        </div>
-                                    </li>
-                                </ul>
+                                <button class="action-button small" @click="enterCourse(course)">
+                                    Start Learning
+                                </button>
                             </div>
                         </div>
-                        <div v-else class="text-center text-muted py-4">
-                            <i class="fas fa-info-circle me-2"></i>Chưa có lộ trình học.
-                        </div>
-                    </div> -->
-                </div>
-
-                <!-- Card 2: Khóa học đã đăng ký -->
-                <div class="card border-0 shadow-sm rounded-4 h-50 overflow-auto">
-                    <div class="card-header bg-white d-flex align-items-center justify-content-between">
-                        <h6 class="mb-0 fw-semibold">✅ Khóa học của tôi</h6>
-                        <span class="text-muted small">{{ registeredCourses.length }}</span>
-                    </div>
-                    <div class="card-body p-3">
-                        <div v-if="registeredCourses.length" class="list-group">
-                            <div v-for="course in registeredCourses" :key="'reg-' + course.id"
-                                class="list-group-item mb-3 rounded-3 border-0 shadow-sm d-flex align-items-center">
-                                <img :src="course.image" class="me-3 rounded object-fit-cover" width="80" height="55" />
-                                <div class="flex-grow-1">
-                                    <h6 class="mb-1">{{ course.title }}</h6>
-                                    <p class="text-muted small mb-1">Level: {{ course.level }} · {{
-                                        formatPrice(course.price, course.currency) }}</p>
-                                </div>
-                                <button class="btn btn-primary btn-sm ms-2" @click="enterCourse(course)"><i
-                                        class="fas fa-play me-1"></i>Vào học</button>
-                            </div>
-                        </div>
-                        <div v-else class="text-center text-muted py-4">
-                            <i class="fas fa-info-circle me-2"></i>Bạn chưa đăng ký khóa học nào.
+                        <div v-else class="empty-state">
+                            <p>You haven't enrolled in any courses yet</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Modal thanh toán: 2 bước (info -> qr) -->
+        <!-- Payment Modal -->
         <div class="modal fade" id="paymentModal" tabindex="-1" ref="paymentModal">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content rounded-4 shadow">
-                    <div class="modal-header bg-primary text-white">
-                        <h5 class="modal-title fw-semibold">
-                            <span v-if="paymentStep === 'info'">💳 Thông tin khóa học</span>
-                            <span v-else>🔃 Thanh toán - Quét mã</span>
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <span v-if="paymentStep === 'info'">Course Information</span>
+                            <span v-else>Payment - Scan QR Code</span>
                         </h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                            @click="resetPayment"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" @click="resetPayment"></button>
                     </div>
 
-                    <!-- Bước 1: Thông tin khóa học + hành động -->
+                    <!-- Step 1: Course Info -->
                     <div v-if="paymentStep === 'info'" class="modal-body">
-                        <div v-if="selectedCourse">
-                            <h6 class="fw-bold mb-1">{{ selectedCourse.title }}</h6>
-                            <p class="text-muted small mb-2">Giảng viên: {{ selectedCourse.instructorName || 'N/A' }} ·
-                                Level: {{ selectedCourse.level }}</p>
+                        <div v-if="selectedCourse" class="modal-course-info">
+                            <h6>{{ selectedCourse.title }}</h6>
+                            <p class="course-meta">{{ selectedCourse.instructorName || 'N/A' }} · {{ selectedCourse.level }}</p>
 
-                            <dl class="row">
-                                <dt class="col-sm-4">Slug</dt>
-                                <dd class="col-sm-8">{{ selectedCourse.slug }}</dd>
+                            <div class="info-list">
+                                <div class="info-row">
+                                    <span class="info-label">Status</span>
+                                    <span class="info-value">{{ selectedCourse.isPublic ? 'Public' : 'Private' }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Price</span>
+                                    <span class="info-value">{{ formatPrice(selectedCourse.price, selectedCourse.currency) }}</span>
+                                </div>
+                            </div>
 
-                                <dt class="col-sm-4">Public</dt>
-                                <dd class="col-sm-8">{{ selectedCourse.isPublic ? 'Yes' : 'No' }}</dd>
-
-                                <dt class="col-sm-4">Giá</dt>
-                                <dd class="col-sm-8">{{ formatPrice(selectedCourse.price, selectedCourse.currency) }}
-                                </dd>
-
-                                <dt class="col-sm-4">Tạo</dt>
-                                <dd class="col-sm-8">{{ formatDateTime(selectedCourse.createdAt) }}</dd>
-
-                                <dt class="col-sm-4">Cập nhật</dt>
-                                <dd class="col-sm-8">{{ formatDateTime(selectedCourse.updatedAt) }}</dd>
-                            </dl>
-
-                            <div class="mt-3 d-flex justify-content-end">
-                                <button v-if="selectedCourse.price == 0" class="btn btn-success me-2"
-                                    @click="registerCourse(selectedCourse)">Đăng ký</button>
-                                <button v-else class="btn btn-primary" @click="proceedToQR">Thanh toán</button>
+                            <div class="modal-actions">
+                                <button v-if="selectedCourse.price == 0" class="action-button" @click="registerCourse(selectedCourse)">
+                                    Enroll Now
+                                </button>
+                                <button v-else class="action-button" @click="proceedToQR">
+                                    Proceed to Payment
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Bước 2: Hiển thị QR + trạng thái kiểm tra thanh toán -->
+                    <!-- Step 2: QR Code -->
                     <div v-else class="modal-body text-center">
-                        <div v-if="selectedCourse">
-                            <h6 class="fw-bold mb-1">{{ selectedCourse.title }}</h6>
-                            <p class="text-muted small mb-2">Thanh toán: <strong>{{ formatPrice(selectedCourse.price,
-                                selectedCourse.currency) }}</strong></p>
+                        <div v-if="selectedCourse" class="qr-section">
+                            <h6>{{ selectedCourse.title }}</h6>
+                            <p class="payment-amount">Amount: <strong>{{ formatPrice(selectedCourse.price, selectedCourse.currency) }}</strong></p>
 
-                            <div class="mb-3">
-                                <img :src="qrUrl" alt="QR Code" class="rounded shadow-sm border p-2" width="220"
-                                    height="220" />
+                            <div class="qr-code">
+                                <img :src="qrUrl" alt="QR Code" />
                             </div>
 
-                            <p class="small text-secondary">Quét mã để thanh toán đúng số tiền. Hệ thống sẽ tự động kiểm
-                                tra trạng thái.</p>
+                            <p class="qr-instruction">Scan the QR code to complete payment. The system will automatically verify the transaction.</p>
 
-                            <div v-if="isChecking" class="text-info small mt-2">
-                                ⏳ Đang kiểm tra trạng thái thanh toán...
+                            <div v-if="isChecking" class="checking-status">
+                                Checking payment status...
                             </div>
                         </div>
                     </div>
 
-                    <div class="modal-footer d-flex justify-content-between">
-                        <div class="small text-muted">Số tiền: <strong>{{ selectedCourse ?
-                            formatPrice(selectedCourse.price, selectedCourse.currency) : '-' }}</strong></div>
-                        <div>
-                            <button class="btn btn-secondary me-2" data-bs-dismiss="modal"
-                                @click="resetPayment">Đóng</button>
-                            <button v-if="paymentStep === 'qr' && !isChecking" class="btn btn-success"
-                                @click="simulatePaidManually">Đã thanh toán</button>
-                        </div>
+                    <div class="modal-footer">
+                        <button class="action-button secondary" data-bs-dismiss="modal" @click="resetPayment">Close</button>
+                        <button v-if="paymentStep === 'qr'" class="action-button test-purchase" @click="testPurchase">
+                            Test Purchase (Skip Payment)
+                        </button>
+                        <button v-if="paymentStep === 'qr'" class="action-button" @click="simulatePaidManually">
+                            Confirm Payment
+                        </button>
                     </div>
                 </div>
             </div>
@@ -470,6 +395,48 @@ export default {
             }, 3000);
         },
 
+        // Test Purchase - Mua khóa học mà không cần thanh toán (chỉ dùng cho testing)
+        testPurchase() {
+            if (!this.selectedCourse) return;
+            
+            // Gọi API đăng ký khóa học trực tiếp mà không cần thanh toán
+            axios.post("http://localhost:5000/api/student/register", { courseId: this.selectedCourse.id })
+                .then((response) => {
+                    if (response.data && response.data.success === true) {
+                        console.log("✅ Test Purchase - Backend xác nhận đăng ký:", response.data);
+                        
+                        // Reload lại data từ backend
+                        Promise.all([
+                            axios.get("http://localhost:5000/api/student/courses"),
+                            axios.get("http://localhost:5000/api/student/my-courses")
+                        ])
+                            .then(([coursesRes, myCoursesRes]) => {
+                                this.courses = Array.isArray(coursesRes.data.courses) ? coursesRes.data.courses : [];
+                                this.myCourses = Array.isArray(myCoursesRes.data.courses) ? myCoursesRes.data.courses : [];
+                                
+                                console.log("✅ Test Purchase - Đã reload - myCourses:", this.myCourses.length);
+                                
+                                const modal = bootstrap.Modal.getInstance(this.$refs.paymentModal);
+                                if (modal) modal.hide();
+                                this.resetPayment();
+                                alert("✅ Test Purchase successful! Course enrolled without payment.");
+                            })
+                            .catch(err => {
+                                console.error("❌ Lỗi reload sau test purchase:", err);
+                                this.loadData();
+                                alert("✅ Test Purchase successful!");
+                            });
+                    } else {
+                        console.warn("⚠️ Test Purchase - Backend trả về nhưng success=False:", response.data);
+                        alert("⚠️ " + (response.data?.message || "Cannot enroll in course"));
+                    }
+                })
+                .catch((error) => {
+                    console.error("❌ Lỗi test purchase:", error);
+                    alert("❌ Test purchase failed: " + (error.response?.data?.error || "Unknown error"));
+                });
+        },
+
         simulatePaidManually() {
             if (!this.selectedCourse) return;
             
@@ -539,48 +506,371 @@ export default {
 };
 </script>
 <style scoped>
-.nav-tabs .nav-link {
+.courses-wrapper {
+    background: #f8f9fa;
+    min-height: 100vh;
+    padding: 40px;
+}
+
+.courses-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 40px;
+}
+
+.courses-header h1 {
+    font-size: 32px;
     font-weight: 600;
-    border-radius: 8px 8px 0 0;
-    color: #555;
+    color: #1a1a1a;
+    margin: 0 0 8px 0;
+    letter-spacing: -0.5px;
 }
 
-.hover-scale {
-    transition: transform 0.25s ease;
+.courses-header p {
+    color: #666;
+    font-size: 15px;
+    margin: 0;
 }
 
-.hover-scale:hover {
-    transform: scale(1.02);
+.header-info {
+    font-size: 14px;
+    color: #666;
 }
 
-.object-fit-cover {
-    object-fit: cover;
+.courses-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
 }
 
-.card {
-    transition: box-shadow 0.3s ease;
+.courses-column {
+    display: flex;
+    flex-direction: column;
 }
 
-.card:hover {
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-}
-
-.btn {
+.content-card {
+    background: white;
     border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.card-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-header h5 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0;
+}
+
+.card-header .count {
+    font-size: 14px;
+    color: #666;
     font-weight: 500;
 }
 
-/* Styles bổ sung cho layout mới */
-.list-group-item img {
+.card-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.courses-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.course-item {
+    display: flex;
+    gap: 16px;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.course-item:hover {
+    background: #e5e7eb;
+}
+
+.course-image {
+    width: 120px;
+    height: 80px;
     object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
 }
 
-.card-body.overflow-auto {
-    max-height: 100%;
+.course-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
-.col-md-6.d-flex.flex-column>.card.h-50 {
-    min-height: 0;
-    /* cho phép overflow-auto hoạt động trong flex column */
+.course-details h6 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0;
+}
+
+.course-meta {
+    font-size: 13px;
+    color: #666;
+    margin: 0;
+}
+
+.course-level {
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+.course-info {
+    display: flex;
+    gap: 12px;
+    font-size: 13px;
+    color: #666;
+}
+
+.course-status, .course-price {
+    font-weight: 500;
+}
+
+.course-actions {
+    margin-top: auto;
+}
+
+.action-button {
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.action-button:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.action-button.free {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.action-button.free:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.action-button.small {
+    padding: 6px 16px;
+    font-size: 13px;
+}
+
+.action-button.secondary {
+    background: white;
+    color: #1f2937;
+    border: 1px solid #d1d5db;
+}
+
+.action-button.secondary:hover {
+    background: #f8f9fa;
+    border-color: #9ca3af;
+}
+
+.action-button.test-purchase {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    border: none;
+}
+
+.action-button.test-purchase:hover {
+    background: linear-gradient(135deg, #d97706, #b45309);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.enrolled-courses-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.enrolled-course-item {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.enrolled-course-image {
+    width: 80px;
+    height: 55px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.enrolled-course-details {
+    flex: 1;
+}
+
+.enrolled-course-details h6 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0 0 4px 0;
+}
+
+.enrolled-course-meta {
+    font-size: 12px;
+    color: #666;
+    margin: 0;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* Modal Styles */
+.modal-course-info h6 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0 0 8px 0;
+}
+
+.modal-course-info .course-meta {
+    font-size: 14px;
+    color: #666;
+    margin: 0 0 20px 0;
+}
+
+.info-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+}
+
+.info-value {
+    font-size: 14px;
+    color: #1a1a1a;
+    font-weight: 600;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.qr-section h6 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0 0 8px 0;
+}
+
+.payment-amount {
+    font-size: 14px;
+    color: #666;
+    margin: 0 0 24px 0;
+}
+
+.payment-amount strong {
+    color: #1a1a1a;
+    font-size: 16px;
+}
+
+.qr-code {
+    margin: 24px 0;
+}
+
+.qr-code img {
+    width: 220px;
+    height: 220px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.qr-instruction {
+    font-size: 13px;
+    color: #666;
+    margin: 0 0 16px 0;
+}
+
+.checking-status {
+    font-size: 14px;
+    color: #3b82f6;
+    font-weight: 500;
+}
+
+@media (max-width: 1024px) {
+    .courses-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .courses-wrapper {
+        padding: 20px;
+    }
+
+    .courses-header {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .course-item {
+        flex-direction: column;
+    }
+
+    .course-image {
+        width: 100%;
+        height: 150px;
+    }
 }
 </style>

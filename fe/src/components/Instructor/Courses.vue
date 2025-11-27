@@ -1,35 +1,33 @@
 <template>
     <div class="instructor-courses">
         <div class="courses-header">
-            <h1>Quản lý Khóa học</h1>
+            <h1>Manage Courses</h1>
             <button @click="createNewCourse" class="btn-create">
-                <i class="fas fa-plus"></i>
-                Tạo khóa học mới
+                Create New Course
             </button>
         </div>
 
         <div class="courses-filter">
             <div class="filter-group">
-                <label>Trạng thái:</label>
+                <label>Status:</label>
                 <select v-model="filterStatus" @change="filterCourses">
-                    <option value="all">Tất cả</option>
-                    <option value="active">Đang hoạt động</option>
-                    <option value="draft">Bản nháp</option>
-                    <option value="archived">Đã lưu trữ</option>
+                    <option value="all">All</option>
+                    <option value="active">Active</option>
+                    <option value="draft">Draft</option>
+                    <option value="archived">Archived</option>
                 </select>
             </div>
 
             <div class="search-group">
-                <input type="text" v-model="searchQuery" placeholder="Tìm kiếm khóa học..." @input="searchCourses">
-                <i class="fas fa-search"></i>
+                <input type="text" v-model="searchQuery" placeholder="Search courses..." @input="searchCourses">
             </div>
         </div>
 
         <div class="courses-list">
-            <div v-if="loading" class="loading">Đang tải...</div>
+            <div v-if="loading" class="loading">Loading...</div>
 
             <div v-else-if="filteredCourses.length === 0" class="no-courses">
-                <p>Không có khóa học nào được tìm thấy.</p>
+                <p>No courses found</p>
             </div>
 
             <div v-else class="courses-grid">
@@ -46,34 +44,19 @@
                         <p class="course-description">{{ course.description }}</p>
 
                         <div class="course-stats">
-                            <span><i class="fas fa-users"></i> {{ course.students }} học viên</span>
-                            <span><i class="fas fa-star"></i> {{ course.rating }}</span>
-                            <span><i class="fas fa-dollar-sign"></i> {{ Number(course.price).toLocaleString('vi-VN') }}</span>
+                            <span>{{ course.students }} Students</span>
+                            <span>Rating: {{ course.rating }}</span>
+                            <span>{{ Number(course.price).toLocaleString('vi-VN') }}đ</span>
                         </div>
 
                         <div class="course-meta">
-                            <span>Cập nhật: {{ formatDate(course.updatedAt) }}</span>
+                            <span>Updated: {{ formatDate(course.updatedAt) }}</span>
                         </div>
                     </div>
 
                     <div class="course-actions">
-                        <button @click="editCourse(course.id)" class="btn-edit">
-                            <i class="fas fa-edit"></i> Sửa
-                        </button>
-                        <button @click="goLessons(course.id)" class="btn-content">
-                            <i class="fas fa-pen-nib"></i> Soạn nội dung
-                        </button>
-                        <!-- <button @click="viewCourse(course.id)" class="btn-view">
-                            <i class="fas fa-eye"></i> Xem
-                        </button>
-                        <button @click="manageStudents(course.id)" class="btn-students">
-                            <i class="fas fa-users"></i> Học viên
-                        </button>
-                        <button @click="toggleArchive(course.id, course.status)"
-                            :class="['btn-archive', course.status === 'archived' ? 'btn-unarchive' : '']">
-                            <i :class="course.status === 'archived' ? 'fas fa-box-open' : 'fas fa-archive'"></i>
-                            {{ course.status === 'archived' ? 'Bỏ lưu trữ' : 'Lưu trữ' }}
-                        </button> -->
+                        <button @click="editCourse(course.id)" class="btn-edit">Edit</button>
+                        <button @click="goLessons(course.id)" class="btn-content">Content</button>
                     </div>
                 </div>
             </div>
@@ -81,32 +64,32 @@
 
         <div v-if="showCourseModal" class="modal-overlay">
             <div class="modal-content">
-                <h2>{{ editingCourse ? 'Sửa khóa học' : 'Tạo khóa học mới' }}</h2>
+                <h2>{{ editingCourse ? 'Edit Course' : 'Create New Course' }}</h2>
 
                 <form @submit.prevent="saveCourse">
                     <div class="form-group">
-                        <label>Tiêu đề khóa học:</label>
+                        <label>Course Title:</label>
                         <input type="text" v-model="courseForm.title" required>
                     </div>
 
                     <div class="form-group">
-                        <label>Mô tả:</label>
+                        <label>Description:</label>
                         <textarea v-model="courseForm.description" rows="4"></textarea>
                     </div>
 
                     <div class="form-group">
-                        <label>Giá (VND):</label>
+                        <label>Price (VND):</label>
                         <input type="number" v-model="courseForm.price" min="0">
                     </div>
 
                     <div class="form-group">
-                        <label>Ảnh thumbnail URL:</label>
+                        <label>Thumbnail URL:</label>
                         <input type="url" v-model="courseForm.thumbnail">
                     </div>
 
                     <div class="form-actions">
-                        <button type="button" @click="closeModal" class="btn-cancel">Hủy</button>
-                        <button type="submit" class="btn-save">{{ editingCourse ? 'Cập nhật' : 'Tạo' }}</button>
+                        <button type="button" @click="closeModal" class="btn-cancel">Cancel</button>
+                        <button type="submit" class="btn-save">{{ editingCourse ? 'Update' : 'Create' }}</button>
                     </div>
                 </form>
             </div>
@@ -115,10 +98,8 @@
         <div v-if="showContentModal" class="modal-overlay content-modal">
             <div class="modal-content content-modal-content">
                 <div class="modal-header">
-                    <h2>Soạn nội dung khóa học: {{ selectedCourse?.title }}</h2>
-                    <button @click="closeContentModal" class="btn-close">
-                        <i class="fas fa-times"></i>
-                    </button>
+                    <h2>Create Course Content: {{ selectedCourse?.title }}</h2>
+                    <button @click="closeContentModal" class="btn-close">✕</button>
                 </div>
                 
                 <div class="modal-body">
@@ -369,27 +350,43 @@ export default {
 <style scoped>
 .instructor-courses {
     width: 100%;
-    padding: 20px;
+    padding: 40px;
     margin: 0 auto;
+    background: #f8f9fa;
+    min-height: 100vh;
 }
 
 .courses-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.courses-header h1 {
+    font-size: 32px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0;
+    letter-spacing: -0.5px;
 }
 
 .btn-create {
-    background: #3498db;
+    background: #1f2937;
     color: white;
-    padding: 10px 20px;
+    padding: 12px 24px;
     border: none;
-    border-radius: 5px;
+    border-radius: 6px;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-create:hover {
+    background: #111827;
 }
 
 .courses-filter {
@@ -397,6 +394,7 @@ export default {
     gap: 20px;
     margin-bottom: 30px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .filter-group,
@@ -407,49 +405,51 @@ export default {
 }
 
 .filter-group label {
-    font-weight: bold;
+    font-weight: 500;
+    color: #374151;
 }
 
 .filter-group select,
 .search-group input {
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-}
-
-.search-group {
-    position: relative;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+    color: #1f2937;
 }
 
 .search-group input {
-    padding-left: 35px;
     width: 250px;
 }
 
-.search-group i {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #7f8c8d;
+.search-group input::placeholder {
+    color: #9ca3af;
 }
 
 .courses-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 24px;
 }
 
 .course-card {
     background: white;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
     overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.course-card:hover {
+    border-color: #d1d5db;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .course-image {
     position: relative;
-    height: 200px;
+    height: 180px;
+    background: #f0f0f0;
 }
 
 .course-image img {
@@ -460,114 +460,107 @@ export default {
 
 .course-status {
     position: absolute;
-    top: 10px;
-    right: 10px;
-    padding: 4px 8px;
+    top: 12px;
+    right: 12px;
+    padding: 6px 12px;
     border-radius: 4px;
     font-size: 12px;
-    font-weight: bold;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .course-status.active {
-    background: #27ae60;
-    color: white;
+    background: #d1fae5;
+    color: #1f2937;
 }
 
 .course-status.draft {
-    background: #f39c12;
-    color: white;
+    background: #fef3c7;
+    color: #d97706;
 }
 
 .course-status.archived {
-    background: #95a5a6;
-    color: white;
+    background: #e5e7eb;
+    color: #6b7280;
 }
 
 .course-content {
-    padding: 15px;
+    padding: 20px;
 }
 
 .course-content h3 {
-    margin: 0 0 10px 0;
-    color: #2c3e50;
+    margin: 0 0 12px 0;
+    color: #1a1a1a;
+    font-size: 16px;
+    font-weight: 600;
 }
 
 .course-description {
-    color: #7f8c8d;
-    margin-bottom: 15px;
+    color: #666;
+    margin-bottom: 14px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    font-size: 14px;
+    line-height: 1.4;
 }
 
 .course-stats {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 10px;
-    font-size: 14px;
-    color: #7f8c8d;
-}
-
-.course-stats span {
-    display: flex;
-    align-items: center;
-    gap: 5px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: #666;
 }
 
 .course-meta {
     font-size: 12px;
-    color: #bdc3c7;
+    color: #999;
 }
 
 .course-actions {
-    padding: 15px;
-    border-top: 1px solid #ecf0f1;
+    padding: 16px 20px;
+    border-top: 1px solid #e5e7eb;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
 }
 
 .course-actions button {
-    padding: 8px;
-    border: none;
-    border-radius: 4px;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    background: white;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    transition: all 0.3s;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    transition: all 0.2s ease;
 }
 
 .btn-edit {
-    background: #3498db;
-    color: white;
+    background: white;
+    border: 1px solid #d1d5db;
+    color: #1f2937;
 }
 
-.btn-view {
-    background: #2ecc71;
-    color: white;
+.btn-edit:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
 }
 
-.btn-students {
-    background: #9b59b6;
-    color: white;
+.btn-content {
+    background: white;
+    border: 1px solid #d1d5db;
+    color: #1f2937;
 }
 
-.btn-archive {
-    background: #e74c3c;
-    color: white;
-}
-
-.btn-unarchive {
-    background: #f39c12;
-}
-
-.course-actions button:hover {
-    opacity: 0.9;
+.btn-content:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
 }
 
 .modal-overlay {
@@ -585,75 +578,87 @@ export default {
 
 .modal-content {
     background: white;
-    padding: 30px;
-    border-radius: 10px;
+    padding: 32px;
+    border-radius: 8px;
     width: 90%;
     max-width: 500px;
+    box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
 }
 
 .modal-content h2 {
-    margin-bottom: 20px;
-    color: #2c3e50;
+    margin-bottom: 24px;
+    color: #1a1a1a;
+    font-size: 20px;
+    font-weight: 600;
 }
 
 .form-group {
-    margin-bottom: 15px;
+    margin-bottom: 18px;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #374151;
+    font-size: 14px;
 }
 
 .form-group input,
 .form-group textarea {
     width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
     box-sizing: border-box;
+    font-size: 14px;
+    color: #1f2937;
+    font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .form-actions {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     justify-content: flex-end;
-    margin-top: 20px;
+    margin-top: 24px;
 }
 
 .btn-cancel,
 .btn-save {
     padding: 10px 20px;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
 }
 
 .btn-cancel {
-    background: #95a5a6;
-    color: white;
+    background: #e5e7eb;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.btn-cancel:hover {
+    background: #d1d5db;
 }
 
 .btn-save {
-    background: #3498db;
+    background: #1f2937;
     color: white;
+    border: 1px solid #1f2937;
 }
 
-.btn-content {
-    background: #9b59b6;
-    color: white;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 12px;
-    transition: all 0.3s;
-}
-
-.btn-content:hover {
-    background: #8e44ad;
-    transform: translateY(-2px);
+.btn-save:hover {
+    background: #111827;
 }
 
 /* Content Modal Styles */
@@ -664,6 +669,7 @@ export default {
     height: 95vh;
     display: flex;
     flex-direction: column;
+    padding: 0;
 }
 
 .content-modal-content {
@@ -676,30 +682,36 @@ export default {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 24px;
-    border-bottom: 1px solid #eee;
+    padding: 24px;
+    border-bottom: 1px solid #e5e7eb;
     flex-shrink: 0;
 }
 
 .content-modal .modal-header h2 {
     margin: 0;
-    color: #2c3e50;
-    font-size: 20px;
+    color: #1a1a1a;
+    font-size: 18px;
+    font-weight: 600;
 }
 
 .btn-close {
     background: none;
     border: none;
-    font-size: 18px;
+    font-size: 24px;
     cursor: pointer;
     color: #999;
     padding: 4px 8px;
     border-radius: 4px;
-    transition: all 0.3s;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
 }
 
 .btn-close:hover {
-    background: #f8f9fa;
+    background: #f0f0f0;
     color: #333;
 }
 
@@ -712,20 +724,31 @@ export default {
 .loading,
 .no-courses {
     text-align: center;
-    padding: 40px;
-    color: #7f8c8d;
+    padding: 60px 20px;
+    color: #999;
+}
+
+.loading {
+    font-size: 16px;
+}
+
+.no-courses {
+    font-size: 15px;
 }
 
 @media (max-width: 768px) {
+    .instructor-courses {
+        padding: 20px;
+    }
+
     .courses-header {
         flex-direction: column;
-        gap: 15px;
         align-items: flex-start;
     }
 
     .courses-filter {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
     }
 
     .search-group input {
@@ -738,6 +761,11 @@ export default {
 
     .course-actions {
         grid-template-columns: 1fr;
+    }
+
+    .modal-content {
+        width: 95%;
+        padding: 24px;
     }
 }
 </style>

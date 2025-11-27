@@ -32,12 +32,18 @@ def create_app():
     db.init_app(app)
     JWTManager(app)
 
-    # CORS
+    # CORS - Enable for all origins and methods
     cors_origins = os.getenv("CORS_ORIGINS")
     if cors_origins:
-        CORS(app, origins=[o.strip() for o in cors_origins.split(",") if o.strip()])
+        CORS(app, 
+             origins=[o.strip() for o in cors_origins.split(",") if o.strip()],
+             methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+             allow_headers=["Content-Type", "Authorization"])
     else:
-        CORS(app)
+        CORS(app, 
+             origins="*",
+             methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+             allow_headers=["Content-Type", "Authorization"])
 
     # Register blueprints
     try:

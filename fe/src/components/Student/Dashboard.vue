@@ -1,115 +1,105 @@
 <template>
-  <div class="container py-5">
-    <!--  PHẦN THỐNG KÊ -->
-    <div class="row g-4 mb-5">
-      <!-- Lặp qua các chỉ số thống kê -->
-      <div class="col-md-3" v-for="stat in stats" :key="stat.title">
-        <div class="card border-0 shadow-sm h-100 text-center p-3 rounded-4 hover-card">
-          <h6 class="text-muted mb-2">{{ stat.title }}</h6>
-          <h2 class="fw-bold text-primary">{{ stat.value }}</h2>
+  <div class="dashboard-wrapper">
+    <!-- Header -->
+    <div class="dashboard-header">
+      <h1>My Dashboard</h1>
+      <p>Track your learning progress and achievements</p>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+      <div class="stat-card" v-for="stat in stats" :key="stat.title">
+        <h6>{{ stat.title }}</h6>
+        <h3>{{ stat.value }}</h3>
+      </div>
+    </div>
+
+    <!-- Learning Path -->
+    <div class="content-card">
+      <h5>Learning Path</h5>
+      <div class="learning-path-list">
+        <div class="path-item" v-for="path in learningPath" :key="path.name">
+          <span class="path-name">{{ path.name }}</span>
+          <span class="path-status" :class="{
+            'status-completed': path.status === 'Completed',
+            'status-progress': path.status === 'In Progress',
+            'status-not-started': path.status === 'Not Started'
+          }">
+            {{ path.status }}
+          </span>
         </div>
       </div>
     </div>
 
-    <!--  LỘ TRÌNH HỌC TẬP -->
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
-      <div class="card-body">
-        <h5 class="card-title mb-3 fw-bold text-primary">🎯 Learning Path</h5>
-        <ul class="list-group list-group-flush">
-          <!-- Lặp qua danh sách lộ trình -->
-          <li class="list-group-item d-flex justify-content-between align-items-center" v-for="path in learningPath"
-            :key="path.name">
-            <span>{{ path.name }}</span>
-            <!-- Đổi màu badge theo trạng thái -->
-            <span class="badge px-3 py-2" :class="{
-              'bg-success': path.status === 'Completed',
-              'bg-warning text-dark': path.status === 'In Progress',
-              'bg-secondary': path.status === 'Not Started'
-            }">
-              {{ path.status }}
-            </span>
-          </li>
-        </ul>
-      </div>
-    </div>
-
-    <!--  KHÓA HỌC ĐÃ ĐĂNG KÝ -->
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
-      <div class="card-body">
-        <h5 class="card-title mb-3 fw-bold text-primary">📚 Enrolled Courses</h5>
-        <div class="row g-3">
-          <!-- Lặp qua danh sách khóa học -->
-          <div class="col-md-6" v-for="course in courses" :key="course.id">
-            <div class="card h-100 border-0 shadow-sm rounded-4">
-              <div class="card-body">
-                <h6 class="card-title fw-semibold">{{ course.title }}</h6>
-                <p class="text-muted small">{{ course.description }}</p>
-                <!-- Thanh tiến độ -->
-                <div class="progress" style="height: 20px;">
-                  <div class="progress-bar progress-bar-striped bg-info fw-bold" role="progressbar"
-                    :style="{ width: course.progress + '%' }">
-                    {{ course.progress }}%
-                  </div>
-                </div>
-              </div>
+    <!-- Enrolled Courses -->
+    <div class="content-card">
+      <h5>Enrolled Courses</h5>
+      <div class="courses-grid">
+        <div class="course-card" v-for="course in courses" :key="course.id">
+          <h6>{{ course.title }}</h6>
+          <p>{{ course.description }}</p>
+          <div class="progress-container">
+            <div class="progress-header">
+              <span class="progress-label">Progress</span>
+              <span class="progress-value">{{ course.progress }}%</span>
+            </div>
+            <div class="progress-bar-wrapper">
+              <div class="progress-bar-fill" :style="{ width: course.progress + '%' }"></div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!--  TIẾN ĐỘ TỔNG QUAN -->
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
-      <div class="card-body">
-        <h5 class="card-title mb-3 fw-bold text-primary">📈 Overall Progress</h5>
-        <div class="progress" style="height: 30px;">
-          <div class="progress-bar bg-success fw-bold" role="progressbar" :style="{ width: overallProgress + '%' }">
-            {{ overallProgress }}%
-          </div>
+    <!-- Overall Progress -->
+    <div class="content-card">
+      <h5>Overall Progress</h5>
+      <div class="overall-progress">
+        <div class="progress-header">
+          <span class="progress-label">Total Completion</span>
+          <span class="progress-value">{{ overallProgress }}%</span>
+        </div>
+        <div class="progress-bar-wrapper large">
+          <div class="progress-bar-fill" :style="{ width: overallProgress + '%' }"></div>
         </div>
       </div>
     </div>
 
-    <!--  NÚT LÀM BÀI KIỂM TRA KỸ NĂNG -->
-    <div class="text-center mt-5" v-if="!showTest">
-      <button class="btn btn-primary btn-lg shadow px-5 rounded-pill" @click="startTest">
+    <!-- Skill Test Button -->
+    <div class="test-section" v-if="!showTest">
+      <button class="action-button" @click="startTest">
         Take Skill Test
       </button>
     </div>
 
-    <!--  FORM LÀM BÀI KIỂM TRA -->
-    <div v-if="showTest" class="card border-0 shadow-sm mt-4 rounded-4">
-      <div class="card-body">
-        <h5 class="fw-bold mb-4 text-center text-primary">Skill Test</h5>
+    <!-- Skill Test Form -->
+    <div v-if="showTest" class="content-card test-card">
+      <h5>Skill Test</h5>
 
-        <!-- Lặp qua từng câu hỏi -->
-        <div v-for="(question, index) in testQuestions" :key="index" class="mb-4">
+      <div class="test-questions">
+        <div v-for="(question, index) in testQuestions" :key="index" class="question-item">
           <h6>{{ index + 1 }}. {{ question.question }}</h6>
-          <!-- Hiển thị các lựa chọn đáp án -->
-          <div class="form-check" v-for="option in question.options" :key="option">
-            <input class="form-check-input" type="radio" :name="'q' + index" :value="option" v-model="question.selected"
-              :disabled="submitted" />
-            <label class="form-check-label">{{ option }}</label>
+          <div class="options-list">
+            <label class="option-label" v-for="option in question.options" :key="option">
+              <input type="radio" :name="'q' + index" :value="option" v-model="question.selected" :disabled="submitted" />
+              <span>{{ option }}</span>
+            </label>
           </div>
         </div>
+      </div>
 
-        <!-- Nút nộp bài và làm lại -->
-        <div class="text-center mt-4">
-          <!-- Khi chưa nộp -->
-          <button v-if="!submitted" class="btn btn-success px-4 rounded-pill" @click="submitTest">
-            Submit Test
-          </button>
+      <div class="test-actions">
+        <button v-if="!submitted" class="action-button" @click="submitTest">
+          Submit Test
+        </button>
 
-          <!-- Khi đã nộp xong -->
-          <div v-else>
-            <div class="alert alert-info text-center fs-5 mb-4">
-              🎉 Your Score: <strong>{{ score }}/{{ testQuestions.length }}</strong>
-            </div>
-            <!-- Nút làm lại (random lại câu hỏi) -->
-            <button class="btn btn-outline-primary px-4 rounded-pill" @click="resetTest">
-              🔁 Retake Test (Random)
-            </button>
+        <div v-else class="test-result">
+          <div class="result-score">
+            Your Score: <strong>{{ score }}/{{ testQuestions.length }}</strong>
           </div>
+          <button class="action-button secondary" @click="resetTest">
+            Retake Test
+          </button>
         </div>
       </div>
     </div>
@@ -236,13 +226,305 @@ export default {
 </script>
 
 <style scoped>
-/*  Hiệu ứng hover cho các thẻ thống kê */
-.hover-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+.dashboard-wrapper {
+  background: #f8f9fa;
+  min-height: 100vh;
+  padding: 40px;
 }
 
-.hover-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+.dashboard-header {
+  margin-bottom: 40px;
+}
+
+.dashboard-header h1 {
+  font-size: 32px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.5px;
+}
+
+.dashboard-header p {
+  color: #666;
+  font-size: 15px;
+  margin: 0;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+.stat-card {
+  background: white;
+  padding: 24px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.stat-card h6 {
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 8px 0;
+}
+
+.stat-card h3 {
+  font-size: 28px;
+  font-weight: 600;
+  margin: 0;
+  color: #1a1a1a;
+}
+
+.content-card {
+  background: white;
+  padding: 28px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  margin-bottom: 24px;
+}
+
+.content-card h5 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 24px 0;
+}
+
+.learning-path-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.path-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.path-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+
+.path-status {
+  font-size: 13px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.status-completed {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.status-progress {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.status-not-started {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.courses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.course-card {
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.course-card h6 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 8px 0;
+}
+
+.course-card p {
+  font-size: 14px;
+  color: #666;
+  margin: 0 0 16px 0;
+}
+
+.progress-container {
+  margin-top: 16px;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.progress-label {
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+}
+
+.progress-value {
+  font-size: 14px;
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.progress-bar-wrapper {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-wrapper.large {
+  height: 12px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  transition: width 0.3s ease;
+}
+
+.overall-progress {
+  max-width: 600px;
+}
+
+.test-section {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.action-button {
+  padding: 12px 32px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.action-button:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.action-button.secondary {
+  background: white;
+  color: #1f2937;
+  border: 1px solid #d1d5db;
+}
+
+.action-button.secondary:hover {
+  background: #f8f9fa;
+  border-color: #9ca3af;
+}
+
+.test-card {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.test-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.question-item h6 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 12px 0;
+}
+
+.options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.option-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.option-label:hover {
+  background: #e5e7eb;
+}
+
+.option-label input[type="radio"] {
+  cursor: pointer;
+}
+
+.option-label span {
+  font-size: 14px;
+  color: #1a1a1a;
+}
+
+.test-actions {
+  text-align: center;
+}
+
+.test-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.result-score {
+  font-size: 18px;
+  color: #1a1a1a;
+  padding: 20px 32px;
+  background: #eff6ff;
+  border-radius: 8px;
+}
+
+.result-score strong {
+  font-size: 24px;
+  color: #3b82f6;
+}
+
+@media (max-width: 768px) {
+  .dashboard-wrapper {
+    padding: 20px;
+  }
+
+  .courses-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

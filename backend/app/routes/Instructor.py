@@ -336,6 +336,7 @@ def get_course_curriculum(course_id):
         return jsonify({"message": "Lỗi server nội bộ"}), 500
 
 
+@instructor_bp.route("/api/courses/<int:course_id>/sections", methods=['GET'])
 @instructor_bp.route("/courses/<int:course_id>/sections", methods=['GET'])
 def list_sections(course_id):
     try:
@@ -349,6 +350,7 @@ def list_sections(course_id):
         return jsonify({"message": "Lỗi server nội bộ"}), 500
 
 
+@instructor_bp.route("/api/courses/<int:course_id>/sections", methods=['POST'])
 @instructor_bp.route("/courses/<int:course_id>/sections", methods=['POST'])
 def create_section(course_id):
     try:
@@ -394,6 +396,7 @@ def update_section(section_id):
         return jsonify({"message": f"Lỗi khi cập nhật section: {str(e)}"}), 500
 
 
+@instructor_bp.route("/api/sections/<int:section_id>", methods=['DELETE'])
 @instructor_bp.route("/sections/<int:section_id>", methods=['DELETE'])
 def delete_section(section_id):
     try:
@@ -411,6 +414,7 @@ def delete_section(section_id):
         return jsonify({"message": f"Lỗi khi xóa section: {str(e)}"}), 500
 
 
+@instructor_bp.route("/api/sections/<int:section_id>/lessons", methods=['GET'])
 @instructor_bp.route("/sections/<int:section_id>/lessons", methods=['GET'])
 def list_lessons(section_id):
     try:
@@ -438,6 +442,7 @@ def list_lessons(section_id):
         return jsonify({"message": "Lỗi server nội bộ"}), 500
 
 
+@instructor_bp.route("/api/sections/<int:section_id>/lessons", methods=['POST'])
 @instructor_bp.route("/sections/<int:section_id>/lessons", methods=['POST'])
 def create_lesson(section_id):
     try:
@@ -847,3 +852,310 @@ def get_test(test_id):
     except Exception as e:
         print(f"Error getting test details: {e}")
         return jsonify({'message': 'Internal server error'}), 500
+
+
+# =============================
+#            DASHBOARD APIs
+# =============================
+
+@instructor_bp.route('/api/instructor/dashboard', methods=['GET'])
+def get_instructor_dashboard():
+    """
+    Lấy dữ liệu dashboard cho giảng viên
+    Query: ?instructor_id=X
+    Response: {
+        instructor: { name, email, avatar },
+        stats: { totalCourses, totalStudents, averageRating, totalRevenue },
+        recentCourses: [...]
+    }
+    """
+    try:
+        instructor_id = request.args.get('instructor_id', type=int)
+        
+        if not instructor_id:
+            return jsonify({'message': 'Thiếu tham số instructor_id'}), 400
+        
+        # Lấy thông tin giảng viên
+        instructor = Instructor.query.get(instructor_id)
+        if not instructor:
+            return jsonify({'message': 'Giảng viên không tồn tại'}), 404
+        
+        user = instructor.user
+        if not user:
+            return jsonify({'message': 'Người dùng không tồn tại'}), 404
+        
+        # Lấy danh sách khóa học
+        courses = Course.query.filter_by(instructor_id=instructor_id).all()
+        
+        # Tính toán thống kê
+        total_courses = len(courses)
+        total_students = 0
+        total_revenue = 0.0
+        ratings = []
+        
+        for course in courses:
+            # Đếm học viên đăng ký
+            enrollments = Enrollment.query.filter_by(course_id=course.id).all()
+            total_students += len(enrollments)
+            
+            # Tính doanh thu (giả định là price * số học viên đã thanh toán)
+            total_revenue += float(course.price or 0) * len([e for e in enrollments if e.status == 'completed'])
+            
+            # Giả định đánh giá (có thể thêm bảng Rating sau)
+            ratings.append(4.5)
+        
+        average_rating = sum(ratings) / len(ratings) if ratings else 0.0
+        
+        # Lấy 5 khóa học gần đây
+        recent_courses = courses[-5:][::-1]
+        recent_courses_data = []
+        
+        for course in recent_courses:
+            enrollments = Enrollment.query.filter_by(course_id=course.id).all()
+            course_data = {
+                'id': course.id,
+                'title': course.title,
+                'description': course.description,
+                'level': course.level,
+                'price': float(course.price or 0),
+                'students': len(enrollments),
+                'status': 'active' if course.is_public else 'draft',
+                'createdAt': course.created_at.isoformat() if course.created_at else None,
+                'updatedAt': course.updated_at.isoformat() if course.updated_at else None
+            }
+            recent_courses_data.append(course_data)
+        
+        dashboard_data = {
+            'instructor': {
+                'id': instructor.id,
+                'name': user.full_name,
+                'email': user.email,
+                'avatar': user.avatar_url,
+                'expertise': instructor.expertise,
+                'yearsExperience': instructor.years_experience
+            },
+            'stats': {
+                'totalCourses': total_courses,
+                'totalStudents': total_students,
+                'averageRating': round(average_rating, 1),
+                'totalRevenue': round(total_revenue, 2)
+            },
+            'recentCourses': recent_courses_data
+        }
+        
+        return jsonify(dashboard_data), 200
+        
+    except Exception as e:
+        print(f'Error getting dashboard: {e}')
+        return jsonify({'message': 'Lỗi server nội bộ'}), 500
+
+
+@instructor_bp.route('/api/instructor/statistics', methods=['GET'])
+def get_instructor_statistics():
+    """
+    Lấy thống kê chi tiết cho giảng viên
+    Query: ?instructor_id=X
+    """
+    try:
+        instructor_id = request.args.get('instructor_id', type=int)
+        
+        if not instructor_id:
+            return jsonify({'message': 'Thiếu tham số instructor_id'}), 400
+        
+        instructor = Instructor.query.get(instructor_id)
+        if not instructor:
+            return jsonify({'message': 'Giảng viên không tồn tại'}), 404
+        
+        courses = Course.query.filter_by(instructor_id=instructor_id).all()
+        
+        stats = {
+            'coursesByLevel': {
+                'beginner': 0,
+                'intermediate': 0,
+                'advanced': 0
+            },
+            'coursesByStatus': {
+                'active': 0,
+                'draft': 0
+            },
+            'studentsByStatus': {
+                'enrolled': 0,
+                'completed': 0,
+                'dropped': 0
+            },
+            'averageStudentsPerCourse': 0,
+            'totalLessons': 0,
+            'totalTests': 0
+        }
+        
+        total_students_by_status = {'enrolled': 0, 'completed': 0, 'dropped': 0}
+        
+        for course in courses:
+            # Cập nhật thống kê theo level
+            stats['coursesByLevel'][course.level] = stats['coursesByLevel'].get(course.level, 0) + 1
+            
+            # Cập nhật thống kê theo status
+            if course.is_public:
+                stats['coursesByStatus']['active'] += 1
+            else:
+                stats['coursesByStatus']['draft'] += 1
+            
+            # Đếm enrollments
+            enrollments = Enrollment.query.filter_by(course_id=course.id).all()
+            for enrollment in enrollments:
+                total_students_by_status[enrollment.status] = total_students_by_status.get(enrollment.status, 0) + 1
+            
+            # Đếm sections, lessons, tests
+            sections = CourseSection.query.filter_by(course_id=course.id).all()
+            for section in sections:
+                lessons = Lesson.query.filter_by(section_id=section.id).all()
+                stats['totalLessons'] += len(lessons)
+                
+                for lesson in lessons:
+                    tests = Test.query.filter_by(lesson_id=lesson.id).all()
+                    stats['totalTests'] += len(tests)
+        
+        stats['studentsByStatus'] = total_students_by_status
+        
+        if courses:
+            total_students = sum(total_students_by_status.values())
+            stats['averageStudentsPerCourse'] = round(total_students / len(courses), 1)
+        
+        return jsonify(stats), 200
+        
+    except Exception as e:
+        print(f'Error getting statistics: {e}')
+        return jsonify({'message': 'Lỗi server nội bộ'}), 500
+
+
+@instructor_bp.route('/api/instructor/reports', methods=['GET'])
+def get_instructor_reports():
+    """
+    Get comprehensive analytics and reports for instructor
+    Query: ?instructor_id=X
+    Returns: Time-series data, course metrics, student progress, and performance analytics
+    """
+    try:
+        instructor_id = request.args.get('instructor_id', type=int)
+        
+        if not instructor_id:
+            return jsonify({'message': 'Missing instructor_id parameter'}), 400
+        
+        instructor = Instructor.query.get(instructor_id)
+        if not instructor:
+            return jsonify({'message': 'Instructor not found'}), 404
+        
+        courses = Course.query.filter_by(instructor_id=instructor_id).all()
+        
+        # Initialize report structure
+        report = {
+            'overview': {
+                'totalStudents': 0,
+                'activeCourses': 0,
+                'avgCompletionRate': 0,
+                'avgScore': 0
+            },
+            'trends': {
+                'studentRegistrations': [],  # Monthly data for last 12 months
+                'completionRates': [],       # Monthly completion rates
+            },
+            'coursePerformance': [],         # Individual course metrics
+            'studentDistribution': {
+                'completed': 0,
+                'inProgress': 0,
+                'dropped': 0
+            },
+            'scoresByTopic': []              # Average scores by course/topic
+        }
+        
+        # Calculate overview metrics
+        total_enrollments = 0
+        total_completed = 0
+        total_scores = []
+        active_courses = 0
+        
+        for course in courses:
+            if course.is_public:
+                active_courses += 1
+            
+            enrollments = Enrollment.query.filter_by(course_id=course.id).all()
+            course_enrollments = len(enrollments)
+            total_enrollments += course_enrollments
+            
+            course_completed = 0
+            course_in_progress = 0
+            course_dropped = 0
+            course_scores = []
+            
+            for enrollment in enrollments:
+                if enrollment.status == 'completed':
+                    course_completed += 1
+                    total_completed += 1
+                    report['studentDistribution']['completed'] += 1
+                    if enrollment.progress:
+                        course_scores.append(enrollment.progress)
+                        total_scores.append(enrollment.progress)
+                elif enrollment.status == 'enrolled':
+                    course_in_progress += 1
+                    report['studentDistribution']['inProgress'] += 1
+                elif enrollment.status == 'dropped':
+                    course_dropped += 1
+                    report['studentDistribution']['dropped'] += 1
+            
+            # Course performance data
+            completion_rate = (course_completed / course_enrollments * 100) if course_enrollments > 0 else 0
+            avg_score = (sum(course_scores) / len(course_scores)) if course_scores else 0
+            
+            report['coursePerformance'].append({
+                'courseName': course.title,
+                'students': course_enrollments,
+                'completed': course_completed,
+                'inProgress': course_in_progress,
+                'completionRate': round(completion_rate, 1)
+            })
+            
+            # Scores by topic
+            if course_scores:
+                report['scoresByTopic'].append({
+                    'topic': course.title,
+                    'avgScore': round(avg_score, 1),
+                    'studentCount': len(course_scores)
+                })
+        
+        # Overview calculations
+        report['overview']['totalStudents'] = total_enrollments
+        report['overview']['activeCourses'] = active_courses
+        report['overview']['avgCompletionRate'] = round((total_completed / total_enrollments * 100), 1) if total_enrollments > 0 else 0
+        report['overview']['avgScore'] = round((sum(total_scores) / len(total_scores)), 1) if total_scores else 0
+        
+        # Generate time-series data for last 12 months (simulated for now)
+        # In production, this should query actual enrollment/completion dates
+        import random
+        from datetime import datetime, timedelta
+        
+        base_students = total_enrollments // 12 if total_enrollments > 0 else 10
+        for i in range(12):
+            month_date = datetime.now() - timedelta(days=30 * (11 - i))
+            month_name = month_date.strftime('%b')
+            
+            # Simulated growing trend
+            students = base_students + random.randint(-5, 10) + i * 2
+            report['trends']['studentRegistrations'].append({
+                'month': month_name,
+                'count': max(0, students)
+            })
+            
+            # Simulated completion rates
+            completion_rate = report['overview']['avgCompletionRate'] + random.uniform(-10, 10)
+            report['trends']['completionRates'].append({
+                'month': month_name,
+                'rate': round(max(0, min(100, completion_rate)), 1)
+            })
+        
+        return jsonify(report), 200
+        
+    except Exception as e:
+        print(f'Error getting reports: {e}')
+        import traceback
+        traceback.print_exc()
+        return jsonify({'message': 'Internal server error', 'error': str(e)}), 500

@@ -1,48 +1,31 @@
 <template>
   <div class="instructor-chat-container">
     <div class="chat-layout">
-      <div class="chat-sideb">
-        <div class="sidebar-head">
-          <h5 class="mb-0">Danh sách học viên</h5>
-          <div class="d-flex align-items-center">
-            <span class="badge bg-primary me-2">{{ unreadCount }}</span>
-            <button class="btn btn-sm btn-outline-light" @click="refreshStudentList">
-              <i class="bx bx-refresh"></i>
-            </button>
-          </div>
+      <div class="chat-sidebar">
+        <div class="sidebar-header">
+          <h3>Messages</h3>
+          <span class="unread-badge">{{ unreadCount }}</span>
         </div>
 
         <div class="search-box">
-          <div class="input-group">
-            <span class="input-group-text">
-              <i class="bx bx-search"></i>
-            </span>
-            <input v-model="searchQuery" type="text" class="form-control" placeholder="Tìm kiếm học viên...">
-          </div>
+          <input v-model="searchQuery" type="text" placeholder="Search students..." class="search-input">
         </div>
 
         <div class="student-list">
           <div v-for="student in filteredStudents" :key="student.id"
-            :class="['student-item', { 'active': selectedStudent?.id === student.id }]" @click="selectStudent(student)">
-            <div class="d-flex align-items-center">
-              <div class="position-relative">
-                <UserAvatar :name="student.name" size="medium" />
-                <span :class="['status-indicator', student.isOnline ? 'online' : 'offline']"></span>
+            :class="['student-item', { active: selectedStudent?.id === student.id }]" 
+            @click="selectStudent(student)">
+            <div class="student-header">
+              <div class="student-info">
+                <h5 class="student-name">{{ student.name }}</h5>
+                <p class="last-message">{{ student.lastMessage }}</p>
               </div>
-
-              <div class="student-info flex-grow-1 ms-3">
-                <div class="d-flex justify-content-between align-items-start">
-                  <h6 class="student-name mb-0">{{ student.name }}</h6>
-                  <small class="text-muted">{{ formatTime(student.lastMessageTime) }}</small>
-                </div>
-                <div class="d-flex justify-content-between align-items-center">
-                  <p class="last-message mb-0">{{ student.lastMessage }}</p>
-                  <span v-if="student.unreadCount > 0" class="badge bg-danger rounded-pill">
-                    {{ student.unreadCount }}
-                  </span>
-                </div>
+              <div class="student-meta">
+                <span class="last-time">{{ formatTime(student.lastMessageTime) }}</span>
+                <span v-if="student.unreadCount > 0" class="unread-count">{{ student.unreadCount }}</span>
               </div>
             </div>
+            <div class="status-indicator" :class="student.isOnline ? 'online' : 'offline'"></div>
           </div>
         </div>
       </div>
@@ -50,83 +33,67 @@
       <!-- Main Chat Area -->
       <div class="chat-main">
         <div v-if="!selectedStudent" class="no-chat-selected">
-          <div class="text-center">
-            <i class="bx bx-chat fs-1 text-muted mb-3"></i>
-            <h5 class="text-muted">Chọn một học viên để bắt đầu trò chuyện</h5>
+          <div class="empty-state">
+            <h4>Select a student to start messaging</h4>
           </div>
         </div>
 
         <div v-else class="chat-area">
           <!-- Chat Header -->
-          <div class="chat-head">
-            <div class="d-flex align-items-center">
-              <div class="position-relative">
-                <UserAvatar :name="selectedStudent.name" size="medium" />
-                <span :class="['status-indicator', selectedStudent.isOnline ? 'online' : 'offline']"></span>
-              </div>
-              <div class="ms-3">
-                <h6 class="mb-0">{{ selectedStudent.name }}</h6>
-                <small class="text-muted">
-                  {{ selectedStudent.isOnline ? 'Đang hoạt động' : 'Không hoạt động' }}
-                </small>
-              </div>
+          <div class="chat-header">
+            <div class="header-info">
+              <h4 class="student-name">{{ selectedStudent.name }}</h4>
+              <small class="status-text">{{ selectedStudent.isOnline ? 'Active' : 'Inactive' }}</small>
             </div>
 
             <div class="chat-actions">
-              <button class="btn btn-sm btn-outline-primary me-2" @click="markAsRead">
-                <i class="bx bx-check-double"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-info" @click="viewStudentProfile">
-                <i class="bx bx-user"></i>
-              </button>
+              <button class="icon-btn" @click="markAsRead" title="Mark as read">✓</button>
+              <button class="icon-btn" @click="viewStudentProfile" title="View profile">👤</button>
             </div>
           </div>
 
           <!-- Chat Messages -->
           <div class="chat-messages" ref="messagesContainer">
             <div v-for="message in currentMessages" :key="message.id"
-              :class="['message', message.senderId.includes('instructor') ? 'message-sent' : 'message-received']">
-              <div class="message-content">
+              :class="['message', message.senderId.includes('instructor') ? 'sent' : 'received']">
+              <div class="message-bubble">
                 <div class="message-text">{{ message.text }}</div>
-                <div class="message-time">
-                  {{ formatTime(message.timestamp) }}
-                  <i v-if="message.senderId.includes('instructor')"
-                    :class="['bx', message.status === 'read' ? 'bx-check-double text-primary' : 'bx-check']"></i>
-                </div>
+                <div class="message-meta">{{ formatTime(message.timestamp) }}</div>
               </div>
             </div>
 
             <!-- Typing indicator -->
-            <div v-if="selectedStudent.isTyping" class="message message-received">
-              <div class="message-content typing-indicator">
-                <div class="typing-dots">
-                  <span></span>
-                  <span></span>
-                  <span></span>
+            <div v-if="selectedStudent.isTyping" class="message received">
+              <div class="message-bubble">
+                <div class="typing-indicator">
+                  <span></span><span></span><span></span>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- Message Input -->
-          <div class="chat-input">
-            <div class="input-group">
-              <input v-model="newMessage" @keyup.enter="sendMessage" @input="handleTyping" type="text"
-                class="form-control" placeholder="Nhập phản hồi cho học viên..." :disabled="sending">
-              <button class="btn btn-primary" @click="sendMessage" :disabled="!newMessage.trim() || sending">
-                <i v-if="sending" class="bx bx-loader bx-spin"></i>
-                <i v-else class="bx bx-send"></i>
+          <div class="chat-input-area">
+            <div class="message-input-wrapper">
+              <input v-model="newMessage" 
+                     @keyup.enter="sendMessage" 
+                     @input="handleTyping" 
+                     type="text"
+                     class="message-input" 
+                     placeholder="Write your message..." 
+                     :disabled="sending">
+              <button class="send-btn" @click="sendMessage" :disabled="!newMessage.trim() || sending">
+                {{ sending ? '...' : '→' }}
               </button>
             </div>
 
             <!-- Quick Replies -->
-            <div class="quick-replies mt-2">
-              <button v-for="reply in quickReplies" :key="reply" class="btn btn-sm btn-outline-secondary me-2 mb-1"
+            <div class="quick-replies">
+              <button v-for="reply in quickReplies" :key="reply" class="quick-reply-btn"
                 @click="useQuickReply(reply)">
                 {{ reply }}
               </button>
             </div>
-
           </div>
         </div>
       </div>
@@ -392,13 +359,13 @@ Trạng thái: ${this.selectedStudent.isOnline ? 'Đang hoạt động' : 'Khôn
 
 <style scoped>
 .instructor-chat-container {
-  height: calc(100vh - 100px);
+  height: calc(100vh - 80px);
   width: 100%;
   background: #f8f9fa;
-  margin: 1rem;
+  margin: 20px;
   overflow: hidden;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  display: flex;
 }
 
 .chat-layout {
@@ -407,42 +374,65 @@ Trạng thái: ${this.selectedStudent.isOnline ? 'Đang hoạt động' : 'Khôn
   width: 100%;
 }
 
-.chat-sideb {
-  width: 350px;
+.chat-sidebar {
+  width: 340px;
   background: white;
-  border-right: 1px solid #e9ecef;
+  border-right: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
-  min-width: 300px;
-  max-width: 400px;
 }
 
-.sidebar-head {
-  padding: 1.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+.sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
 }
 
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.unread-badge {
+  background: #ef4444;
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .search-box {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #e9ecef;
-  flex-shrink: 0;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
-.search-box .input-group-text {
-  background: transparent;
-  border: none;
-  color: #6c757d;
+.search-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  background: #f9fafb;
 }
 
-.search-box .form-control {
-  border: none;
-  box-shadow: none;
-  background: #f8f9fa;
+.search-input::placeholder {
+  color: #9ca3af;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: white;
 }
 
 .student-list {
@@ -452,54 +442,91 @@ Trạng thái: ${this.selectedStudent.isOnline ? 'Đang hoạt động' : 'Khôn
 }
 
 .student-item {
-  padding: 1rem 1.5rem;
+  padding: 12px 16px;
   cursor: pointer;
-  border-bottom: 1px solid #f8f9fa;
+  border-bottom: 1px solid #f0f0f0;
   transition: all 0.2s ease;
+  position: relative;
 }
 
 .student-item:hover {
-  background: #f8f9fa;
+  background: #f9fafb;
 }
 
 .student-item.active {
-  background: #e3f2fd;
-  border-left: 4px solid #2196f3;
+  background: #eff6ff;
+  border-left: 3px solid #3b82f6;
 }
 
+.student-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
 
+.student-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.student-name {
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 4px 0;
+  font-size: 14px;
+}
+
+.last-message {
+  color: #666;
+  font-size: 13px;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.student-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.last-time {
+  font-size: 12px;
+  color: #999;
+}
+
+.unread-count {
+  background: #ef4444;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+}
 
 .status-indicator {
   position: absolute;
-  bottom: 2px;
-  right: 2px;
-  width: 12px;
-  height: 12px;
+  bottom: 8px;
+  right: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   border: 2px solid white;
 }
 
 .status-indicator.online {
-  background: #4caf50;
+  background: #1f2937;
 }
 
 .status-indicator.offline {
-  background: #9e9e9e;
-}
-
-.student-name {
-  font-weight: 600;
-  color: #333;
-  font-size: 0.95rem;
-}
-
-.last-message {
-  color: #6c757d;
-  font-size: 0.85rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 150px;
+  background: #d1d5db;
 }
 
 .chat-main {
@@ -518,6 +545,17 @@ Trạng thái: ${this.selectedStudent.isOnline ? 'Đang hoạt động' : 'Khôn
   background: white;
 }
 
+.empty-state {
+  text-align: center;
+  color: #999;
+}
+
+.empty-state h4 {
+  margin: 0;
+  font-size: 16px;
+  color: #666;
+}
+
 .chat-area {
   flex: 1;
   display: flex;
@@ -526,223 +564,261 @@ Trạng thái: ${this.selectedStudent.isOnline ? 'Đang hoạt động' : 'Khôn
   min-height: 0;
 }
 
-.chat-head {
-  padding: 1rem 1.5rem;
+.chat-header {
+  padding: 16px 24px;
   background: white;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid #e5e7eb;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+}
+
+.header-info {
+  flex: 1;
+}
+
+.header-info .student-name {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  color: #1a1a1a;
+}
+
+.status-text {
+  font-size: 13px;
+  color: #666;
+}
+
+.chat-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.icon-btn {
+  background: none;
+  border: 1px solid #d1d5db;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.icon-btn:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
 }
 
 .chat-messages {
   flex: 1;
-  padding: 1rem;
+  padding: 16px 24px;
   overflow-y: auto;
-  background: #f8f9fa;
+  background: white;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .message {
-  margin-bottom: 1rem;
   display: flex;
+  margin-bottom: 8px;
 }
 
-.message-sent {
+.message.sent {
   justify-content: flex-end;
 }
 
-.message-received {
+.message.received {
   justify-content: flex-start;
 }
 
-.message-content {
-  max-width: 70%;
-  padding: 0.75rem 1rem;
-  border-radius: 18px;
-  position: relative;
+.message-bubble {
+  max-width: 65%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  word-wrap: break-word;
 }
 
-.message-sent .message-content {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.message.sent .message-bubble {
+  background: #1f2937;
   color: white;
   border-bottom-right-radius: 4px;
 }
 
-.message-received .message-content {
-  background: white;
-  color: #333;
-  border: 1px solid #e9ecef;
+.message.received .message-bubble {
+  background: #f0f0f0;
+  color: #1a1a1a;
   border-bottom-left-radius: 4px;
 }
 
 .message-text {
-  word-wrap: break-word;
+  font-size: 14px;
   line-height: 1.4;
 }
 
-.message-time {
-  font-size: 0.75rem;
+.message-meta {
+  font-size: 12px;
   opacity: 0.7;
-  margin-top: 0.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  margin-top: 4px;
 }
 
-.chat-input {
-  padding: 1rem 1.5rem;
-  background: white;
-  border-top: 1px solid #e9ecef;
-  flex-shrink: 0;
-}
-
-.chat-input .input-group {
-  border-radius: 25px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.chat-input .form-control {
-  border: none;
-  padding: 0.75rem 1rem;
-}
-
-.chat-input .form-control:focus {
-  box-shadow: none;
-}
-
-.chat-input .btn {
-  border: none;
-  padding: 0.75rem 1.25rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.quick-replies .btn {
-  font-size: 0.8rem;
-  padding: 0.25rem 0.75rem;
-}
-
-/* Typing indicator */
 .typing-indicator {
-  background: white !important;
-  border: 1px solid #e9ecef !important;
-}
-
-.typing-dots {
   display: flex;
   gap: 4px;
-  padding: 4px 0;
+  padding: 8px 12px;
+  height: auto;
 }
 
-.typing-dots span {
+.typing-indicator span {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #6c757d;
+  background: #d1d5db;
   animation: typing 1.4s infinite ease-in-out;
 }
 
-.typing-dots span:nth-child(1) {
+.typing-indicator span:nth-child(1) {
   animation-delay: -0.32s;
 }
 
-.typing-dots span:nth-child(2) {
+.typing-indicator span:nth-child(2) {
   animation-delay: -0.16s;
 }
 
 @keyframes typing {
-
-  0%,
-  80%,
-  100% {
+  0%, 80%, 100% {
     transform: scale(0.8);
     opacity: 0.5;
   }
-
   40% {
     transform: scale(1);
     opacity: 1;
   }
 }
 
+.chat-input-area {
+  padding: 16px 24px;
+  background: white;
+  border-top: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.message-input-wrapper {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.message-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.message-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.message-input:disabled {
+  background: #f9fafb;
+  color: #999;
+}
+
+.send-btn {
+  padding: 10px 16px;
+  background: #1f2937;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.send-btn:hover:not(:disabled) {
+  background: #111827;
+}
+
+.send-btn:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+}
+
+.quick-replies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quick-reply-btn {
+  padding: 6px 12px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  transition: all 0.2s ease;
+}
+
+.quick-reply-btn:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
 /* Scrollbar */
 .student-list::-webkit-scrollbar,
 .chat-messages::-webkit-scrollbar {
-  overflow-y: auto;
-  width: 46px;
+  width: 6px;
 }
 
 .student-list::-webkit-scrollbar-track,
 .chat-messages::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: transparent;
 }
 
 .student-list::-webkit-scrollbar-thumb,
 .chat-messages::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: #d1d5db;
   border-radius: 3px;
+}
+
+.student-list::-webkit-scrollbar-thumb:hover,
+.chat-messages::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
   .instructor-chat-container {
-    margin: 0.5rem;
-    height: calc(100vh - 80px);
-    border-radius: 8px;
+    margin: 10px;
+    height: calc(100vh - 60px);
   }
 
   .chat-layout {
     flex-direction: column;
   }
 
-  .chat-sideb {
+  .chat-sidebar {
     width: 100%;
-    max-width: none;
-    height: 40vh;
-    min-height: 300px;
-  }
-
-  .chat-main {
-    height: 60vh;
-  }
-
-  .message-content {
-    max-width: 85%;
-  }
-}
-
-@media (max-width: 576px) {
-  .instructor-chat-container {
-    margin: 0.25rem;
-    height: calc(100vh - 70px);
-    border-radius: 6px;
-  }
-
-  .chat-sideb {
-    height: 35vh;
+    max-height: 40vh;
     min-height: 250px;
   }
 
-  .sidebar-head {
-    padding: 1rem;
+  .chat-main {
+    min-height: 60vh;
   }
 
-  .search-box {
-    padding: 0.75rem 1rem;
-  }
-
-  .student-item {
-    padding: 0.75rem 1rem;
-  }
-
-  .chat-head {
-    padding: 0.75rem 1rem;
-  }
-
-  .chat-input {
-    padding: 0.75rem 1rem;
+  .message-bubble {
+    max-width: 85%;
   }
 }
 </style>

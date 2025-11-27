@@ -1,112 +1,105 @@
 <template>
-    <div class="container py-5">
-        <div class="row justify-content-center">
-            <div class="col-md-7">
-                <!-- Student Profile Card -->
-                <div class="card shadow-lg border-0 rounded-3">
-                    <div class="card-body text-center p-4">
+    <div class="profile-wrapper">
+        <!-- Header -->
+        <div class="profile-header">
+            <h1>My Profile</h1>
+            <p>Manage your personal information and settings</p>
+        </div>
 
-                        <!-- Avatar (click để đổi ảnh) -->
-                        <div class="profile-avatar mb-3 position-relative d-inline-block">
-                            <img :src="student.photo" alt="Profile Picture"
-                                class="rounded-circle border border-3 border-primary shadow" width="120" height="120"
-                                style="cursor: pointer;" @click="triggerFileInput" />
-                            <!-- hidden input -->
-                            <input type="file" ref="fileInput" accept="image/*" class="d-none" @change="onFileChange" />
-                            <small class="text-muted d-block mt-2">Click avatar to change photo</small>
-                        </div>
+        <div class="profile-content">
+            <!-- Profile Card -->
+            <div class="profile-card">
+                <!-- Avatar -->
+                <div class="avatar-section">
+                    <img :src="student.photo" alt="Profile Picture" class="profile-avatar" @click="triggerFileInput" />
+                    <input type="file" ref="fileInput" accept="image/*" class="d-none" @change="onFileChange" />
+                    <small class="avatar-hint">Click avatar to change photo</small>
+                </div>
 
-                        <!-- Name -->
-                        <h3 class="fw-bold mb-1">{{ student.name }}</h3>
-                        <p class="text-muted mb-4">🎓 Student</p>
+                <!-- Name -->
+                <h2>{{ student.name }}</h2>
+                <p class="role-badge">Student</p>
 
-                        <hr />
+                <!-- Student Info -->
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Full Name</span>
+                        <span class="info-value">{{ student.name }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Date of Birth</span>
+                        <span class="info-value">{{ student.dob }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Phone</span>
+                        <span class="info-value">{{ student.phone }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Email</span>
+                        <span class="info-value">{{ student.email }}</span>
+                    </div>
+                    <div class="info-item full-width">
+                        <span class="info-label">Address</span>
+                        <span class="info-value">{{ student.address }}</span>
+                    </div>
+                </div>
 
-                        <!-- Student Info -->
-                        <div class="row text-start mb-4">
-                            <div class="col-md-6 mb-3">
-                                <strong>📛 Full Name:</strong><br />
-                                {{ student.name }}
+                <!-- Courses -->
+                <div class="courses-section">
+                    <h5>Enrolled Courses</h5>
+                    <div class="courses-list">
+                        <div class="course-progress-item" v-for="course in student.courses" :key="course.id">
+                            <div class="course-info">
+                                <span class="course-title">{{ course.title }}</span>
+                                <span class="course-percent">{{ course.progress }}%</span>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <strong>🎂 Date of Birth:</strong><br />
-                                {{ student.dob }}
+                            <div class="progress-bar-wrapper">
+                                <div class="progress-bar-fill" :style="{ width: course.progress + '%' }"></div>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <strong>📞 Phone:</strong><br />
-                                {{ student.phone }}
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <strong>📧 Gmail:</strong><br />
-                                {{ student.email }}
-                            </div>
-                            <div class="col-md-12 mb-3">
-                                <strong>🏠 Address:</strong><br />
-                                {{ student.address }}
-                            </div>
-                        </div>
-
-                        <hr />
-
-                        <!-- Courses -->
-                        <h5 class="mb-3 fw-bold">📚 Enrolled Courses</h5>
-                        <ul class="list-group mb-4">
-                            <li class="list-group-item d-flex justify-content-between align-items-center"
-                                v-for="course in student.courses" :key="course.id">
-                                <span>{{ course.title }}</span>
-                                <div class="progress w-50" style="height: 10px;">
-                                    <div class="progress-bar bg-success" role="progressbar"
-                                        :style="{ width: course.progress + '%' }" :aria-valuenow="course.progress"
-                                        aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                                <span class="badge bg-primary">{{ course.progress }}%</span>
-                            </li>
-                        </ul>
-
-                        <!-- Actions -->
-                        <div class="d-flex justify-content-center gap-3">
-                            <button class="btn btn-outline-primary px-4" data-bs-toggle="modal"
-                                data-bs-target="#editProfileModal">
-                                Edit Profile
-                            </button>
                         </div>
                     </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="profile-actions">
+                    <button class="action-button" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                        Edit Profile
+                    </button>
                 </div>
             </div>
         </div>
 
         <!-- Edit Profile Modal -->
-        <div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileLabel"
-            aria-hidden="true">
+        <div class="modal fade" id="editProfileModal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content shadow-lg">
+                <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="editProfileLabel">Edit Profile</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <h5 class="modal-title">Edit Profile</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
                         <form @submit.prevent="saveChanges">
-                            <div class="mb-3">
-                                <label class="form-label">Full Name</label>
-                                <input v-model="editStudent.name" type="text" class="form-control" required />
+                            <div class="form-group">
+                                <label>Full Name</label>
+                                <input v-model="editStudent.name" type="text" class="form-input" required />
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Date of Birth</label>
-                                <input v-model="editStudent.dob" type="date" class="form-control" required />
+                            <div class="form-group">
+                                <label>Date of Birth</label>
+                                <input v-model="editStudent.dob" type="date" class="form-input" required />
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Phone</label>
-                                <input v-model="editStudent.phone" type="text" class="form-control" required />
+                            <div class="form-group">
+                                <label>Phone</label>
+                                <input v-model="editStudent.phone" type="text" class="form-input" required />
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Gmail</label>
-                                <input v-model="editStudent.email" type="email" class="form-control" required />
+                            <div class="form-group">
+                                <label>Email</label>
+                                <input v-model="editStudent.email" type="email" class="form-input" required />
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Address</label>
-                                <textarea v-model="editStudent.address" class="form-control" rows="2"></textarea>
+                            <div class="form-group">
+                                <label>Address</label>
+                                <textarea v-model="editStudent.address" class="form-input" rows="2"></textarea>
                             </div>
-                            <button type="submit" class="btn btn-success w-100">Save Changes</button>
+                            <button type="submit" class="action-button full-width">Save Changes</button>
                         </form>
                     </div>
                 </div>
@@ -165,13 +158,233 @@ export default {
 </script>
 
 <style scoped>
-.profile-avatar img {
-    object-fit: cover;
-    transition: 0.3s;
+.profile-wrapper {
+    background: #f8f9fa;
+    min-height: 100vh;
+    padding: 40px;
 }
 
-.profile-avatar img:hover {
+.profile-header {
+    margin-bottom: 40px;
+}
+
+.profile-header h1 {
+    font-size: 32px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0 0 8px 0;
+    letter-spacing: -0.5px;
+}
+
+.profile-header p {
+    color: #666;
+    font-size: 15px;
+    margin: 0;
+}
+
+.profile-content {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.profile-card {
+    background: white;
+    padding: 40px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    text-align: center;
+}
+
+.avatar-section {
+    margin-bottom: 24px;
+}
+
+.profile-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #e5e7eb;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.profile-avatar:hover {
     opacity: 0.8;
     transform: scale(1.05);
+}
+
+.avatar-hint {
+    display: block;
+    margin-top: 8px;
+    color: #999;
+    font-size: 13px;
+}
+
+.profile-card h2 {
+    font-size: 24px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0 0 8px 0;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  background: #dbeafe;
+  color: #2563eb;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 32px;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-bottom: 32px;
+    text-align: left;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.info-item.full-width {
+    grid-column: 1 / -1;
+}
+
+.info-label {
+    font-size: 13px;
+    color: #666;
+    font-weight: 500;
+}
+
+.info-value {
+    font-size: 15px;
+    color: #1a1a1a;
+}
+
+.courses-section {
+    margin-bottom: 32px;
+    text-align: left;
+}
+
+.courses-section h5 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0 0 16px 0;
+}
+
+.courses-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.course-progress-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.course-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.course-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1a1a1a;
+}
+
+.course-percent {
+    font-size: 14px;
+    font-weight: 600;
+    color: #666;
+}
+
+.progress-bar-wrapper {
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #2563eb);
+    transition: width 0.3s ease;
+}
+
+.profile-actions {
+    text-align: center;
+}
+
+.action-button {
+  padding: 12px 32px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.action-button:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.action-button.full-width {
+    width: 100%;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: #1a1a1a;
+    margin-bottom: 6px;
+}
+
+.form-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+@media (max-width: 768px) {
+    .profile-wrapper {
+        padding: 20px;
+    }
+
+    .profile-card {
+        padding: 24px;
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
 }
 </style>

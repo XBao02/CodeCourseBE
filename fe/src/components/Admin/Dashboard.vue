@@ -1,107 +1,65 @@
 <template>
-  <div class="admin-dashboard py-4">
-    <div class="container-fluid">
+  <div class="admin-dashboard">
+    <div class="dashboard-wrapper">
 
       <!-- Header -->
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="fw-bold text-dark">🎓 Admin Dashboard Overview</h3>
-        <small class="text-muted">Updated: {{ new Date().toLocaleDateString() }}</small>
+      <div class="dashboard-header">
+        <h1>Admin Dashboard</h1>
+        <p>Overview of platform performance and statistics</p>
       </div>
 
       <!-- Overview Cards -->
-      <div class="row g-3 mb-4">
-        <div class="col-12 col-md-4" v-for="card in overviewCards" :key="card.title">
-          <div :class="`card border-0 shadow-sm text-center h-100 p-3 gradient-${card.color}`">
-            <div class="card-body">
-              <i :class="`${card.icon} icon-lg mb-2 text-${card.color}`"></i>
-              <h3 class="fw-bold mb-1">{{ card.value }}</h3>
-              <p class="text-muted small mb-0">{{ card.title }}</p>
-            </div>
-          </div>
+      <div class="stats-grid">
+        <div class="stat-card" v-for="card in overviewCards" :key="card.title">
+          <h6>{{ card.title }}</h6>
+          <h3>{{ card.value }}</h3>
         </div>
       </div>
 
       <!-- Charts -->
-      <div class="row g-3 mb-4">
+      <div class="charts-grid">
         <!-- New Registrations -->
-        <div class="col-lg-6">
-          <div class="card p-3 h-100 shadow-sm border-0">
-            <h6 class="fw-bold text-primary mb-3">📈 New Registrations</h6>
-            <div class="chart-placeholder">
-              <i class="bi bi-graph-up-arrow fs-2 text-secondary mb-2"></i>
-              <p class="text-muted small mb-0">[Line Chart — User registrations over time]</p>
-            </div>
+        <div class="chart-card">
+          <h5>New Registrations</h5>
+          <div class="chart-placeholder">
+            <p>Line Chart — User registrations over time</p>
           </div>
         </div>
 
         <!-- Completion Rate -->
-        <div class="col-lg-6">
-          <div class="card p-3 h-100 shadow-sm border-0">
-            <h6 class="fw-bold text-primary mb-3">🎯 Course Completion Rate</h6>
-            <div class="table-responsive small">
-              <table class="table table-borderless align-middle mb-0">
-                <thead class="table-light">
-                  <tr>
-                    <th>Course</th>
-                    <th>Completion</th>
-                    <th>Students</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="course in courseCompletion" :key="course.id">
-                    <td class="fw-semibold">{{ course.name }}</td>
-                    <td style="width: 40%">
-                      <div class="progress rounded-pill" style="height: 8px;">
-                        <div class="progress-bar" :class="course.completionRate >= 70 ? 'bg-success' : 'bg-warning'"
-                          :style="{ width: course.completionRate + '%' }"></div>
-                      </div>
-                      <small class="text-muted">{{ course.completionRate }}%</small>
-                    </td>
-                    <td class="text-muted">{{ course.totalStudents }}</td>
-                  </tr>
-                </tbody>
-              </table>
+        <div class="chart-card">
+          <h5>Course Completion Rate</h5>
+          <div class="course-progress-list">
+            <div v-for="course in courseCompletion" :key="course.id" class="progress-item">
+              <div class="progress-header">
+                <span class="course-name">{{ course.name }}</span>
+                <span class="progress-text">{{ course.completionRate }}% ({{ course.totalStudents }} students)</span>
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress-bar-fill" :style="{ width: course.completionRate + '%' }"></div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Revenue Section -->
-      <div class="row g-3">
+      <div class="charts-grid">
         <!-- Monthly Revenue -->
-        <div class="col-lg-6">
-          <div class="card p-3 h-100 shadow-sm border-0">
-            <h6 class="fw-bold text-primary mb-3">💰 Revenue by Month</h6>
-            <div class="chart-placeholder">
-              <i class="bi bi-bar-chart-line fs-2 text-secondary mb-2"></i>
-              <p class="text-muted small mb-0">[Bar Chart — Monthly revenue trend]</p>
-            </div>
+        <div class="chart-card">
+          <h5>Revenue by Month</h5>
+          <div class="chart-placeholder">
+            <p>Bar Chart — Monthly revenue trend</p>
           </div>
         </div>
 
         <!-- Revenue by Course -->
-        <div class="col-lg-6">
-          <div class="card p-3 h-100 shadow-sm border-0">
-            <h6 class="fw-bold text-primary mb-3">🏆 Revenue by Course</h6>
-            <div class="table-responsive small">
-              <table class="table table-borderless align-middle mb-0">
-                <thead class="table-light">
-                  <tr>
-                    <th>Course</th>
-                    <th>Total Revenue</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="course in revenueByCourse" :key="course.id">
-                    <td class="fw-semibold">{{ course.name }}</td>
-                    <td>
-                      <span class="badge bg-success-soft text-success fw-semibold px-3 py-2">
-                        ${{ course.revenue }}
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+        <div class="chart-card">
+          <h5>Revenue by Course</h5>
+          <div class="revenue-list">
+            <div v-for="course in revenueByCourse" :key="course.id" class="revenue-item">
+              <span class="course-name">{{ course.name }}</span>
+              <span class="revenue-value">${{ course.revenue }}</span>
             </div>
           </div>
         </div>
@@ -140,66 +98,178 @@ export default {
 
 <style scoped>
 .admin-dashboard {
-  background: #f8fafc;
-  font-family: "Inter", "Segoe UI", sans-serif;
+  background: #f8f9fa;
   min-height: 100vh;
+  padding: 40px;
 }
 
-/* Gradient Cards */
-.gradient-primary {
-  background: linear-gradient(145deg, #e3f2fd, #ffffff);
+.dashboard-wrapper {
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
-.gradient-success {
-  background: linear-gradient(145deg, #e8f5e9, #ffffff);
+.dashboard-header {
+  margin-bottom: 40px;
 }
 
-.gradient-info {
-  background: linear-gradient(145deg, #e0f7fa, #ffffff);
-}
-
-.icon-lg {
-  font-size: 2rem;
-}
-
-/* Hover effect */
-.card {
-  border-radius: 14px;
-  transition: all 0.25s ease;
-}
-
-.card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
-}
-
-/* Chart placeholder */
-.chart-placeholder {
-  background: #f9fafb;
-  border: 2px dashed #dee2e6;
-  border-radius: 10px;
-  padding: 1.5rem;
-  text-align: center;
-  color: #6c757d;
-}
-
-/* Table style */
-.table th {
+.dashboard-header h1 {
+  font-size: 32px;
   font-weight: 600;
-  color: #495057;
+  color: #1a1a1a;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.5px;
 }
 
-.table td {
-  color: #555;
+.dashboard-header p {
+  color: #666;
+  font-size: 15px;
+  margin: 0;
 }
 
-/* Badge */
-.bg-success-soft {
-  background-color: #eaf8ee !important;
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-bottom: 40px;
 }
 
-/* Progress bar animation */
-.progress-bar {
-  transition: width 0.4s ease-in-out;
+.stat-card {
+  background: white;
+  padding: 24px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.stat-card h6 {
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 8px 0;
+}
+
+.stat-card h3 {
+  font-size: 28px;
+  font-weight: 600;
+  margin: 0;
+  color: #1a1a1a;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.chart-card {
+  background: white;
+  padding: 28px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.chart-card h5 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 24px 0;
+}
+
+.chart-placeholder {
+  background: #f8f9fa;
+  border: 2px dashed #e5e7eb;
+  border-radius: 6px;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.chart-placeholder p {
+  color: #999;
+  font-size: 14px;
+  margin: 0;
+}
+
+.course-progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.progress-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.course-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+
+.progress-text {
+  font-size: 13px;
+  color: #666;
+}
+
+.progress-bar-container {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1f2937, #374151);
+  transition: width 0.3s ease;
+}
+
+.revenue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.revenue-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.revenue-item:last-child {
+  border-bottom: none;
+}
+
+.revenue-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+@media (max-width: 768px) {
+  .admin-dashboard {
+    padding: 20px;
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
