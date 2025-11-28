@@ -50,7 +50,7 @@
                         </div>
                         <div class="course-actions">
                             <button @click="editCourse(course.id)" class="btn-edit">Edit</button>
-                            <button @click="viewCourse(course.id)" class="btn-view">View</button>
+                            <button @click="viewCourse(course.id)" class="btn-view">Content</button>
                         </div>
                     </div>
                 </div>
@@ -159,7 +159,8 @@ export default {
         },
 
         viewCourse(courseId) {
-            this.$router.push(`/instructor/courses/${courseId}`)
+            // Navigate directly to content management (lessons) instead of detail page
+            this.$router.push(`/instructor/courses/${courseId}/lessons`)
         },
 
         viewReports() {

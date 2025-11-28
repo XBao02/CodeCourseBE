@@ -1,5 +1,5 @@
 <template>
-    <div class="course-lessons">
+<div class="course-lessons">
     <div class="header">
       <h1>Course Content Management</h1>
       <div class="actions">
@@ -63,9 +63,17 @@
               <label>Video URL</label>
               <input v-model.trim="section.newLesson.videoUrl" type="text" placeholder="https://..." />
             </div>
+            <!-- Upload to Drive -->
             <div class="form-group">
-              <label>Duration (seconds)</label>
-              <input v-model.number="section.newLesson.durationSeconds" type="number" min="0" placeholder="600" />
+              <label>Or upload a video</label>
+              <input type="file" accept="video/*" @change="onUploadNewVideo(section, $event)" :disabled="newVideoUploadingSectionId===section.id" />
+              <small v-if="newVideoUploadingSectionId===section.id">Uploading to Google Drive...</small>
+            </div>
+          </div>
+          <div v-if="section.newLesson.videoUrl" class="form-row">
+            <div class="form-group full">
+              <label>Preview</label>
+              <video :src="section.newLesson.videoUrl" controls style="max-width:100%;border-radius:8px;" />
             </div>
           </div>
           <div class="form-actions">
@@ -125,8 +133,15 @@
                     <input v-model="lesson.editVideoUrl" type="url" placeholder="https://..." />
                   </div>
                   <div class="form-group">
-                    <label>Duration (seconds)</label>
-                    <input v-model.number="lesson.editDurationSeconds" type="number" min="0" placeholder="600" />
+                    <label>Or upload a video</label>
+                    <input type="file" accept="video/*" @change="onUploadLessonVideo(lesson, $event)" :disabled="!!videoUploading[lesson.id]" />
+                    <small v-if="videoUploading[lesson.id]">Uploading to Google Drive...</small>
+                  </div>
+                </div>
+                <div v-if="lesson.editVideoUrl" class="form-row">
+                  <div class="form-group full">
+                    <label>Preview</label>
+                    <video :src="lesson.editVideoUrl" controls style="max-width:100%;border-radius:8px;" />
                   </div>
                 </div>
               </div>
@@ -339,6 +354,8 @@ export default {
       generatedQuestions: [],
       expandedQuestions: [],
       selectedLessonForAI: null,
+      newVideoUploadingSectionId: null,
+      videoUploading: {},
     };
   },
   async mounted() {
@@ -387,7 +404,6 @@ export default {
             type: "video",
             isPreview: false,
             videoUrl: "",
-            durationSeconds: null,
           },
         }));
         const map = {};
@@ -398,7 +414,6 @@ export default {
             editType: l.type,
             editPreview: !!l.isPreview,
             editVideoUrl: l.videoUrl || '',
-            editDurationSeconds: l.durationSeconds || null,
             expanded: false,
             testsExpanded: false,
             addingTest: false,
@@ -535,7 +550,6 @@ export default {
         type: "video",
         isPreview: false,
         videoUrl: "",
-        durationSeconds: null,
       };
     },
     cancelAddLesson(section) {
@@ -549,7 +563,6 @@ export default {
           type: section.newLesson.type,
           isPreview: !!section.newLesson.isPreview,
           videoUrl: section.newLesson.videoUrl || undefined,
-          durationSeconds: section.newLesson.durationSeconds || undefined,
         };
         const res = await fetch(
           `http://localhost:5000/api/sections/${section.id}/lessons`,
@@ -578,7 +591,6 @@ export default {
         // Add type-specific fields
         if (lesson.editType === 'video') {
           payload.videoUrl = lesson.editVideoUrl || undefined;
-          payload.durationSeconds = lesson.editDurationSeconds || undefined;
         }
         
         const res = await fetch(
@@ -902,8 +914,55 @@ export default {
         alert(`Lỗi khi lưu câu hỏi: ${e.message}`);
       }
     },
-  },
-};
+    async uploadToDrive(file) {
+      const form = new FormData();
+      form.append('file', file);
+      // Optional: form.append('folder_id', '<YOUR_FOLDER_ID>')
+      const res = await fetch('http://localhost:5000/api/upload/video', {
+        method: 'POST',
+        body: form,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || `Upload failed (HTTP ${res.status})`);
+      // Prefer direct downloadable URL for video src
+      return data.downloadUrl || data.viewUrl;
+    },
+    async onUploadNewVideo(section, evt) {
+      const file = evt.target.files && evt.target.files[0];
+      if (!file) return;
+      try {
+        this.newVideoUploadingSectionId = section.id;
+        const url = await this.uploadToDrive(file);
+        section.newLesson.videoUrl = url;
+        this.$toast?.success('Uploaded video');
+      } catch (e) {
+        console.error(e);
+        this.$toast?.error(e.message || 'Upload failed');
+        alert(e.message || 'Upload failed');
+      } finally {
+        this.newVideoUploadingSectionId = null;
+        evt.target.value = '';
+      }
+    },
+    async onUploadLessonVideo(lesson, evt) {
+      const file = evt.target.files && evt.target.files[0];
+      if (!file) return;
+      try {
+        this.$set ? this.$set(this.videoUploading, lesson.id, true) : (this.videoUploading = { ...this.videoUploading, [lesson.id]: true });
+        const url = await this.uploadToDrive(file);
+        lesson.editVideoUrl = url;
+        this.$toast?.success('Uploaded video');
+      } catch (e) {
+        console.error(e);
+        this.$toast?.error(e.message || 'Upload failed');
+        alert(e.message || 'Upload failed');
+      } finally {
+        if (this.$delete) this.$delete(this.videoUploading, lesson.id); else { const { [lesson.id]:_, ...rest } = this.videoUploading; this.videoUploading = rest; }
+        evt.target.value = '';
+      }
+    },
+  }
+}
 </script>
 
 <style scoped>

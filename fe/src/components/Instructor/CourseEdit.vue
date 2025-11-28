@@ -2,45 +2,45 @@
     <div class="course-edit">
         <div class="edit-header">
             <button @click="goBack" class="btn-back">
-                <i class="fas fa-arrow-left"></i> Quay lại
+                <i class="fas fa-arrow-left"></i> Back
             </button>
-            <h1>{{ isEdit ? 'Sửa khóa học' : 'Tạo khóa học mới' }}</h1>
+            <h1>{{ isEdit ? 'Edit Course' : 'Create New Course' }}</h1>
         </div>
 
         <div v-if="loading" class="loading">
             <div class="spinner"></div>
-            <p>Đang tải...</p>
+            <p>Loading...</p>
         </div>
 
         <div v-else class="edit-container">
             <form @submit.prevent="saveCourse" class="edit-form">
                 <!-- Basic Info -->
                 <section class="form-section">
-                    <h2>Thông tin cơ bản</h2>
+                    <h2>Basic Information</h2>
                     
                     <div class="form-group">
-                        <label>Tiêu đề khóa học *</label>
+                        <label>Course Title *</label>
                         <input 
                             type="text" 
                             v-model="form.title" 
                             required
-                            placeholder="Nhập tiêu đề khóa học"
+                            placeholder="Enter course title"
                         >
                     </div>
 
                     <div class="form-group">
-                        <label>Mô tả khóa học *</label>
+                        <label>Course Description *</label>
                         <textarea 
                             v-model="form.description" 
                             rows="4"
                             required
-                            placeholder="Nhập mô tả chi tiết về khóa học"
+                            placeholder="Enter a detailed description of the course"
                         ></textarea>
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Giá (VND) *</label>
+                            <label>Price (VND) *</label>
                             <input 
                                 type="number" 
                                 v-model.number="form.price" 
@@ -50,11 +50,11 @@
                             >
                         </div>
                         <div class="form-group">
-                            <label>Trạng thái *</label>
+                            <label>Status *</label>
                             <select v-model="form.status" required>
-                                <option value="draft">Bản nháp</option>
-                                <option value="active">Đang hoạt động</option>
-                                <option value="archived">Đã lưu trữ</option>
+                                <option value="draft">Draft</option>
+                                <option value="active">Active</option>
+                                <option value="archived">Archived</option>
                             </select>
                         </div>
                     </div>
@@ -62,10 +62,10 @@
 
                 <!-- Images -->
                 <section class="form-section">
-                    <h2>Hình ảnh</h2>
+                    <h2>Images</h2>
                     
                     <div class="form-group">
-                        <label>Ảnh Thumbnail URL *</label>
+                        <label>Thumbnail URL *</label>
                         <input 
                             type="url" 
                             v-model="form.thumbnail"
@@ -75,72 +75,18 @@
                     </div>
 
                     <div v-if="form.thumbnail" class="thumbnail-preview">
-                        <p>Xem trước:</p>
+                        <p>Preview:</p>
                         <img :src="form.thumbnail" :alt="form.title" @error="onImageError">
-                    </div>
-                </section>
-
-                <!-- Course Details -->
-                <section class="form-section">
-                    <h2>Chi tiết khóa học</h2>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Số bài học</label>
-                            <input 
-                                type="number" 
-                                v-model.number="form.lessons" 
-                                min="0"
-                                placeholder="0"
-                            >
-                        </div>
-                        <div class="form-group">
-                            <label>Thời lượng (giờ)</label>
-                            <input 
-                                type="number" 
-                                v-model.number="form.duration" 
-                                min="0"
-                                placeholder="0"
-                            >
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Mức độ</label>
-                            <select v-model="form.level">
-                                <option value="beginner">Beginner</option>
-                                <option value="intermediate">Intermediate</option>
-                                <option value="advanced">Advanced</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Danh mục</label>
-                            <input 
-                                type="text" 
-                                v-model="form.category"
-                                placeholder="Nhập danh mục"
-                            >
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Mô tả yêu cầu</label>
-                        <textarea 
-                            v-model="form.requirements" 
-                            rows="3"
-                            placeholder="Các yêu cầu tiên quyết..."
-                        ></textarea>
                     </div>
                 </section>
 
                 <!-- Form Actions -->
                 <section class="form-actions">
                     <button type="button" @click="goBack" class="btn-secondary">
-                        Hủy
+                        Cancel
                     </button>
                     <button type="submit" class="btn-primary">
-                        {{ isEdit ? 'Cập nhật' : 'Tạo khóa học' }}
+                        {{ isEdit ? 'Update' : 'Create Course' }}
                     </button>
                 </section>
             </form>
@@ -161,11 +107,6 @@ export default {
                 price: 0,
                 thumbnail: '',
                 status: 'draft',
-                lessons: 0,
-                duration: 0,
-                level: 'beginner',
-                category: '',
-                requirements: ''
             }
         }
     },
@@ -177,51 +118,77 @@ export default {
             this.loading = true
             try {
                 const courseId = this.$route.params.id
-                
                 if (courseId) {
                     this.isEdit = true
-                    // Mock data - thay bằng API call thực
-                    const mockCourse = {
-                        id: parseInt(courseId),
-                        title: 'JavaScript Fundamentals',
-                        description: 'Học JavaScript từ cơ bản đến nâng cao',
-                        price: 299000,
-                        thumbnail: 'https://via.placeholder.com/1200x300/3498db/ffffff?text=JavaScript',
-                        status: 'active',
-                        lessons: 24,
-                        duration: 18,
-                        level: 'beginner',
-                        category: 'Web Development',
-                        requirements: 'Kiến thức cơ bản về HTML/CSS'
+                    // Fetch real course data from backend
+                    const res = await fetch(`http://localhost:5000/api/courses/${courseId}`)
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}))
+                        throw new Error(err.message || `Failed to load course (HTTP ${res.status})`)
                     }
-                    this.form = { ...mockCourse }
+                    const course = await res.json()
+                    // Map to form fields (assuming backend returns basic fields)
+                    this.form = {
+                        title: course.title || '',
+                        description: course.description || '',
+                        price: Number(course.price) || 0,
+                        thumbnail: course.thumbnail || '',
+                        status: course.status || 'draft',
+                    }
+                } else {
+                    this.isEdit = false
                 }
             } catch (error) {
-                console.error('Lỗi khi tải khóa học:', error)
+                console.error('Error loading course:', error)
+                this.$toast?.error(error.message || 'Failed to load course')
             }
             this.loading = false
         },
 
         async saveCourse() {
             try {
-                if (this.isEdit) {
-                    // API call to update
-                    console.log('Updating course:', this.form)
-                } else {
-                    // API call to create
-                    console.log('Creating course:', this.form)
+                const baseUrl = 'http://localhost:5000/api/courses'
+                const instructorId = 2 // TODO: use auth state/token
+                const payload = {
+                    title: this.form.title,
+                    description: this.form.description,
+                    price: Number(this.form.price),
+                    thumbnail: this.form.thumbnail,
+                    status: this.form.status,
+                    instructor_id: instructorId,
                 }
-                
-                this.$toast.success(this.isEdit ? 'Đã cập nhật khóa học' : 'Đã tạo khóa học')
+
+                let res
+                if (this.isEdit) {
+                    const id = this.$route.params.id
+                    res = await fetch(`${baseUrl}/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                    })
+                } else {
+                    res = await fetch(baseUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                    })
+                }
+
+                const data = await res.json().catch(() => ({}))
+                if (!res.ok) {
+                    throw new Error(data.message || `Failed to save course (HTTP ${res.status})`)
+                }
+
+                this.$toast?.success(this.isEdit ? 'Course updated' : 'Course created')
                 this.$router.push('/instructor/courses')
             } catch (error) {
-                console.error('Lỗi khi lưu khóa học:', error)
-                this.$toast.error('Lỗi khi lưu khóa học')
+                console.error('Error saving course:', error)
+                this.$toast?.error(error.message || 'Failed to save course')
             }
         },
 
         onImageError() {
-            console.error('Lỗi khi tải hình ảnh')
+            console.error('Failed to load image')
         },
 
         goBack() {

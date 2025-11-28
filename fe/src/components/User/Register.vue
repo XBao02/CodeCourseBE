@@ -1,33 +1,11 @@
 <template>
   <div class="auth-page register-theme">
-    <div class="background-grid"></div>
-    <div class="glow-ring glow-ring-1"></div>
-    <div class="glow-ring glow-ring-2"></div>
 
     <div class="auth-shell">
       <div class="auth-card">
-        <section class="card-visual">
-          <p class="eyebrow">CodeCourse Studio</p>
-          <h1>Shape the next version of you.</h1>
-          <p class="subtitle">
-            Clean workspace. Elegant tooling. Classic typography with futuristic flow.
-          </p>
-
-          <div class="heritage-list">
-            <article>
-              <h3>Guided tracks</h3>
-              <p>Structured paths that respect your craft and time.</p>
-            </article>
-            <article>
-              <h3>Mentor rooms</h3>
-              <p>Feedback loops with people who’ve shipped real products.</p>
-            </article>
-            <article>
-              <h3>Daily rituals</h3>
-              <p>Minimal prompts that keep the streak alive.</p>
-            </article>
-          </div>
-        </section>
+        <router-link to="/" class="back-button" title="Back to home">
+          <span>←</span>
+        </router-link>
 
         <section class="card-form">
           <header>
@@ -80,16 +58,6 @@
               </label>
             </div>
 
-            <label class="inline-check">
-              <input type="checkbox" v-model="agreedToTerms" />
-              <span>
-                I agree to the
-                <a href="#" target="_blank">Terms of Service</a>
-                and
-                <a href="#" target="_blank">Privacy Policy</a>.
-              </span>
-            </label>
-
             <p v-if="errorMessage" class="banner error" role="alert">
               {{ errorMessage }}
             </p>
@@ -98,7 +66,7 @@
             </p>
 
             <button type="submit" :disabled="isSubmitting">
-              {{ isSubmitting ? "Creating account..." : "Launch student space" }}
+              {{ isSubmitting ? "Creating account..." : "REGISTER" }}
             </button>
           </form>
 
@@ -167,8 +135,9 @@ export default {
         });
         persistSession(payload, true);
         this.successMessage = "Account created successfully. Redirecting...";
+        const next = payload.nextRoute || getRoleLandingPath(payload.user?.role || defaultRole);
         setTimeout(() => {
-          this.$router.push(getRoleLandingPath(payload.user?.role || defaultRole));
+          this.$router.push(next || "/");
         }, 800);
       } catch (error) {
         this.errorMessage =
@@ -183,170 +152,140 @@ export default {
 </script>
 
 <style scoped>
-:root {
-  color-scheme: dark;
-}
-
-.auth-page {
-  position: relative;
+.auth-page.register-theme {
+  background: linear-gradient(120deg, #f8fafc 0%, #e0e7ef 100%);
   min-height: 100vh;
-  padding: 4rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at 15% 20%, #232742, #090b17 70%);
-  overflow: hidden;
-  font-family: "Inter", "Space Grotesk", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #f1f5f9;
 }
 
 .background-grid {
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(transparent 94%, rgba(148, 163, 184, 0.08) 6%), linear-gradient(90deg, transparent 94%, rgba(148, 163, 184, 0.08) 6%);
-  background-size: 60px 60px;
-  opacity: 0.35;
+  display: none;
 }
 
 .glow-ring {
-  position: absolute;
-  width: 380px;
-  height: 380px;
-  border-radius: 50%;
-  filter: blur(45px);
-  opacity: 0.7;
-}
-
-.glow-ring-1 {
-  top: -120px;
-  left: 6%;
-  background: radial-gradient(circle, rgba(96, 165, 250, 0.3), transparent 65%);
-}
-
-.glow-ring-2 {
-  bottom: -110px;
-  right: 10%;
-  background: radial-gradient(circle, rgba(74, 222, 128, 0.28), transparent 65%);
+  display: none;
 }
 
 .auth-shell {
-  width: min(1100px, 100%);
-  position: relative;
-  z-index: 2;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 0 20px;
 }
 
 .auth-card {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  border-radius: 34px;
-  overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  background: rgba(8, 12, 24, 0.92);
-  backdrop-filter: blur(22px);
-  box-shadow: 0 40px 90px rgba(8, 11, 23, 0.8);
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.1);
+  padding: 36px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
 .card-visual {
-  padding: 3.25rem;
-  border-right: 1px solid rgba(148, 163, 184, 0.15);
-  background: linear-gradient(180deg, rgba(59, 130, 246, 0.28), rgba(15, 23, 42, 0.6));
+  background: none;
+  border: none;
+  padding-bottom: 0;
 }
 
-.card-visual h1 {
-  font-size: clamp(2.2rem, 3.7vw, 3.2rem);
-  margin-bottom: 1rem;
-}
-
+.card-visual h1,
+.card-visual .eyebrow,
 .card-visual .subtitle {
-  color: rgba(226, 232, 240, 0.78);
-  margin-bottom: 2.5rem;
-  line-height: 1.65;
-}
-
-.heritage-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.3rem;
-}
-
-.heritage-list article {
-  background: rgba(13, 19, 35, 0.75);
-  border-radius: 20px;
-  padding: 1rem 1.2rem;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-}
-
-.heritage-list h3 {
-  margin: 0 0 0.35rem;
-}
-
-.heritage-list p {
-  margin: 0;
-  color: rgba(226, 232, 240, 0.7);
-  font-size: 0.95rem;
+  color: #1e293b;
 }
 
 .card-form {
-  padding: 3.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.7rem;
+  background: none;
+  border: none;
+  padding-top: 0;
 }
 
-.card-form .subtitle {
-  color: rgba(226, 232, 240, 0.75);
+.card-form header h2,
+.card-form header .eyebrow,
+.card-form header .subtitle {
+  color: #1e293b;
+}
+
+.card-form header h2 {
+  font-size: 26px;
+  margin: 8px 0 4px 0;
+}
+
+.card-form header .eyebrow {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #3b82f6;
   margin: 0;
 }
 
-.card-form form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.35rem;
+.card-form header .subtitle {
+  font-size: 0.9rem;
+  margin: 8px 0 24px 0;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.5rem;
   font-size: 0.9rem;
-  color: rgba(226, 232, 240, 0.85);
+  color: #475569;
+  margin-bottom: 18px;
+}
+
+.field span {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.9rem;
 }
 
 .field input {
-  border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.45);
-  background: rgba(15, 23, 42, 0.85);
-  padding: 0.95rem 1.15rem;
-  color: #f8fafc;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #1e293b;
+  border-radius: 8px;
+  padding: 0.8rem 0.95rem;
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.field input::placeholder {
+  color: #94a3b8;
 }
 
 .field input:focus {
-  border-color: #60a5fa;
+  border-color: #3b82f6;
+  background: #ffffff;
   outline: none;
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.25);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .field-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
+  gap: 12px;
 }
 
 .inline-check {
   display: flex;
   gap: 0.7rem;
-  color: rgba(226, 232, 240, 0.75);
+  color: #475569;
   font-size: 0.85rem;
+  margin: 1.5rem 0;
 }
 
 .inline-check input {
-  accent-color: #60a5fa;
+  accent-color: #3b82f6;
+  cursor: pointer;
 }
 
 .inline-check a {
-  color: #60a5fa;
+  color: #3b82f6;
   text-decoration: none;
+  font-weight: 500;
 }
 
 .inline-check a:hover {
@@ -354,40 +293,45 @@ export default {
 }
 
 .banner {
-  border-radius: 16px;
-  padding: 0.95rem 1rem;
-  font-size: 0.9rem;
+  border-radius: 8px;
+  padding: 0.85rem 0.95rem;
+  font-size: 0.85rem;
   border: 1px solid transparent;
+  margin-bottom: 18px;
 }
 
 .banner.error {
-  background: rgba(248, 113, 113, 0.15);
-  border-color: rgba(248, 113, 113, 0.45);
-  color: #fecaca;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #dc2626;
 }
 
 .banner.success {
-  background: rgba(74, 222, 128, 0.18);
-  border-color: rgba(74, 222, 128, 0.45);
-  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #16a34a;
 }
 
 button[type="submit"] {
+  width: 100%;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #fff;
   border: none;
-  border-radius: 999px;
-  padding: 0.95rem;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #0f172a;
-  background: linear-gradient(120deg, #60a5fa, #34d399);
-  box-shadow: 0 18px 38px rgba(20, 83, 45, 0.45);
+  border-radius: 8px;
+  padding: 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  transition: all 0.2s ease;
+  margin-bottom: 16px;
 }
 
-button[type="submit"]:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 24px 42px rgba(20, 83, 45, 0.55);
+button[type="submit"]:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.25);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 }
 
 button[type="submit"]:disabled {
@@ -398,13 +342,14 @@ button[type="submit"]:disabled {
 }
 
 .card-form footer {
-  font-size: 0.9rem;
-  color: rgba(226, 232, 240, 0.8);
+  color: #2563eb;
+  text-align: center;
+  font-size: 0.85rem;
 }
 
 .inline-link {
-  color: #60a5fa;
-  text-decoration: none;
+  color: #3b82f6;
+  font-weight: 600;
 }
 
 .inline-link:hover {
@@ -413,12 +358,32 @@ button[type="submit"]:disabled {
 
 @media (max-width: 960px) {
   .auth-card {
-    grid-template-columns: 1fr;
+    padding: 24px 12px;
   }
+}
 
-  .card-visual {
-    border-right: none;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.15);
-  }
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
+  text-decoration: none;
+  font-size: 1.2rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+
+.back-button:hover {
+  background: #e0e7ff;
+  border-color: #3b82f6;
+  color: #3b82f6;
+  transform: translateX(-2px);
 }
 </style>

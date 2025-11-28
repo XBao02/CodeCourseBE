@@ -194,11 +194,10 @@ export default {
         },
 
         getStatusText(status) {
-            // Logic map status (đã đúng)
             const statusMap = {
-                active: 'Đang hoạt động',
-                draft: 'Bản nháp',
-                archived: 'Đã lưu trữ'
+                active: 'Active',
+                draft: 'Draft',
+                archived: 'Archived'
             }
             return statusMap[status] || status
         },

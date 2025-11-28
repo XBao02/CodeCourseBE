@@ -27,6 +27,9 @@ def create_app():
         "mysql+pymysql://root:123@localhost:3306/CodeCourse"
     )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    
+    # Debug: Log JWT_SECRET_KEY on startup
+    print(f"✅ Backend started with JWT_SECRET_KEY: {app.config['JWT_SECRET_KEY'][:30]}...")
 
     # Init extensions
     db.init_app(app)

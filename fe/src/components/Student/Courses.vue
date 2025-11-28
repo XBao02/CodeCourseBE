@@ -154,12 +154,39 @@
 
 <script>
 import axios from "axios";
+import { getStoredSession } from "../../services/authService";
+
+// Tạo axios instance với interceptor để tự động gửi token
+const api = axios.create({
+    baseURL: 'http://localhost:5000',
+    timeout: 15000,
+    headers: {
+        'Content-Type': 'application/json'
+    }
+});
+
+// Interceptor để tự động thêm token vào mọi request
+api.interceptors.request.use((config) => {
+    const session = getStoredSession();
+    if (session?.access_token) {
+        config.headers.Authorization = `Bearer ${session.access_token}`;
+        console.log("🔑 Token added to request:", config.url);
+        console.log("🔑 Full Token (first 50 chars):", session.access_token.substring(0, 50) + "...");
+        console.log("🔑 Full Token (COMPLETE):", session.access_token);
+    } else {
+        console.warn("⚠️ No token in session");
+        console.warn("📦 Session stored:", session);
+    }
+    return config;
+}, (error) => {
+    return Promise.reject(error);
+});
 
 export default {
     data() {
         return {
             courses: [],
-            myCourses: [], // Danh sách khóa học đã đăng ký - CHỈ lấy từ API /my-courses
+            myCourses: [],
             studyPlans: [],
             selectedCourse: null,
             paymentStep: "info",
@@ -170,22 +197,13 @@ export default {
     },
 
     computed: {
-        // Lọc các khóa học chưa đăng ký để hiển thị ở danh sách bên trái
-        // Sử dụng field isRegistered từ API để đảm bảo chính xác
         availableCourses() {
-            // Chỉ hiển thị khóa học có isRegistered === false (chưa đăng ký)
-            // Xử lý cả trường hợp isRegistered là undefined/null (coi như chưa đăng ký)
-            return this.courses.filter(c => c.isRegistered !== true);
+            // Filter out courses that are already in myCourses
+            const enrolledIds = new Set(this.myCourses.map(c => c.id));
+            return this.courses.filter(c => !enrolledIds.has(c.id));
         },
-        // Chỉ hiển thị các khóa học đã đăng ký từ API my-courses
-        // Đảm bảo chỉ hiển thị khi thực sự có enrollment trong database
         registeredCourses() {
-            // Đảm bảo chỉ trả về mảng, không bao giờ undefined
-            // Chỉ hiển thị khóa học từ API /my-courses (đã có enrollment trong DB)
-            if (!Array.isArray(this.myCourses)) {
-                return [];
-            }
-            return this.myCourses;
+            return Array.isArray(this.myCourses) ? this.myCourses : [];
         },
     },
 
@@ -194,61 +212,82 @@ export default {
     },
 
     methods: {
-
         // Gộp toàn bộ gọi API vào 1 hàm loadData()
-        loadData() {
-            const studentId = 1; // Giả sử lấy từ auth hoặc context
+        async loadData() {
+            console.log("🔄 Bắt đầu load data...");
             
-            // Load tất cả khóa học (có field isRegistered từ backend)
-            axios.get("http://localhost:5000/api/student/courses")
-                .then(res => {
-                    this.courses = Array.isArray(res.data.courses) ? res.data.courses : [];
-                    console.log("✅ Đã tải courses:", this.courses.length, "khóa học");
-                })
-                .catch(err => {
-                    console.error("❌ Lỗi tải courses:", err);
-                    this.courses = [];
-                });
+            const session = getStoredSession();
+            console.log("📦 Session:", session);
+            
+            const studentId = session?.user?.studentId || session?.user?.id;
+            console.log("👤 Student ID:", studentId);
+            
+            // Nếu chưa đăng nhập hoặc thiếu studentId thì vẫn load tất cả courses
+            // nhưng không load my-courses
+            
+            try {
+                // Lấy danh sách tất cả khóa học (không cần studentId)
+                console.log("📡 Đang gọi API /api/student/courses...");
+                const allRes = await api.get(`/api/student/courses`);
+                console.log("✅ Response từ /courses:", allRes.data);
+                
+                const allCourses = Array.isArray(allRes.data?.courses) ? allRes.data.courses : (Array.isArray(allRes.data) ? allRes.data : []);
+                console.log("📚 Số khóa học nhận được:", allCourses.length);
+                
+                // Chuẩn hóa trường hiển thị
+                this.courses = allCourses.map(c => ({
+                    id: c.id,
+                    title: c.title,
+                    level: c.level || "beginner",
+                    price: Number(c.price || 0),
+                    currency: c.currency || "VND",
+                    isPublic: c.is_public === true || c.isPublic === true,
+                    image: c.thumbnail || c.image || "/public/vite.svg",
+                    slug: c.slug || String(c.id),
+                    instructorName: c.instructorName || c.instructor || "",
+                }));
+                console.log("✅ Đã chuẩn hóa courses:", this.courses);
 
-            // Load khóa học đã đăng ký - CHỈ lấy từ API /my-courses
-            // API này chỉ trả về khóa học có enrollment với status='active' trong database
-            axios.get("http://localhost:5000/api/student/my-courses")
-                .then(res => {
-                    // Đảm bảo myCourses luôn là mảng rỗng nếu không có dữ liệu
-                    const courses = res.data?.courses;
-                    if (Array.isArray(courses)) {
-                        this.myCourses = courses;
-                        console.log("✅ Đã tải my-courses:", this.myCourses.length, "khóa học đã đăng ký");
-                        
-                        // Log để debug
-                        if (this.myCourses.length > 0) {
-                            console.log("Danh sách khóa học đã đăng ký:", this.myCourses.map(c => `${c.title} (ID: ${c.id})`));
-                        } else {
-                            console.log("✅ Chưa có khóa học nào được đăng ký - phần 'Khóa học của tôi' sẽ trống");
-                        }
-                    } else {
-                        // Nếu không phải mảng, set thành mảng rỗng
-                        console.warn("⚠️ API trả về dữ liệu không đúng format, set myCourses = []");
-                        this.myCourses = [];
-                    }
-                })
-                .catch(err => {
-                    console.error("❌ Lỗi tải my-courses:", err);
-                    // Đảm bảo luôn là mảng rỗng khi có lỗi
+                // Lấy danh sách khóa học đã đăng ký của student (chỉ khi có studentId)
+                if (studentId) {
+                    console.log("📡 Đang gọi API /api/student/my-courses...");
+                    const mineRes = await api.get(`/api/student/my-courses`, {
+                        params: { student_id: studentId }
+                    });
+                    console.log("✅ Response từ /my-courses:", mineRes.data);
+                    
+                    const mineCourses = Array.isArray(mineRes.data?.courses) ? mineRes.data.courses : (Array.isArray(mineRes.data) ? mineRes.data : []);
+                    console.log("📚 Số khóa học đã đăng ký:", mineCourses.length);
+                    
+                    this.myCourses = mineCourses.map(c => ({
+                        id: c.id,
+                        title: c.title,
+                        level: c.level || "beginner",
+                        price: Number(c.price || 0),
+                        currency: c.currency || "VND",
+                        image: c.thumbnail || c.image || "/public/vite.svg",
+                    }));
+                    console.log("✅ Đã chuẩn hóa myCourses:", this.myCourses);
+                } else {
+                    console.log("⚠️ Không có studentId, bỏ qua load my-courses");
                     this.myCourses = [];
-                    console.log("✅ Đã set myCourses = [] do lỗi");
-                });
-
-            // axios.get(`http://localhost:5000/api/student/study-plans/${studentId}`)
-            //     .then(res => {
-            //         this.studyPlans = res.data.plans || [];
-            //     })
-            //     .catch(err => console.error("Lỗi tải studyPlans:", err));
+                }
+                
+                console.log("🎉 Load data hoàn tất!");
+                console.log("📊 Available courses:", this.availableCourses.length);
+                console.log("📊 My courses:", this.registeredCourses.length);
+                
+            } catch (err) {
+                console.error("❌ Lỗi tải dữ liệu courses:", err);
+                console.error("❌ Chi tiết lỗi:", err.response?.data || err.message);
+                this.courses = [];
+                this.myCourses = [];
+            }
         },
 
         // ===== Các hàm tiện ích cơ bản =====
         formatPrice(value, currency = "VND") {
-            if (value === 0) return "Miễn phí";
+            if (value === 0) return "Free";
             return Number(value).toLocaleString("vi-VN") + " " + currency;
         },
         formatDateTime(v) {
@@ -279,23 +318,74 @@ export default {
             modal.show();
         },
         registerCourse(course) {
-            // Gọi API đăng ký khóa học
-            axios.post("http://localhost:5000/api/student/register", { courseId: course.id })
+            const session = getStoredSession();
+            const studentId = session?.user?.studentId || session?.user?.id;
+            
+            // Debug: Log token trước khi gửi request
+            console.log("\n" + "="*80);
+            console.log("📤 registerCourse - About to send request");
+            console.log("🔐 Token from session:", session?.access_token?.substring(0, 50) + "...");
+            console.log("👤 Student ID:", studentId);
+            console.log("📦 Course ID:", course.id);
+            console.log("="*80);
+            
+            // Gọi API đăng ký khóa học (dùng api instance để tự động gửi token)
+            api.post("/api/student/register", { courseId: course.id })
                 .then((response) => {
+                    // Debug: Log response từ backend
+                    console.log("\n" + "="*80);
+                    console.log("📥 registerCourse - Response from backend");
+                    console.log("✅ Status:", response.status);
+                    console.log("✅ Data:", response.data);
+                    console.log("="*80);
+                    
                     // Kiểm tra response từ backend
                     if (response.data && response.data.success === true) {
                         console.log("✅ Backend xác nhận đăng ký thành công:", response.data);
                         
                         // CHỈ reload lại data từ backend sau khi backend đã xử lý thành công và commit vào database
                         // Không tự động thêm vào myCourses ở frontend - phải lấy từ API
-                        Promise.all([
-                            axios.get("http://localhost:5000/api/student/courses"),
-                            axios.get("http://localhost:5000/api/student/my-courses")
-                        ])
-                            .then(([coursesRes, myCoursesRes]) => {
-                                // Cập nhật từ response của backend - đảm bảo luôn là mảng
-                                this.courses = Array.isArray(coursesRes.data.courses) ? coursesRes.data.courses : [];
-                                this.myCourses = Array.isArray(myCoursesRes.data.courses) ? myCoursesRes.data.courses : [];
+                        const requests = [
+                            api.get("/api/student/courses")
+                        ];
+                        
+                        if (studentId) {
+                            requests.push(
+                                api.get("/api/student/my-courses", {
+                                    params: { student_id: studentId }
+                                })
+                            );
+                        }
+                        
+                        Promise.all(requests)
+                            .then((responses) => {
+                                // Chuẩn hóa lại courses từ backend response
+                                const allCourses = Array.isArray(responses[0].data.courses) ? responses[0].data.courses : [];
+                                this.courses = allCourses.map(c => ({
+                                    id: c.id,
+                                    title: c.title,
+                                    level: c.level || "beginner",
+                                    price: Number(c.price || 0),
+                                    currency: c.currency || "VND",
+                                    isPublic: c.is_public === true || c.isPublic === true,
+                                    image: c.thumbnail || c.image || "/public/vite.svg",
+                                    slug: c.slug || String(c.id),
+                                    instructorName: c.instructorName || c.instructor || "",
+                                }));
+                                
+                                if (responses.length > 1) {
+                                    const mineCourses = Array.isArray(responses[1].data.courses) ? responses[1].data.courses : [];
+                                    this.myCourses = mineCourses.map(c => ({
+                                        id: c.id,
+                                        title: c.title,
+                                        level: c.level || "beginner",
+                                        price: Number(c.price || 0),
+                                        currency: c.currency || "VND",
+                                        image: c.thumbnail || c.image || "/public/vite.svg",
+                                    }));
+                                } else {
+                                    this.myCourses = [];
+                                }
                                 
                                 console.log("✅ Đã reload sau đăng ký - myCourses:", this.myCourses.length);
                                 
@@ -320,7 +410,12 @@ export default {
                     }
                 })
                 .catch((error) => {
-                    console.error("❌ Lỗi khi đăng ký khóa học:", error);
+                    console.error("\n" + "="*80);
+                    console.error("❌ registerCourse - Error response from backend");
+                    console.error("❌ Error status:", error.response?.status);
+                    console.error("❌ Error data:", error.response?.data);
+                    console.error("❌ Error message:", error.message);
+                    console.error("="*80);
                     const errorMsg = error.response?.data?.error || "Lỗi không xác định";
                     alert("❌ Lỗi khi đăng ký khóa học: " + errorMsg);
                 });
@@ -341,78 +436,77 @@ export default {
             return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${data}`;
         },
         startPaymentCheck(course) {
-            this.isChecking = true;
-            if (this.paymentInterval) clearInterval(this.paymentInterval);
-
-            this.paymentInterval = setInterval(() => {
-                axios.post("/api/payment/status", { courseId: course.id })
-                    .then(res => {
-                        if (res.data.paid) {
-                            clearInterval(this.paymentInterval);
-                            this.isChecking = false;
-                            
-                            // Đăng ký khóa học sau khi thanh toán thành công
-                            // CHỈ khi backend xử lý thành công thì mới reload data
-                            axios.post("http://localhost:5000/api/student/register", { courseId: course.id })
-                                .then((response) => {
-                                    // Kiểm tra response từ backend
-                                    if (response.data && response.data.success === true) {
-                                        console.log("✅ Backend xác nhận đăng ký sau thanh toán tự động:", response.data);
-                                        
-                                        // CHỈ reload lại data từ backend sau khi backend đã xử lý thành công và commit vào database
-                                        Promise.all([
-                                            axios.get("http://localhost:5000/api/student/courses"),
-                                            axios.get("http://localhost:5000/api/student/my-courses")
-                                        ])
-                                            .then(([coursesRes, myCoursesRes]) => {
-                                                // Cập nhật từ response của backend - đảm bảo luôn là mảng
-                                                this.courses = Array.isArray(coursesRes.data.courses) ? coursesRes.data.courses : [];
-                                                this.myCourses = Array.isArray(myCoursesRes.data.courses) ? myCoursesRes.data.courses : [];
-                                                
-                                                console.log("✅ Đã reload sau thanh toán tự động - myCourses:", this.myCourses.length);
-                                                
-                                                const modal = bootstrap.Modal.getInstance(this.$refs.paymentModal);
-                                                if (modal) modal.hide();
-                                                alert("✅ Thanh toán thành công! Khóa học đã được đăng ký.");
-                                            })
-                                            .catch(err => {
-                                                console.error("❌ Lỗi reload sau thanh toán:", err);
-                                                this.loadData();
-                                                alert("✅ Thanh toán thành công!");
-                                            });
-                                    } else {
-                                        console.warn("⚠️ Backend trả về nhưng success=False:", response.data);
-                                        alert("✅ Thanh toán thành công! (Nhưng không thể đăng ký khóa học)");
-                                    }
-                                })
-                                .catch((error) => {
-                                    console.error("❌ Lỗi khi đăng ký khóa học sau thanh toán:", error);
-                                    alert("✅ Thanh toán thành công! (Nhưng không thể đăng ký khóa học)");
-                                });
-                        }
-                    })
-                    .catch(() => console.warn("Lỗi khi kiểm tra thanh toán"));
-            }, 3000);
+            // Tạm thời disable auto-check vì endpoint /api/payment/status chưa được implement
+            // User sẽ dùng nút "Test Purchase" hoặc "Confirm Payment" thay thế
+            this.isChecking = false;
+            console.log("ℹ️ Auto payment check disabled. Use 'Test Purchase' or 'Confirm Payment' button.");
         },
 
         // Test Purchase - Mua khóa học mà không cần thanh toán (chỉ dùng cho testing)
         testPurchase() {
             if (!this.selectedCourse) return;
             
-            // Gọi API đăng ký khóa học trực tiếp mà không cần thanh toán
-            axios.post("http://localhost:5000/api/student/register", { courseId: this.selectedCourse.id })
+            const session = getStoredSession();
+            const studentId = session?.user?.studentId || session?.user?.id;
+            
+            console.log("🧪 Test Purchase started");
+            console.log("📦 Session:", session);
+            console.log("🔑 Token available:", !!session?.access_token);
+            
+            // Gọi API đăng ký khóa học trực tiếp mà không cần thanh toán (dùng api instance)
+            api.post("/api/student/register", { courseId: this.selectedCourse.id })
                 .then((response) => {
+                    console.log("\n" + "="*80);
+                    console.log("🧪 testPurchase - Response from backend");
+                    console.log("✅ Response status:", response.status);
+                    console.log("✅ Response data:", response.data);
+                    console.log("="*80);
+                    
                     if (response.data && response.data.success === true) {
                         console.log("✅ Test Purchase - Backend xác nhận đăng ký:", response.data);
                         
                         // Reload lại data từ backend
-                        Promise.all([
-                            axios.get("http://localhost:5000/api/student/courses"),
-                            axios.get("http://localhost:5000/api/student/my-courses")
-                        ])
-                            .then(([coursesRes, myCoursesRes]) => {
-                                this.courses = Array.isArray(coursesRes.data.courses) ? coursesRes.data.courses : [];
-                                this.myCourses = Array.isArray(myCoursesRes.data.courses) ? myCoursesRes.data.courses : [];
+                        const requests = [
+                            api.get("/api/student/courses")
+                        ];
+                        
+                        if (studentId) {
+                            requests.push(
+                                api.get("/api/student/my-courses", {
+                                    params: { student_id: studentId }
+                                })
+                            );
+                        }
+                        
+                        Promise.all(requests)
+                            .then((responses) => {
+                                // Chuẩn hóa lại courses
+                                const allCourses = Array.isArray(responses[0].data.courses) ? responses[0].data.courses : [];
+                                this.courses = allCourses.map(c => ({
+                                    id: c.id,
+                                    title: c.title,
+                                    level: c.level || "beginner",
+                                    price: Number(c.price || 0),
+                                    currency: c.currency || "VND",
+                                    isPublic: c.is_public === true || c.isPublic === true,
+                                    image: c.thumbnail || c.image || "/public/vite.svg",
+                                    slug: c.slug || String(c.id),
+                                    instructorName: c.instructorName || c.instructor || "",
+                                }));
+                                
+                                if (responses.length > 1) {
+                                    const mineCourses = Array.isArray(responses[1].data.courses) ? responses[1].data.courses : [];
+                                    this.myCourses = mineCourses.map(c => ({
+                                        id: c.id,
+                                        title: c.title,
+                                        level: c.level || "beginner",
+                                        price: Number(c.price || 0),
+                                        currency: c.currency || "VND",
+                                        image: c.thumbnail || c.image || "/public/vite.svg",
+                                    }));
+                                } else {
+                                    this.myCourses = [];
+                                }
                                 
                                 console.log("✅ Test Purchase - Đã reload - myCourses:", this.myCourses.length);
                                 
@@ -432,31 +526,53 @@ export default {
                     }
                 })
                 .catch((error) => {
-                    console.error("❌ Lỗi test purchase:", error);
-                    alert("❌ Test purchase failed: " + (error.response?.data?.error || "Unknown error"));
+                    console.error("\n" + "="*80);
+                    console.error("🧪 testPurchase - Error response from backend");
+                    console.error("❌ Error status:", error.response?.status);
+                    console.error("❌ Error data:", error.response?.data);
+                    console.error("❌ Error message:", error.message);
+                    console.error("="*80);
+                    alert("❌ Test purchase failed: " + (error.response?.data?.error || error.message || "Unknown error"));
                 });
         },
 
         simulatePaidManually() {
             if (!this.selectedCourse) return;
             
-            // Gọi API đăng ký khóa học sau khi thanh toán
+            const session = getStoredSession();
+            const studentId = session?.user?.studentId || session?.user?.id;
+            
+            // Gọi API đăng ký khóa học sau khi thanh toán (dùng api instance)
             // CHỈ khi backend xử lý thành công thì mới reload data
-            axios.post("http://localhost:5000/api/student/register", { courseId: this.selectedCourse.id })
+            api.post("/api/student/register", { courseId: this.selectedCourse.id })
                 .then((response) => {
                     // Kiểm tra response từ backend
                     if (response.data && response.data.success === true) {
                         console.log("✅ Backend xác nhận đăng ký sau thanh toán:", response.data);
                         
                         // CHỈ reload lại data từ backend sau khi backend đã xử lý thành công và commit vào database
-                        Promise.all([
-                            axios.get("http://localhost:5000/api/student/courses"),
-                            axios.get("http://localhost:5000/api/student/my-courses")
-                        ])
-                            .then(([coursesRes, myCoursesRes]) => {
+                        const requests = [
+                            api.get("/api/student/courses")
+                        ];
+                        
+                        if (studentId) {
+                            requests.push(
+                                api.get("/api/student/my-courses", {
+                                    params: { student_id: studentId }
+                                })
+                            );
+                        }
+                        
+                        Promise.all(requests)
+                            .then((responses) => {
                                 // Cập nhật từ response của backend - đảm bảo luôn là mảng
-                                this.courses = Array.isArray(coursesRes.data.courses) ? coursesRes.data.courses : [];
-                                this.myCourses = Array.isArray(myCoursesRes.data.courses) ? myCoursesRes.data.courses : [];
+                                this.courses = Array.isArray(responses[0].data.courses) ? responses[0].data.courses : [];
+                                
+                                if (responses.length > 1) {
+                                    this.myCourses = Array.isArray(responses[1].data.courses) ? responses[1].data.courses : [];
+                                } else {
+                                    this.myCourses = [];
+                                }
                                 
                                 console.log("✅ Đã reload sau thanh toán - myCourses:", this.myCourses.length);
                                 
@@ -505,6 +621,7 @@ export default {
     },
 };
 </script>
+
 <style scoped>
 .courses-wrapper {
     background: #f8f9fa;

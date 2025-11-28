@@ -3,6 +3,7 @@ from datetime import datetime
 # Import db và các Models cần thiết
 from ..models.model import db, Course, Instructor, CourseSection, Lesson, Test, Question, Choice, Enrollment
 import re
+import os
 
 # Khởi tạo Blueprint cho các routes liên quan đến Giảng viên
 instructor_bp = Blueprint('instructor', __name__)
@@ -1159,3 +1160,91 @@ def get_instructor_reports():
         import traceback
         traceback.print_exc()
         return jsonify({'message': 'Internal server error', 'error': str(e)}), 500
+
+
+@instructor_bp.route('/api/courses/<int:course_id>', methods=['GET'])
+def get_course(course_id):
+    try:
+        course = Course.query.filter_by(id=course_id).first()
+        if not course:
+            return jsonify({'message': 'Course not found'}), 404
+        return jsonify({
+            'id': course.id,
+            'title': course.title,
+            'description': course.description,
+            'price': float(course.price) if course.price is not None else 0,
+            'thumbnail': getattr(course, 'thumbnail', None),
+            'status': course.status or 'draft'
+        }), 200
+    except Exception as e:
+        print('Error fetching course:', e)
+        return jsonify({'message': 'Internal server error'}), 500
+
+
+# Đã có hàm create_course ở trên (dòng 63) với đầy đủ validation
+# ========== New: Google Drive upload ==========
+@instructor_bp.route('/api/upload/video', methods=['POST'])
+def upload_video_to_drive():
+    """
+    Upload a video file to Google Drive using a Service Account.
+    Form-Data:
+      - file: binary file
+      - folder_id (optional): Google Drive folder ID to upload into
+    Response: { fileId, viewUrl, downloadUrl }
+    Env required: GOOGLE_SERVICE_ACCOUNT_JSON (file path or JSON string)
+    Optionally set default folder via GOOGLE_DRIVE_FOLDER_ID
+    """
+    try:
+        print(f"\n{'='*80}")
+        print(f"📤 /api/upload/video - Starting upload")
+        print(f"{'='*80}")
+        
+        if 'file' not in request.files:
+            print(f"❌ Missing file field in request")
+            return jsonify({'message': 'Missing file field'}), 400
+        
+        f = request.files['file']
+        if f.filename == '':
+            print(f"❌ Empty filename")
+            return jsonify({'message': 'Empty filename'}), 400
+        
+        print(f"📝 File: {f.filename} (size: {len(f.read())} bytes)")
+        f.seek(0)  # Reset stream position
+        print(f"📝 MIME type: {f.mimetype}")
+        
+        # Prefer explicit folder_id from request, else fallback to env
+        folder_id = request.form.get('folder_id') or os.getenv('GOOGLE_DRIVE_FOLDER_ID')
+        print(f"📁 Target folder ID: {folder_id}")
+
+        from ..utils.google_drive import upload_file_to_drive
+        import io
+
+        stream = io.BytesIO(f.read())
+        print(f"✅ Reading file into memory... {len(stream.getvalue())} bytes")
+        
+        print(f"🔄 Uploading to Google Drive...")
+        file_id, web_view_link, public_download_url = upload_file_to_drive(
+            stream,
+            f.filename,
+            f.mimetype or 'application/octet-stream',
+            folder_id=folder_id
+        )
+        
+        print(f"✅ Upload successful!")
+        print(f"   File ID: {file_id}")
+        print(f"   View URL: {web_view_link}")
+        print(f"   Download URL: {public_download_url}")
+        print(f"{'='*80}\n")
+        
+        return jsonify({
+            'fileId': file_id,
+            'viewUrl': web_view_link,
+            'downloadUrl': public_download_url
+        }), 200
+    except Exception as e:
+        print(f"\n{'='*80}")
+        print(f"❌ Error uploading to drive: {e}")
+        import traceback
+        print(f"❌ Traceback: {traceback.format_exc()}")
+        print(f"{'='*80}\n")
+        return jsonify({'message': f'Upload failed: {str(e)}'}), 500

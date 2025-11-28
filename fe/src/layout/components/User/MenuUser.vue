@@ -13,37 +13,37 @@
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav mx-auto">
             <li class="nav-item mx-2">
-              <a class="nav-link fw-medium text-dark" href="#">Trang chủ</a>
+              <a class="nav-link fw-medium text-dark" href="#">Home</a>
             </li>
             <li class="nav-item mx-2">
-              <a class="nav-link fw-medium text-dark" href="#courses">Khóa học</a>
+              <a class="nav-link fw-medium text-dark" href="#courses">Courses</a>
             </li>
             <li class="nav-item mx-2">
-              <a class="nav-link fw-medium text-dark" href="#instructors">Giảng viên</a>
+              <a class="nav-link fw-medium text-dark" href="#instructors">Instructors</a>
             </li>
             <li class="nav-item mx-2">
-              <a class="nav-link fw-medium text-dark" href="#students">Học viên</a>
+              <a class="nav-link fw-medium text-dark" href="#students">Students</a>
             </li>
             <li class="nav-item mx-2">
-              <a class="nav-link fw-medium text-dark" href="#contact">Liên hệ</a>
+              <a class="nav-link fw-medium text-dark" href="#contact">Contact</a>
             </li>
           </ul>
           
           <div class="d-flex flex-wrap gap-2 align-items-center justify-content-lg-end justify-content-center">
             <router-link to="/student" class="btn btn-outline-secondary px-3">
-              Demo Học viên
+              Student Demo
             </router-link>
             <router-link to="/instructor" class="btn btn-outline-secondary px-3">
-              Demo Giảng viên
+              Instructor Demo
             </router-link>
             <router-link to="/admin" class="btn btn-outline-secondary px-3">
-              Demo Admin
+              Admin Demo
             </router-link>
             <router-link to="/login" class="btn btn-outline-primary px-3">
-              Đăng nhập
+              Sign In
             </router-link>
             <router-link to="/register" class="btn btn-primary px-4">
-              Đăng ký học
+              Enroll
             </router-link>
           </div>
         </div>
@@ -56,30 +56,30 @@
           <div class="col-lg-6">
             <div class="hero-content">
               <h1 class="display-5 fw-bold mb-4 hero-title">
-                Học lập trình trực tuyến
+                Learn Programming Online
               </h1>
               
               <p class="lead text-muted mb-5">
-                Khóa học trực tuyến với giảng viên chuyên nghiệp, nội dung cập nhật và phương pháp học tập hiệu quả. 
-                Bắt đầu hành trình lập trình của bạn ngay hôm nay!
+                Online courses with expert instructors, updated content, and effective learning methods. 
+                Start your coding journey today!
               </p>
 
               <div class="hero-actions d-flex flex-wrap gap-3 align-items-center mb-4">
                 <router-link to="/courses" class="btn btn-primary btn-lg px-4 py-2 fw-semibold">
-                  Bắt đầu ngay
+                  Get Started
                 </router-link>
                 
                 <a href="#about" class="btn btn-outline-dark btn-lg px-4 py-2 fw-semibold">
-                  Tìm hiểu thêm
+                  Learn More
                 </a>
               </div>
 
               <div class="stats d-flex align-items-center">
                 <div class="stat-badge text-white rounded-pill px-3 py-2">
                   <span class="fw-bold">2,000+</span>
-                  <span class="ms-1">Học viên</span>
+                  <span class="ms-1">Students</span>
                 </div>
-                <small class="text-muted ms-2">đã tham gia khóa học</small>
+                <small class="text-muted ms-2">have joined our courses</small>
               </div>
             </div>
           </div>
@@ -127,8 +127,8 @@
                     <i class="bi bi-check-circle text-white"></i>
                   </div>
                   <div>
-                    <h6 class="fw-bold mb-1 text-dark">Bắt đầu từ cơ bản</h6>
-                    <p class="text-muted mb-0 small">Phù hợp mọi trình độ</p>
+                    <h6 class="fw-bold mb-1 text-dark">Start from Basics</h6>
+                    <p class="text-muted mb-0 small">Suitable for all levels</p>
                   </div>
                 </div>
               </div>
@@ -141,9 +141,9 @@
     <section id="about" class="py-5 bg-light">
       <div class="container">
         <div class="text-center mb-5">
-          <h2 class="fw-bold mb-3 section-title">Tại sao chọn CodeCourse?</h2>
+          <h2 class="fw-bold mb-3 section-title">Why choose CodeCourse?</h2>
           <p class="text-muted lead fs-4">
-            Chúng tôi cung cấp nền tảng học tập toàn diện giúp bạn phát triển kỹ năng lập trình từ cơ bản đến nâng cao
+            We provide a comprehensive learning platform to help you develop programming skills from beginner to advanced.
           </p>
         </div>
 
@@ -167,9 +167,9 @@
     <section id="courses" class="py-5">
       <div class="container">
         <div class="text-center mb-5">
-          <h2 class="fw-bold mb-3 section-title">Khóa học nổi bật</h2>
+          <h2 class="fw-bold mb-3 section-title">Featured Courses</h2>
           <p class="text-muted lead fs-4">
-            Các khóa học được thiết kế bởi các chuyên gia hàng đầu trong ngành công nghiệp phần mềm
+            Courses designed by top industry experts.
           </p>
         </div>
 
@@ -191,7 +191,7 @@
                 <div class="course-meta d-flex justify-content-between align-items-center mb-3">
                   <span class="text-muted small">
                     <i class="bi bi-people me-1"></i>
-                    {{ course.students }} học viên
+                    {{ course.students }} students
                   </span>
                 </div>
 
@@ -199,21 +199,21 @@
                   <div class="row text-center">
                     <div class="col-4">
                       <small class="text-muted d-block">{{ course.duration }}</small>
-                      <small class="fw-semibold text-dark">Tuần</small>
+                      <small class="fw-semibold text-dark">Weeks</small>
                     </div>
                     <div class="col-4">
                       <small class="text-muted d-block">{{ course.lessons }}</small>
-                      <small class="fw-semibold text-dark">Bài học</small>
+                      <small class="fw-semibold text-dark">Lessons</small>
                     </div>
                     <div class="col-4">
                       <small class="text-muted d-block">{{ course.hours }}</small>
-                      <small class="fw-semibold text-dark">Giờ</small>
+                      <small class="fw-semibold text-dark">Hours</small>
                     </div>
                   </div>
                 </div>
 
                 <router-link to="/course-details" class="btn btn-outline-primary w-100 mt-3 fw-semibold">
-                  Chi tiết 
+                  Details
                 </router-link>
               </div>
             </div>
@@ -222,10 +222,10 @@
 
         <div class="text-center mt-5">
           <router-link to="/courses" class="btn btn-primary px-4 me-3 fw-semibold">
-            Đăng ký học
+            Enroll
           </router-link>
           <router-link to="/courses" class="btn btn-outline-dark px-4 fw-semibold">
-            Xem tất cả khóa học 
+            View all courses 
           </router-link>
         </div>
       </div>
@@ -234,9 +234,9 @@
     <section id="testimonials" class="py-5 bg-white">
       <div class="container">
         <div class="text-center mb-5">
-          <h2 class="fw-bold mb-3 section-title">Học viên nói gì về chúng tôi</h2>
+          <h2 class="fw-bold mb-3 section-title">What students say about us</h2>
           <p class="text-muted lead fs-4">
-            Khám phá trải nghiệm học tập từ các học viên đã tham gia khóa học của CodeMaster
+            Discover learning experiences from students who have joined CodeCourse.
           </p>
         </div>
 
@@ -280,35 +280,35 @@
               <span class="text-primary">Code</span><span class="text-success">Course</span>
             </h5>
             <p class="text-light mb-4">
-              Nền tảng học lập trình trực tuyến hàng đầu với các khóa học chất lượng cao, giảng viên giàu kinh nghiệm và cộng đồng học viên sôi động.
+              Leading online programming platform with high-quality courses, experienced instructors, and a vibrant learner community.
             </p>
             <div class="contact-info">
               <p class="mb-2">
-                <i class="bi bi-envelope me-2 text-primary"></i>Cuocdoihayhoi.edu.vn
+                <i class="bi bi-envelope me-2 text-primary"></i>Email: support@codecourse.dev
               </p>
               <p class="mb-2">
                 <i class="bi bi-phone me-2 text-primary"></i>+84 123 456 789
               </p>
               <p class="mb-0">
-                <i class="bi bi-geo-alt me-2 text-primary"></i>đường ông hoàng quân, phường 12, quận 4, TP.HCM
+                <i class="bi bi-geo-alt me-2 text-primary"></i>12th Ward, District 4, Ho Chi Minh City
               </p>
             </div>
           </div>
 
           <div class="col-lg-2 col-md-3 mb-4">
-            <h6 class="fw-bold mb-3 text-light">Công ty</h6>
+            <h6 class="fw-bold mb-3 text-light">Company</h6>
             <ul class="list-unstyled">
-              <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Về chúng tôi</a></li>
-              <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Đội ngũ giảng viên</a></li>
-              <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Cơ hội việc làm</a></li>
-              <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Đối tác</a></li>
+              <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">About Us</a></li>
+              <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Instructors</a></li>
+              <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Careers</a></li>
+              <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Partners</a></li>
             </ul>
           </div>
 
           <div class="col-lg-2 col-md-3 mb-4">
-            <h6 class="fw-bold mb-3 text-light">Khóa học</h6>
+            <h6 class="fw-bold mb-3 text-light">Courses</h6>
             <ul class="list-unstyled">
-              <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Lập trình web</a></li>
+              <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Web Development</a></li>
               <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">React & Redux</a></li>
               <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Node.js & Express</a></li>
               <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Full-Stack Developer</a></li>
@@ -316,27 +316,27 @@
           </div>
 
           <div class="col-lg-2 col-md-3 mb-4">
-            <h6 class="fw-bold mb-3 text-light">Tài nguyên</h6>
+            <h6 class="fw-bold mb-3 text-light">Resources</h6>
             <ul class="list-unstyled">
               <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Blog</a></li>
-              <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Tài liệu</a></li>
-              <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Cộng đồng</a></li>
-              <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Hỏi đáp</a></li>
+              <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Docs</a></li>
+              <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Community</a></li>
+              <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">FAQ</a></li>
             </ul>
           </div>
 
           <div class="col-lg-2 col-md-3 mb-4">
-            <h6 class="fw-bold mb-3 text-light">Pháp lý</h6>
+            <h6 class="fw-bold mb-3 text-light">Legal</h6>
             <ul class="list-unstyled">
-              <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Điều khoản sử dụng</a></li>
-              <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Chính sách bảo mật</a></li>
+              <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Terms of Use</a></li>
+              <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Privacy Policy</a></li>
               <li class="mb-2"><a href="#" class="text-light text-decoration-none opacity-75 hover-opacity-100">Cookie Policy</a></li>
             </ul>
           </div>
         </div>
 
         <div class="border-top border-secondary pt-4 mt-4 text-center">
-          <p class="text-light mb-0 opacity-75">© 2025 CodeCourse. Tất cả các quyền được bảo lưu.</p>
+          <p class="text-light mb-0 opacity-75">© 2025 CodeCourse. All rights reserved.</p>
         </div>
       </div>
     </footer>
@@ -359,76 +359,76 @@ export default {
         {
           iconSrc: reasonCode,
           iconClass: 'bi bi-briefcase-fill',
-          title: "Học lập trình thực tế",
-          description: "Các dự án thực tế giúp học viên áp dụng kiến thức vào công việc ngay lập tức."
+          title: "Practical programming",
+          description: "Hands-on projects help learners apply knowledge immediately in real work."
         },
         {
           iconSrc: reasonLaptop,
           iconClass: 'bi bi-laptop',
-          title: "Học mọi lúc mọi nơi",
-          description: "Nền tảng học tập trực tuyến cho phép bạn học tập mọi lúc, mọi nơi theo lịch trình của riêng bạn."
+          title: "Learn anytime, anywhere",
+          description: "Online platform lets you learn anytime and anywhere on your own schedule."
         },
         {
           iconSrc: reasonCommunity,
           iconClass: 'bi bi-people-fill',
-          title: "Cộng đồng hỗ trợ",
-          description: "Tham gia cộng đồng học viên sôi động, cùng nhau giải quyết vấn đề và phát triển."
+          title: "Supportive community",
+          description: "Join a vibrant community of learners to solve problems and grow together."
         },
         {
           iconSrc: reasonBook,
           iconClass: 'bi bi-journal-code',
-          title: "Tài liệu cập nhật",
-          description: "Nội dung khóa học luôn được cập nhật với các công nghệ và xu hướng mới nhất trong ngành."
+          title: "Updated materials",
+          description: "Course content is regularly updated with the latest technologies and trends."
         },
         {
           iconSrc: reasonAward,
           iconClass: 'bi bi-award-fill',
-          title: "Chứng chỉ công nhận",
-          description: "Nhận chứng chỉ sau khi hoàn thành khóa học để nâng cao giá trị hồ sơ xin việc."
+          title: "Recognized certificates",
+          description: "Receive certificates upon completion to strengthen your resume."
         },
         {
           iconSrc: reasonSupport,
           iconClass: 'bi bi-headset',
-          title: "Hỗ trợ 24/7",
-          description: "Đội ngũ hỗ trợ luôn sẵn sàng giải đáp mọi thắc mắc trong quá trình học tập."
+          title: "24/7 support",
+          description: "Our support team is always ready to answer any questions during learning."
         }
       ],
       featuredCourses: [
         {
-          level: "Cơ bản",
+          level: "Beginner",
           rating: "4.9",
-          title: "Lập trình web cơ bản",
-          description: "Học HTML CSS và JavaScript từ cơ bản đến nâng cao. Xây dựng các trang web hiện đại...",
+          title: "Basic Web Development",
+          description: "Learn HTML, CSS, and JavaScript from scratch. Build modern websites...",
           students: "1245",
           duration: "10",
           lessons: "45",
           hours: "30"
         },
         {
-          level: "Trung cấp",
+          level: "Intermediate",
           rating: "4.8",
-          title: "React và Redux toàn tập",
-          description: "Thành thạo React, Redux và xây dựng ứng dụng web hiện đại với hiệu suất cao...",
+          title: "React & Redux Mastery",
+          description: "Master React, Redux and build high-performance modern web apps...",
           students: "985",
           duration: "12",
           lessons: "52",
           hours: "40"
         },
         {
-          level: "Trung cấp",
+          level: "Intermediate",
           rating: "4.7",
           title: "Node.js & Express Backend",
-          description: "Xây dựng backend mạnh mẽ với Node.js, Express và MongoDB. API RESTful...",
+          description: "Build robust backends with Node.js, Express and MongoDB. RESTful APIs...",
           students: "856",
           duration: "14",
           lessons: "48",
           hours: "35"
         },
         {
-          level: "Nâng cao",
+          level: "Advanced",
           rating: "4.9",
           title: "Full-Stack Developer",
-          description: "Trở thành lập trình viên full-stack với MERN stack. Từ frontend đến backend...",
+          description: "Become a full-stack developer with the MERN stack. From frontend to backend...",
           students: "642",
           duration: "16",
           lessons: "60",
@@ -437,24 +437,24 @@ export default {
       ],
       testimonials: [
         {
-          name: "Nguyễn Văn A",
-          role: "Frontend Developer tại Tech Solutions",
-          quote: "Khóa học đã giúp tôi từ một người không biết gì về lập trình trở thành một frontend developer chuyên nghiệp. Giảng viên nhiệt tình và kiến thức được cập nhật liên tục.",
-          initials: "NA",
+          name: "An Nguyen",
+          role: "Frontend Developer at Tech Solutions",
+          quote: "The courses helped me go from zero to a professional frontend developer. Instructors are enthusiastic and the content is frequently updated.",
+          initials: "AN",
           gradient: "linear-gradient(135deg, #1d4ed8, #38bdf8)"
         },
         {
-          name: "Trần Thị Bách",
-          role: "Backend Developer tại NextGen Labs",
-          quote: "Nhờ lộ trình rõ ràng và cộng đồng hỗ trợ, tôi đã tự tin xây dựng các API phức tạp chỉ sau vài tuần. Chất lượng bài giảng thực sự vượt mong đợi.",
-          initials: "BB",
+          name: "Bach Tran",
+          role: "Backend Developer at NextGen Labs",
+          quote: "Thanks to a clear roadmap and supportive community, I confidently built complex APIs within weeks. The lecture quality exceeded expectations.",
+          initials: "BT",
           gradient: "linear-gradient(135deg, #0ea5e9, #38bdf8)"
         },
         {
-          name: "Phạm Minh Quân",
-          role: "Full-Stack Developer tại Aurora Tech",
-          quote: "Bài tập thực tế và phản hồi chi tiết giúp tôi tiến bộ nhanh chóng. Sau khóa học, tôi đã nhận được công việc full-time đầu tiên.",
-          initials: "MQ",
+          name: "Quan Pham",
+          role: "Full-Stack Developer at Aurora Tech",
+          quote: "Real-world exercises and detailed feedback helped me improve quickly. After the course, I got my first full-time job.",
+          initials: "QP",
           gradient: "linear-gradient(135deg, #22d3ee, #2563eb)"
         }
       ]
@@ -954,4 +954,4 @@ footer a:hover {
     transform: translateY(0);
   }
 }
-</style> 
+</style>

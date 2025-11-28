@@ -3,7 +3,7 @@
 
 from functools import wraps
 from flask import jsonify, g
-from flask_jwt_extended import get_jwt_identity, jwt_required
+from flask_jwt_extended import get_jwt_identity, jwt_required, get_jwt
 from sqlalchemy import text
 from app.utils.db import engine
 from .Student import student_bp
@@ -35,13 +35,15 @@ def require_roles(*allowed_roles):
         @wraps(fn)
         @jwt_required()
         def wrapper(*args, **kwargs):
-            ident = get_jwt_identity()  # {"user_id":..., "role":...}
-            if not ident:
+            user_id = get_jwt_identity()  # Now it's a string
+            user_id = int(user_id) if isinstance(user_id, str) else user_id
+            
+            if not user_id:
                 return jsonify({"error": "Unauthorized"}), 401
 
-            user_id = ident.get("user_id")
-            # cho chắc ăn, re-check role từ DB (tránh token cũ khi role đổi)
-            current_role = resolve_role(user_id)
+            # Get role from JWT claims
+            claims = get_jwt()
+            current_role = claims.get('role', 'student')
 
             if current_role not in allowed_roles:
                 return jsonify({"error": "Forbidden", "role": current_role}), 403

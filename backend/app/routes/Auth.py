@@ -1,35 +1,57 @@
 from flask import Blueprint, request, jsonify
-from sqlalchemy import text
-from app.utils.db import engine
-from flask_jwt_extended import (
-    JWTManager, create_access_token, jwt_required, get_jwt_identity
-)
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, get_jwt
 from werkzeug.security import check_password_hash, generate_password_hash
-import bcrypt   # dùng nếu bạn đã lưu hash bằng bcrypt
+from app.models import db
+from app.models.model import User, Student, Instructor, Admin
 import re
+import bcrypt
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
-def _fetch_user_by_email(email: str):
-    # Đồng bộ theo schema bảng Users (viết hoa) và cột PascalCase
-    sql = (
-        """
-        SELECT
-            Id AS id,
-            Email AS email,
-            PasswordHash AS password_hash,
-            NULL AS password
-        FROM Users
-        WHERE Email = :email
-        LIMIT 1
-        """
-    )
-    with engine.begin() as conn:
-        row = conn.execute(text(sql), {"email": email}).mappings().first()
-    return row
+ROLE_TO_ROUTE = {
+    "admin": "/admin",
+    "instructor": "/instructor",
+    "student": "/student",
+}
+
+# Helpers
 
 def _valid_email(email: str) -> bool:
     return bool(re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", (email or "").strip()))
+
+
+def _role_redirect_path(role: str) -> str:
+    return ROLE_TO_ROUTE.get(role, "/")
+
+
+def _get_or_create_role_row(user_id: int, role: str):
+    """Ensure role sub-record exists for the user."""
+    try:
+        if role == "student":
+            if not Student.query.filter_by(user_id=user_id).first():
+                db.session.add(Student(user_id=user_id))
+        elif role == "instructor":
+            if not Instructor.query.filter_by(user_id=user_id).first():
+                db.session.add(Instructor(user_id=user_id))
+        elif role == "admin":
+            if not Admin.query.filter_by(user_id=user_id).first():
+                db.session.add(Admin(user_id=user_id))
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error ensuring role row: {e}")
+
+
+def _resolve_role(user: User) -> str:
+    """Resolve role from sub-tables if needed; fallback to user.role."""
+    if Admin.query.filter_by(user_id=user.id).first():
+        return "admin"
+    if Instructor.query.filter_by(user_id=user.id).first():
+        return "instructor"
+    if Student.query.filter_by(user_id=user.id).first():
+        return "student"
+    return user.role or "student"
+
 
 @auth_bp.post("/register")
 def register():
@@ -46,143 +68,158 @@ def register():
     if role not in ("student", "instructor", "admin"):
         return jsonify({"error": "Role không hợp lệ"}), 400
 
-    pwd_hash = generate_password_hash(password)
-
-    with engine.begin() as conn:
+    try:
         # Check duplicate
-        exists = conn.execute(text("SELECT 1 FROM Users WHERE Email=:email LIMIT 1"), {"email": email}).scalar()
-        if exists:
+        if User.query.filter_by(email=email).first():
             return jsonify({"error": "Email đã tồn tại"}), 409
 
-        user_id = None
-        # Try verbose insert (email, password_hash, full_name, role)
-        try:
-            res = conn.execute(
-                text(
-                    """
-                    INSERT INTO Users (Email, PasswordHash, FullName, Role)
-                    VALUES (:email, :password_hash, :full_name, :role)
-                    """
-                ),
-                {"email": email, "password_hash": pwd_hash, "full_name": full_name, "role": role},
-            )
-            user_id = res.lastrowid or res.inserted_primary_key[0]
-        except Exception:
-            # Fallback minimal columns
-            res = conn.execute(
-                text(
-                    """
-                    INSERT INTO Users (Email, PasswordHash)
-                    VALUES (:email, :password_hash)
-                    """
-                ),
-                {"email": email, "password_hash": pwd_hash},
-            )
-            user_id = res.lastrowid or res.inserted_primary_key[0]
+        user = User(
+            email=email,
+            password_hash=generate_password_hash(password),
+            full_name=full_name or email.split("@")[0],
+            role=role,
+            is_active=True,
+        )
+        db.session.add(user)
+        db.session.commit()
 
-        # Try create role-row if sub-tables exist
-        role_table = {"student": "Students", "instructor": "Instructors", "admin": "Admins"}[role]
-        try:
-            conn.execute(text(f"INSERT INTO {role_table} (UserId) VALUES (:uid)"), {"uid": user_id})
-        except Exception:
-            pass  # ignore if table/column not exist
+        # Ensure role sub-record
+        _get_or_create_role_row(user.id, role)
 
-    access_token = create_access_token(identity={"user_id": user_id, "role": role})
-    
-    # Lấy instructor ID nếu là giảng viên
-    instructor_id = None
-    if role == "instructor":
-        try:
-            from app.models.model import db, Instructor
-            instructor = Instructor.query.filter_by(user_id=user_id).first()
-            if instructor:
-                instructor_id = instructor.id
-        except Exception as e:
-            print(f"Error fetching instructor: {e}")
-    
-    return jsonify({
-        "access_token": access_token,
-        "user": {
-            "id": user_id,
-            "email": email,
-            "role": role,
-            "full_name": full_name,
-            "instructorId": instructor_id
-        },
-    }), 201
+        instructor_id = None
+        student_id = None
+        if role == "instructor":
+            inst = Instructor.query.filter_by(user_id=user.id).first()
+            instructor_id = inst.id if inst else None
+        if role == "student":
+            stu = Student.query.filter_by(user_id=user.id).first()
+            student_id = stu.id if stu else None
+
+        # Create token with user_id as string identity, but add role in additional claims
+        access_token = create_access_token(
+            identity=str(user.id),
+            additional_claims={"role": role}
+        )
+        next_route = _role_redirect_path(role)
+        
+        # Debug: Log full token
+        print(f"\n{'='*80}")
+        print(f"✅ REGISTER - Token created:")
+        print(f"   Full Token: {access_token}")
+        print(f"   Identity (user_id): {user.id}")
+        print(f"   Role (claim): {role}")
+        print(f"{'='*80}\n")
+        
+        return jsonify({
+            "access_token": access_token,
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "role": role,
+                "full_name": user.full_name,
+                "instructorId": instructor_id,
+                "studentId": student_id,
+            },
+            "nextRoute": next_route,
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error register: {e}")
+        return jsonify({"error": "Server error"}), 500
+
 
 @auth_bp.post("/login")
 def login():
     data = request.get_json(silent=True) or {}
-    email = data.get("email")
-    password = data.get("password")
+    email = (data.get("email") or "").strip().lower()
+    password = data.get("password") or ""
 
     if not email or not password:
         return jsonify({"error": "Email và password là bắt buộc"}), 400
 
-    user = _fetch_user_by_email(email)
+    user = User.query.filter_by(email=email).first()
     if not user:
         return jsonify({"error": "Sai email hoặc mật khẩu"}), 401
 
+    stored = user.password_hash or ""
     ok = False
-    # ƯU TIÊN: password_hash (pbkdf2/bcrypt). DỰ PHÒNG: plain text 'password'
-    if user.get("password_hash"):
+    # Try Werkzeug hash first
+    try:
+        ok = check_password_hash(stored, password)
+    except Exception:
+        ok = False
+    # Fallback: bcrypt stored hashes ($2a/$2b/$2y$)
+    if not ok and stored.startswith(("$2a$", "$2b$", "$2y$")):
         try:
-            ok = check_password_hash(user["password_hash"], password)
+            ok = bcrypt.checkpw(password.encode("utf-8"), stored.encode("utf-8"))
         except Exception:
-            # trường hợp bạn đã hash bằng bcrypt thủ công:
-            try:
-                ok = bcrypt.checkpw(password.encode("utf-8"),
-                                    user["password_hash"].encode("utf-8"))
-            except Exception:
-                ok = False
-    elif user.get("password"):
-        ok = (password == user["password"])
+            ok = False
+    # Legacy: plain text (no $ markers)
+    if not ok and "$" not in stored:
+        ok = (password == stored)
 
     if not ok:
         return jsonify({"error": "Sai email hoặc mật khẩu"}), 401
 
-    from app.routes import resolve_role  # Lazy import to avoid circular dependency
-    role = resolve_role(user["id"])
-    access_token = create_access_token(identity={"user_id": user["id"], "role": role})
+    # Resolve role based on sub-tables to be consistent
+    role = _resolve_role(user)
+    # Create token with user_id as string identity, but add role in additional claims
+    access_token = create_access_token(
+        identity=str(user.id),
+        additional_claims={"role": role}
+    )
+    next_route = _role_redirect_path(role)
+    
+    # Debug: Log full token
+    print(f"\n{'='*80}")
+    print(f"✅ LOGIN - Token created:")
+    print(f"   Full Token: {access_token}")
+    print(f"   Identity (user_id): {user.id}")
+    print(f"   Role (claim): {role}")
+    print(f"   Email: {user.email}")
+    print(f"{'='*80}\n")
 
-    # Lấy instructor ID nếu là giảng viên
     instructor_id = None
+    student_id = None
     if role == "instructor":
-        try:
-            from app.models.model import Instructor
-            instructor = Instructor.query.filter_by(user_id=user["id"]).first()
-            if instructor:
-                instructor_id = instructor.id
-        except Exception as e:
-            print(f"Error fetching instructor: {e}")
+        inst = Instructor.query.filter_by(user_id=user.id).first()
+        instructor_id = inst.id if inst else None
+    if role == "student":
+        stu = Student.query.filter_by(user_id=user.id).first()
+        student_id = stu.id if stu else None
 
-    response = {
+    return jsonify({
         "access_token": access_token,
         "user": {
-            "id": user["id"],
-            "email": user["email"],
+            "id": user.id,
+            "email": user.email,
             "role": role,
-            "instructorId": instructor_id
-        }
-    }
-    
-    return jsonify(response)
+            "instructorId": instructor_id,
+            "studentId": student_id,
+        },
+        "nextRoute": next_route,
+    })
+
 
 @auth_bp.get("/me")
 @jwt_required()
 def me():
-    ident = get_jwt_identity()
-    # đồng bộ role mới nhất
-    from app.routes import resolve_role  # Lazy import to avoid circular dependency
-    current_role = resolve_role(ident["user_id"])
-    return jsonify({"user": {**ident, "role": current_role}})
+    user_id = get_jwt_identity()  # Now it's a string
+    user_id = int(user_id) if isinstance(user_id, str) else user_id
+    
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "Not found"}), 404
+    
+    claims = get_jwt()
+    role = claims.get('role', 'student')
+    
+    return jsonify({"user": {"id": user.id, "email": user.email, "role": role}})
+
 
 @auth_bp.post("/logout")
 @jwt_required()
 def logout():
-    # Với JWT stateless, FE chỉ cần xoá token.
-    # Nếu muốn blocklist, bạn có thể lưu jti vào DB/Redis tại đây.
     return jsonify({"message": "Logged out (client remove token)"}), 200
- 
+
 
