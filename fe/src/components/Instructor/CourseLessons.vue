@@ -58,24 +58,38 @@
               <label class="checkbox"><input type="checkbox" v-model="section.newLesson.isPreview" /> Allow Preview</label>
             </div>
           </div>
-          <div class="form-row" v-if="section.newLesson.type === 'video'">
-            <div class="form-group">
-              <label>Video URL</label>
-              <input v-model.trim="section.newLesson.videoUrl" type="text" placeholder="https://..." />
-            </div>
-            <!-- Upload to Drive -->
-            <div class="form-group">
-              <label>Or upload a video</label>
+
+          <!-- Add Lesson Inline Card (video fields) -->
+          <div class="form-row" v-if="section.addingLesson && section.newLesson.type === 'video'">
+            <div class="form-group full">
+              <label>Upload Video</label>
               <input type="file" accept="video/*" @change="onUploadNewVideo(section, $event)" :disabled="newVideoUploadingSectionId===section.id" />
-              <small v-if="newVideoUploadingSectionId===section.id">Uploading to Google Drive...</small>
+              <div v-if="newVideoUploadingSectionId===section.id" class="progress-wrap" style="margin-top:8px;">
+                <input
+                  type="range"
+                  class="progress-slider"
+                  :min="0"
+                  :max="newUploadBytes.total || 0"
+                  :value="newUploadBytes.loaded || 0"
+                  :style="{ '--fill': (newUploadBytes.total ? ((newUploadBytes.loaded / newUploadBytes.total) * 100) : 0) + '%' }"
+                  disabled
+                />
+                <div class="progress-details">
+                  <span>{{ formatMB(newUploadBytes.loaded) }} / {{ formatMB(newUploadBytes.total) }} MB</span>
+                  <span>({{ uploadProgress || 0 }}%)</span>
+                </div>
+              </div>
             </div>
           </div>
-          <div v-if="section.newLesson.videoUrl" class="form-row">
+          <div v-if="section.addingLesson && section.newLesson.type === 'video' && section.newLesson.videoUrl" class="form-row">
             <div class="form-group full">
               <label>Preview</label>
-              <video :src="section.newLesson.videoUrl" controls style="max-width:100%;border-radius:8px;" />
+              <div class="video-preview small">
+                <video :src="section.newLesson.videoUrl" controls />
+              </div>
             </div>
           </div>
+
           <div class="form-actions">
             <button class="btn" @click="cancelAddLesson(section)">Cancel</button>
             <button class="btn primary" :disabled="!section.newLesson.title" @click="saveNewLesson(section)">Save Lesson</button>
@@ -135,13 +149,29 @@
                   <div class="form-group">
                     <label>Or upload a video</label>
                     <input type="file" accept="video/*" @change="onUploadLessonVideo(lesson, $event)" :disabled="!!videoUploading[lesson.id]" />
-                    <small v-if="videoUploading[lesson.id]">Uploading to Google Drive...</small>
+                    <div v-if="videoUploading[lesson.id]" class="progress-wrap" style="margin-top:8px;">
+                      <input
+                        type="range"
+                        class="progress-slider"
+                        :min="0"
+                        :max="(videoUploadBytes[lesson.id]?.total) || 0"
+                        :value="(videoUploadBytes[lesson.id]?.loaded) || 0"
+                        :style="{ '--fill': ((videoUploadBytes[lesson.id]?.total ? ((videoUploadBytes[lesson.id]?.loaded / videoUploadBytes[lesson.id]?.total) * 100) : 0) + '%') }"
+                        disabled
+                      />
+                      <div class="progress-details">
+                        <span>{{ formatMB(videoUploadBytes[lesson.id]?.loaded) }} / {{ formatMB(videoUploadBytes[lesson.id]?.total) }} MB</span>
+                        <span>({{ uploadProgress || 0 }}%)</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div v-if="lesson.editVideoUrl" class="form-row">
                   <div class="form-group full">
                     <label>Preview</label>
-                    <video :src="lesson.editVideoUrl" controls style="max-width:100%;border-radius:8px;" />
+                    <div class="video-preview small">
+                      <video :src="lesson.editVideoUrl" controls />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -159,10 +189,7 @@
                     <i :class="lesson.testsExpanded ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
                     {{ lesson.testsExpanded ? 'Collapse' : 'Expand' }}
                   </button>
-                  <button class="btn small" v-if="lesson.testsExpanded" @click="toggleAddTest(lesson)">Add Test</button>
-                  <button class="btn small ai-btn" v-if="lesson.testsExpanded" @click="openAIQuizGenerator(lesson)" :disabled="aiGenerating" :title="aiGenerating ? 'Generating questions...' : 'Generate with AI'">
-                    <i :class="aiGenerating ? 'fas fa-spinner fa-spin' : 'fas fa-magic'"></i> {{ aiGenerating ? 'Generating...' : 'Generate with AI' }}
-                  </button>
+                  <button class="btn small" v-if="lesson.testsExpanded && ((testsByLesson[lesson.id] || []).length === 0)" @click="toggleAddTest(lesson)">Add Test</button>
                 </div>
               </div>
 
@@ -217,7 +244,6 @@
                       <div class="pill">{{ t.questionCount || 0 }}</div>
                     </div>
                     <button class="btn" @click="saveTest(t)">Save</button>
-                    <button class="btn danger" @click="deleteTest(t)">Delete</button>
                     <button class="btn" @click="openTestEditor(t)">Open Editor</button>
                   </div>
                 </div>
@@ -228,107 +254,15 @@
         </div>
     </div>
 
-    <!-- AI Quiz Generator Modal -->
-    <div v-if="showAIQuizModal" class="ai-modal-overlay">
-      <div class="ai-modal-content">
-        <div class="ai-modal-header">
-          <h3>Generate Questions with AI</h3>
-          <button class="ai-close-btn" @click="closeAIQuizModal"><i class="fas fa-times"></i></button>
-        </div>
-
-        <div class="ai-modal-body">
-          <!-- Config Section -->
-          <div v-if="!aiQuizGenerated" class="ai-config">
-            <div class="form-group">
-              <label>Lesson Title</label>
-              <input v-model="aiQuizConfig.lesson_title" type="text" placeholder="e.g., For Loops in Python" readonly />
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label>Number of Questions</label>
-                <input v-model.number="aiQuizConfig.num_questions" type="number" min="1" max="20" />
-              </div>
-              <div class="form-group">
-                <label>Difficulty</label>
-                <select v-model="aiQuizConfig.difficulty">
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="form-actions">
-              <button class="btn" @click="closeAIQuizModal">Cancel</button>
-              <button class="btn primary ai-generate-btn" @click="generateAIQuestions" :disabled="aiGenerating">
-                <i :class="aiGenerating ? 'fas fa-spinner fa-spin' : 'fas fa-magic'"></i>
-                {{ aiGenerating ? 'Generating...' : 'Generate Questions' }}
-              </button>
-            </div>
-          </div>
-
-          <!-- Generated Questions Section -->
-          <div v-else class="ai-questions">
-            <div class="ai-success-message">
-              <i class="fas fa-check-circle"></i> Generated {{ generatedQuestions.length }} questions!
-            </div>
-
-            <div v-for="(q, qIndex) in generatedQuestions" :key="qIndex" class="ai-question-card">
-              <div class="ai-question-header">
-                <span class="q-number">Question {{ qIndex + 1 }}</span>
-                <button class="btn-small" @click="toggleQuestionPreview(qIndex)" :title="expandedQuestions.includes(qIndex) ? 'Collapse' : 'Expand'">
-                  <i :class="expandedQuestions.includes(qIndex) ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
-                </button>
-              </div>
-
-              <div v-if="expandedQuestions.includes(qIndex)" class="ai-question-details">
-                <div class="q-text">{{ q.question }}</div>
-
-                <div class="q-options">
-                  <div v-for="(opt, optIndex) in q.options" :key="optIndex" class="q-option" :class="{ correct: q.correctAnswer === optIndex }">
-                    <span class="option-letter">{{ String.fromCharCode(65 + optIndex) }}</span>
-                    <span class="option-text">{{ opt }}</span>
-                    <span v-if="q.correctAnswer === optIndex" class="correct-badge"><i class="fas fa-check"></i></span>
-                  </div>
-                </div>
-
-                <div class="q-explanation">
-                  <strong>Explanation:</strong> {{ q.explanation }}
-                </div>
-
-                <div class="q-actions">
-                  <button class="btn-small danger" @click="removeQuestion(qIndex)">
-                    <i class="fas fa-trash"></i> Delete
-                  </button>
-                  <button class="btn-small" @click="regenerateQuestion(qIndex)" :disabled="aiGenerating">
-                    <i class="fas fa-redo"></i> Regenerate
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div class="ai-final-actions">
-              <button class="btn" @click="resetAIQuizModal">Reset</button>
-              <button class="btn danger" @click="closeAIQuizModal">Cancel</button>
-              <button class="btn primary" @click="saveGeneratedQuestions" :disabled="generatedQuestions.length === 0">
-                <i class="fas fa-save"></i> Save Questions
-              </button>
-            </div>
-          </div>
-
-          <!-- Error Message -->
-          <div v-if="aiError" class="ai-error-message">
-            <i class="fas fa-exclamation-circle"></i> {{ aiError }}
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </div>
 </template>
 
 <script>
+import axios from 'axios';
+
+import { getStoredSession } from '../../services/authService'
+
 export default {
   name: "CourseLessons",
   data() {
@@ -356,6 +290,10 @@ export default {
       selectedLessonForAI: null,
       newVideoUploadingSectionId: null,
       videoUploading: {},
+      uploading: false,
+      uploadProgress: 0,
+      newUploadBytes: { loaded: 0, total: 0 },
+      videoUploadBytes: {},
     };
   },
   async mounted() {
@@ -372,6 +310,17 @@ export default {
     await this.fetchCurriculum();
   },
   methods: {
+    getAuthHeaders() {
+      const session = getStoredSession()
+      if (!session?.access_token) {
+        throw new Error('No authentication token found')
+      }
+      return {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json'
+      }
+    },
+    
     goBack() {
       this.$router.push("/instructor/courses");
     },
@@ -385,9 +334,10 @@ export default {
     async fetchCurriculum() {
       this.loading = true;
       try {
+        const headers = this.getAuthHeaders()
         const url = `http://localhost:5000/api/courses/${this.courseId}/curriculum`;
         console.log('Fetching curriculum from:', url);
-        const res = await fetch(url);
+        const res = await fetch(url, { headers });
         console.log('Response status:', res.status);
         const data = await res.json();
         console.log('Response data:', data);
@@ -448,8 +398,10 @@ export default {
     },
     async loadTestsForLesson(lessonId) {
       try {
+        const headers = this.getAuthHeaders()
         const res = await fetch(
-          `http://localhost:5000/api/lessons/${lessonId}/tests`
+          `http://localhost:5000/api/lessons/${lessonId}/tests`,
+          { headers }
         );
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || "Không thể tải test");
@@ -481,11 +433,12 @@ export default {
     async saveNewSection() {
       if (!this.newSectionTitle) return;
       try {
+        const headers = this.getAuthHeaders()
         const res = await fetch(
           `http://localhost:5000/api/courses/${this.courseId}/sections`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers,
             body: JSON.stringify({ title: this.newSectionTitle }),
           }
         );
@@ -499,6 +452,7 @@ export default {
     },
     async saveSection(section) {
       try {
+        const headers = this.getAuthHeaders()
         const payload = {
           title: section.editTitle,
           sort_order: section.editOrder,
@@ -509,7 +463,7 @@ export default {
           `http://localhost:5000/api/sections/${section.id}`,
           {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers,
             body: JSON.stringify(payload),
           }
         );
@@ -531,9 +485,10 @@ export default {
     async deleteSection(section) {
       if (!confirm("Xóa chương này?")) return;
       try {
+        const headers = this.getAuthHeaders()
         const res = await fetch(
           `http://localhost:5000/api/sections/${section.id}`,
-          { method: "DELETE" }
+          { method: "DELETE", headers }
         );
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || "Không thể xóa chương");
@@ -558,6 +513,7 @@ export default {
     async saveNewLesson(section) {
       if (!section.newLesson.title) return;
       try {
+        const headers = this.getAuthHeaders()
         const payload = {
           title: section.newLesson.title,
           type: section.newLesson.type,
@@ -568,7 +524,7 @@ export default {
           `http://localhost:5000/api/sections/${section.id}/lessons`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers,
             body: JSON.stringify(payload),
           }
         );
@@ -582,6 +538,7 @@ export default {
     },
     async saveLesson(lesson) {
       try {
+        const headers = this.getAuthHeaders()
         const payload = {
           title: lesson.editTitle,
           type: lesson.editType,
@@ -597,7 +554,7 @@ export default {
           `http://localhost:5000/api/lessons/${lesson.id}`,
           {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers,
             body: JSON.stringify(payload),
           }
         );
@@ -612,9 +569,10 @@ export default {
     async deleteLesson(lesson) {
       if (!confirm("Xóa bài học này?")) return;
       try {
+        const headers = this.getAuthHeaders()
         const res = await fetch(
           `http://localhost:5000/api/lessons/${lesson.id}`,
-          { method: "DELETE" }
+          { method: "DELETE", headers }
         );
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || "Không thể xóa bài học");
@@ -625,6 +583,7 @@ export default {
     },
     async saveNewTest(lesson) {
       try {
+        const headers = this.getAuthHeaders()
         const payload = {
           title: lesson.newTest.title,
           timeLimitMinutes: lesson.newTest.timeLimitMinutes || 0,
@@ -635,7 +594,7 @@ export default {
           `http://localhost:5000/api/lessons/${lesson.id}/tests`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers,
             body: JSON.stringify(payload),
           }
         );
@@ -663,6 +622,7 @@ export default {
     },
     async saveTest(t) {
       try {
+        const headers = this.getAuthHeaders()
         const payload = {
           title: t.editTitle,
           timeLimitMinutes: t.editTime,
@@ -671,7 +631,7 @@ export default {
         };
         const res = await fetch(`http://localhost:5000/api/tests/${t.id}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify(payload),
         });
         const data = await res.json();
@@ -685,8 +645,10 @@ export default {
     async deleteTest(t) {
       if (!confirm("Xóa bài test này?")) return;
       try {
+        const headers = this.getAuthHeaders()
         const res = await fetch(`http://localhost:5000/api/tests/${t.id}`, {
           method: "DELETE",
+          headers
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || "Không thể xóa test");
@@ -723,6 +685,7 @@ export default {
       this.aiError = null;
 
       try {
+        const headers = this.getAuthHeaders()
         const payload = {
           lesson_title: this.aiQuizConfig.lesson_title,
           num_questions: this.aiQuizConfig.num_questions,
@@ -731,7 +694,7 @@ export default {
 
         const res = await fetch("http://localhost:5000/api/ai/quiz/generate", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify(payload),
         });
 
@@ -771,6 +734,7 @@ export default {
       this.aiError = null;
 
       try {
+        const headers = this.getAuthHeaders()
         const payload = {
           lesson_title: this.aiQuizConfig.lesson_title,
           num_questions: 1,
@@ -779,7 +743,7 @@ export default {
 
         const res = await fetch("http://localhost:5000/api/ai/quiz/generate", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify(payload),
         });
 
@@ -817,49 +781,33 @@ export default {
         return;
       }
 
-      // Tạo test từ câu hỏi được tạo
-      const testTitle = `${this.aiQuizConfig.lesson_title} - Quiz (AI)`;
+      // Thêm câu hỏi vào bài QUIZ hiện tại (mỗi bài học chỉ có 1 test)
       const lesson = this.selectedLessonForAI;
-
+      
       try {
-        // Tạo test
-        const testPayload = {
-          title: testTitle,
-          timeLimitMinutes: this.generatedQuestions.length * 3, // ~3 phút/câu
-          attemptsAllowed: 1,
-          isPlacement: false,
-        };
-
-        console.log("Creating test with payload:", testPayload);
-        const testRes = await fetch(
-          `http://localhost:5000/api/lessons/${lesson.id}/tests`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(testPayload),
-          }
-        );
-
-        console.log("Test response status:", testRes.status);
-        console.log("Test response headers:", testRes.headers);
-        
-        // Check if response is JSON
-        const contentType = testRes.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          const text = await testRes.text();
-          console.error("Invalid response type. Expected JSON, got:", contentType);
-          console.error("Response body:", text);
-          throw new Error(`Server returned invalid response: ${contentType}. Check backend logs.`);
+        // Lấy test hiện có của bài học (nếu chưa có thì tạo mới tối thiểu)
+        let existing = this.testsByLesson[lesson.id] || [];
+        let testId;
+        if (existing.length === 0) {
+          const testPayload = {
+            title: `${this.aiQuizConfig.lesson_title} - Quiz`,
+            timeLimitMinutes: this.generatedQuestions.length * 3,
+            attemptsAllowed: 1,
+            isPlacement: false,
+          };
+          const headers = this.getAuthHeaders()
+          const createRes = await fetch(`http://localhost:5000/api/lessons/${lesson.id}/tests`, {
+            method: 'POST', headers, body: JSON.stringify(testPayload)
+          });
+          const createData = await createRes.json();
+          if (!createRes.ok) throw new Error(createData.message || 'Không thể tạo test cho bài học');
+          testId = createData.id;
+        } else {
+          testId = existing[0].id;
         }
 
-        const testData = await testRes.json();
-        console.log("Test data:", testData);
-        if (!testRes.ok) throw new Error(testData.message || "Không thể tạo test");
-
-        const testId = testData.id;
-        console.log("Created test with ID:", testId);
-
         // Lưu từng câu hỏi vào test
+        const headers = this.getAuthHeaders()
         for (const q of this.generatedQuestions) {
           // Build choices array với đáp án đúng được đánh dấu
           const choices = q.options.map((opt, idx) => ({
@@ -877,34 +825,11 @@ export default {
             choices: choices,
           };
 
-          console.log("Creating question with payload:", qPayload);
-          const qRes = await fetch(
-            `http://localhost:5000/api/tests/${testId}/questions`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(qPayload),
-            }
-          );
-
-          console.log("Question response status:", qRes.status);
-          console.log("Question response headers:", qRes.headers);
-          
-          // Check if response is JSON
-          const qContentType = qRes.headers.get("content-type");
-          if (!qContentType || !qContentType.includes("application/json")) {
-            const text = await qRes.text();
-            console.error("Invalid question response type. Expected JSON, got:", qContentType);
-            console.error("Response body:", text);
-            throw new Error(`Server returned invalid response: ${qContentType}. Check backend logs.`);
-          }
-          
-          if (!qRes.ok) {
-            const errData = await qRes.json();
-            console.error("Error saving question:", errData);
-            throw new Error(errData.message || "Lỗi khi lưu câu hỏi");
-          }
-          console.log("Question saved successfully");
+          const qRes = await fetch(`http://localhost:5000/api/tests/${testId}/questions`, {
+            method: 'POST', headers, body: JSON.stringify(qPayload)
+          });
+          const qData = await qRes.json().catch(() => ({}));
+          if (!qRes.ok) throw new Error(qData.message || 'Lỗi khi lưu câu hỏi');
         }
 
         // Close modal immediately without showing alert
@@ -915,32 +840,46 @@ export default {
       }
     },
     async uploadToDrive(file) {
+      // Cloudinary-based upload (backend already switched)
       const form = new FormData();
       form.append('file', file);
-      // Optional: form.append('folder_id', '<YOUR_FOLDER_ID>')
-      const res = await fetch('http://localhost:5000/api/upload/video', {
-        method: 'POST',
-        body: form,
-      });
+      const res = await fetch('http://localhost:5000/api/upload/video', { method: 'POST', body: form });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || `Upload failed (HTTP ${res.status})`);
-      // Prefer direct downloadable URL for video src
-      return data.downloadUrl || data.viewUrl;
+      // Expect Cloudinary response { url }
+      return data.url || data.downloadUrl || data.viewUrl;
     },
     async onUploadNewVideo(section, evt) {
       const file = evt.target.files && evt.target.files[0];
       if (!file) return;
       try {
         this.newVideoUploadingSectionId = section.id;
-        const url = await this.uploadToDrive(file);
+        this.uploadProgress = 0;
+        this.newUploadBytes = { loaded: 0, total: file.size };
+        // use axios to show progress
+        const form = new FormData();
+        form.append('file', file);
+        const res = await axios.post('http://localhost:5000/api/upload/video', form, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (evt) => {
+            if (evt.total) {
+              this.uploadProgress = Math.round((evt.loaded * 100) / evt.total);
+              this.newUploadBytes = { loaded: evt.loaded, total: evt.total };
+            }
+          }
+        });
+        const url = res.data?.url || res.data?.downloadUrl || res.data?.viewUrl;
+        if (!url) throw new Error('Upload succeeded but no URL returned');
         section.newLesson.videoUrl = url;
-        this.$toast?.success('Uploaded video');
+        this.$toast?.success('✅ Video uploaded successfully');
       } catch (e) {
         console.error(e);
         this.$toast?.error(e.message || 'Upload failed');
         alert(e.message || 'Upload failed');
       } finally {
         this.newVideoUploadingSectionId = null;
+        this.uploadProgress = 0;
+        this.newUploadBytes = { loaded: 0, total: 0 };
         evt.target.value = '';
       }
     },
@@ -948,18 +887,58 @@ export default {
       const file = evt.target.files && evt.target.files[0];
       if (!file) return;
       try {
+        // show progress UI
         this.$set ? this.$set(this.videoUploading, lesson.id, true) : (this.videoUploading = { ...this.videoUploading, [lesson.id]: true });
-        const url = await this.uploadToDrive(file);
+        this.uploadProgress = 0;
+        if (this.$set) this.$set(this.videoUploadBytes, lesson.id, { loaded: 0, total: file.size });
+        else this.videoUploadBytes = { ...this.videoUploadBytes, [lesson.id]: { loaded: 0, total: file.size } };
+
+        const form = new FormData();
+        form.append('file', file);
+
+        const res = await axios.post('http://localhost:5000/api/upload/video', form, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (evt) => {
+            if (evt.total) {
+              this.uploadProgress = Math.round((evt.loaded * 100) / evt.total);
+              const entry = { loaded: evt.loaded, total: evt.total };
+              if (this.$set) this.$set(this.videoUploadBytes, lesson.id, entry);
+              else this.videoUploadBytes = { ...this.videoUploadBytes, [lesson.id]: entry };
+            }
+          },
+        });
+
+        const url = res.data?.url || res.data?.downloadUrl || res.data?.viewUrl;
+        if (!url) throw new Error('Upload succeeded but no URL returned');
+
+        // bind preview
         lesson.editVideoUrl = url;
-        this.$toast?.success('Uploaded video');
+        // optional: persist to backend
+        try {
+          const headers = this.getAuthHeaders()
+          await fetch(`http://localhost:5000/api/lessons/${lesson.id}`, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({ videoUrl: url }),
+          });
+        } catch (_) {}
+
+        this.$toast?.success('✅ Video uploaded successfully');
+        alert && alert('✅ Video uploaded successfully');
       } catch (e) {
         console.error(e);
         this.$toast?.error(e.message || 'Upload failed');
-        alert(e.message || 'Upload failed');
+        alert && alert(e.message || 'Upload failed');
       } finally {
         if (this.$delete) this.$delete(this.videoUploading, lesson.id); else { const { [lesson.id]:_, ...rest } = this.videoUploading; this.videoUploading = rest; }
+        if (this.$delete) this.$delete(this.videoUploadBytes, lesson.id); else { const { [lesson.id]:__, ...rest2 } = this.videoUploadBytes; this.videoUploadBytes = rest2; }
+        this.uploadProgress = 0;
         evt.target.value = '';
       }
+    },
+    formatMB(bytes) {
+      const b = Number(bytes || 0);
+      return (b / (1024 * 1024)).toFixed(2);
     },
   }
 }
@@ -1950,5 +1929,60 @@ export default {
   align-items: center;
   gap: 12px;
    border: 2px solid #fca5a5;
+}
+
+.video-upload-card { 
+  border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; background: #fafafa;
+}
+.progress { height: 8px; background: #e5e7eb; border-radius: 999px; overflow: hidden; margin-top: 12px; }
+.video-preview { margin-top: 16px; }
+.video-preview video { width: 100%; max-width: 640px; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
+.video-preview.small video { max-width: 480px; }
+.progress-details { display:flex; justify-content: space-between; font-size:12px; color:#666; margin-top:6px; }
+
+/* Fill-only slider (no handle) */
+.progress-slider {
+  --fill: 0%;
+  width: 100%;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  outline: none;
+}
+/* Hide the thumb */
+.progress-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0;
+  height: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+.progress-slider::-moz-range-thumb {
+  width: 0;
+  height: 0;
+  border: 0;
+  background: transparent;
+}
+/* Tracks */
+.progress-slider::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(#3b82f6, #3b82f6) 0/var(--fill) 100% no-repeat, #e5e7eb;
+}
+/* Firefox uses separate progress/track */
+.progress-slider::-moz-range-track {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 999px;
+}
+.progress-slider::-moz-range-progress {
+  height: 8px;
+  background: #3b82f6;
+  border-radius: 999px;
 }
 </style>

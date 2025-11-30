@@ -116,6 +116,7 @@
 
 <script>
 import ContentCreator from './ContentCreator.vue'
+import { getStoredSession } from '../../services/authService'
 
 export default {
     name: 'InstructorCourses',
@@ -142,17 +143,28 @@ export default {
         }
     },
     mounted() {
-        // GỌI CHỨC NĂNG LOAD KHI COMPONENT ĐƯỢC TẠO
         this.loadCourses()
     },
     methods: {
+        getAuthHeaders() {
+            const session = getStoredSession()
+            if (!session?.access_token) {
+                throw new Error('No authentication token found')
+            }
+            return {
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json'
+            }
+        },
+        
         async loadCourses() {
             this.loading = true
             this.courses = []
             this.filteredCourses = []
             try {
-                // ĐÃ XÁC NHẬN URL VÀ ENDPOINT HOẠT ĐỘNG
-                const res = await fetch('http://localhost:5000/api/courses?instructor_id=2') 
+                const headers = this.getAuthHeaders()
+                // Backend now uses instructor ID from JWT token
+                const res = await fetch('http://localhost:5000/api/courses', { headers }) 
                 
                 if (!res.ok) {
                     const errorData = await res.json()
@@ -242,10 +254,11 @@ export default {
 
         async toggleArchive(courseId, currentStatus) {
             try {
+                const headers = this.getAuthHeaders()
                 const isArchived = currentStatus === 'archived'
                 const res = await fetch(`http://localhost:5000/api/courses/${courseId}/archive`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers,
                     body: JSON.stringify({ is_archived: !isArchived })
                 })
                 const data = await res.json()
@@ -261,41 +274,35 @@ export default {
         },
 
         async saveCourse() {
-            // Xác định Instructor ID. Giả định ID là 2 như trong các yêu cầu trước.
-            // Trong ứng dụng thực tế, ID này sẽ được lấy từ state/token đăng nhập.
-            const instructorId = 2; 
-
-            // Chuẩn bị payload data từ form
-            const payload = {
-                ...this.courseForm,
-                price: Number(this.courseForm.price), // Đảm bảo giá là số
-                instructor_id: instructorId,
-                // Giả định khóa học mới mặc định là bản nháp
-                status: 'draft', 
-                // Có thể thêm level, currency nếu form có field đó
-                level: 'beginner',
-                currency: 'VND'
-            };
-
             try {
+                const headers = this.getAuthHeaders()
+                
+                // Backend sẽ lấy instructor_id từ JWT token
+                const payload = {
+                    ...this.courseForm,
+                    price: Number(this.courseForm.price),
+                    status: this.courseForm.status || 'draft',
+                    level: 'beginner',
+                    currency: 'VND'
+                };
+
                 const url = 'http://localhost:5000/api/courses';
                 let res;
                 let data;
 
                 if (this.editingCourse) {
-                    // --- CHỨC NĂNG CẬP NHẬT (PUT) ---
-                    // Cần có endpoint PUT /api/courses/{id} và xử lý logic backend tương ứng
+                    // Cập nhật khóa học
                     const updateUrl = `${url}/${this.editingCourse}`;
                     res = await fetch(updateUrl, {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers,
                         body: JSON.stringify(payload)
                     });
                 } else {
-                    // --- CHỨC NĂNG TẠO MỚI (POST) ---
+                    // Tạo khóa học mới
                     res = await fetch(url, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers,
                         body: JSON.stringify(payload)
                     });
                 }
@@ -303,13 +310,10 @@ export default {
                 data = await res.json();
 
                 if (!res.ok) {
-                    // Xử lý lỗi trả về từ backend (400, 500)
                     throw new Error(data.message || `Lỗi khi lưu khóa học (HTTP ${res.status})`);
                 }
 
-                // --- Cập nhật UI sau khi Backend thành công ---
                 this.closeModal();
-                // Tải lại toàn bộ danh sách khóa học để hiển thị khóa học mới
                 await this.loadCourses(); 
                 
                 alert(`Khóa học "${data.title}" đã được ${this.editingCourse ? 'cập nhật' : 'tạo'} thành công!`);

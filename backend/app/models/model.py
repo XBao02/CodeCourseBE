@@ -1,5 +1,28 @@
 from datetime import datetime
-from app.models import db
+from app.models import db 
+# Lưu ý: Đảm bảo 'db' được import đúng từ nơi bạn khởi tạo SQLAlchemy app
+
+# ==========================================================
+# BẢNG LIÊN KẾT (MANY-TO-MANY)
+# ==========================================================
+
+# Liên kết Khóa học - Danh mục
+course_categories = db.Table('course_categories',
+    db.Column('CourseId', db.BigInteger, db.ForeignKey('Courses.Id'), primary_key=True),
+    db.Column('CategoryId', db.BigInteger, db.ForeignKey('Categories.Id'), primary_key=True)
+)
+
+# Liên kết Khóa học - Chủ đề (Topics)
+course_topics = db.Table('course_topics',
+    db.Column('CourseId', db.BigInteger, db.ForeignKey('Courses.Id'), primary_key=True),
+    db.Column('TopicId', db.BigInteger, db.ForeignKey('Topics.Id'), primary_key=True)
+)
+
+# Liên kết Khóa học - Khóa học (Tiên quyết - Prerequisites)
+course_prerequisites = db.Table('course_prerequisites',
+    db.Column('CourseId', db.BigInteger, db.ForeignKey('Courses.Id'), primary_key=True),
+    db.Column('PrerequisiteCourseId', db.BigInteger, db.ForeignKey('Courses.Id'), primary_key=True)
+)
 
 # ========================
 # BẢNG NGƯỜI DÙNG
@@ -20,9 +43,14 @@ class User(db.Model):
     student = db.relationship('Student', backref='user', uselist=False)
     instructor = db.relationship('Instructor', backref='user', uselist=False)
     admin = db.relationship('Admin', backref='user', uselist=False)
+    
+    # Quan hệ chat
     sent_messages = db.relationship('Message', foreign_keys='Message.from_user_id', backref='from_user')
     received_messages = db.relationship('Message', foreign_keys='Message.to_user_id', backref='to_user')
     ai_sessions = db.relationship('AIChatSession', backref='user')
+    
+    # Quan hệ hành vi (AI Recommendation)
+    interactions = db.relationship('UserInteraction', backref='user')
 
 # ========================
 # SINH VIÊN
@@ -37,6 +65,10 @@ class Student(db.Model):
     address = db.Column('Address', db.String(255))
     occupation = db.Column('Occupation', db.String(120))
     study_goal = db.Column('StudyGoal', db.Text)
+    
+    # [MỚI] Vector sở thích cho AI (Lưu JSON array)
+    interest_vector = db.Column('InterestVector', db.JSON) 
+
     created_at = db.Column('CreatedAt', db.DateTime(timezone=True), nullable=False, default=datetime.utcnow)
     updated_at = db.Column('UpdatedAt', db.DateTime(timezone=True), nullable=False, default=datetime.utcnow)
 
@@ -46,6 +78,10 @@ class Student(db.Model):
     ai_analysis = db.relationship('AIAbilityAnalysis', backref='student')
     study_plans = db.relationship('StudyPlan', backref='student')
     invoices = db.relationship('Invoice', backref='student')
+    
+    # [MỚI] Quan hệ Recommendation System
+    reviews = db.relationship('Review', backref='student')
+    wishlist = db.relationship('Wishlist', backref='student')
 
 # ========================
 # GIẢNG VIÊN
@@ -76,7 +112,33 @@ class Admin(db.Model):
     updated_at = db.Column('UpdatedAt', db.DateTime(timezone=True), nullable=False, default=datetime.utcnow)
 
 # ========================
-# KHÓA HỌC
+# [MỚI] DANH MỤC (CATEGORIES)
+# ========================
+class Category(db.Model):
+    __tablename__ = 'Categories'
+
+    id = db.Column('Id', db.BigInteger, primary_key=True, autoincrement=True)
+    name = db.Column('Name', db.String(100), nullable=False)
+    slug = db.Column('Slug', db.String(100), unique=True, nullable=False)
+    parent_id = db.Column('ParentId', db.BigInteger, db.ForeignKey('Categories.Id'))
+    
+    # Quan hệ đệ quy (Category cha - con)
+    children = db.relationship('Category', backref=db.backref('parent', remote_side=[id]))
+    topics = db.relationship('Topic', backref='category')
+
+# ========================
+# [MỚI] CHỦ ĐỀ (TOPICS)
+# ========================
+class Topic(db.Model):
+    __tablename__ = 'Topics'
+
+    id = db.Column('Id', db.BigInteger, primary_key=True, autoincrement=True)
+    name = db.Column('Name', db.String(100), nullable=False)
+    slug = db.Column('Slug', db.String(100), unique=True, nullable=False)
+    category_id = db.Column('CategoryId', db.BigInteger, db.ForeignKey('Categories.Id'), nullable=False)
+
+# ========================
+# KHÓA HỌC (ĐÃ CẬP NHẬT)
 # ========================
 class Course(db.Model):
     __tablename__ = 'Courses'
@@ -90,12 +152,72 @@ class Course(db.Model):
     price = db.Column('Price', db.Numeric(12, 2), nullable=False, default=0.00)
     currency = db.Column('Currency', db.String(3), nullable=False, default='VND')
     is_public = db.Column('IsPublic', db.Boolean, nullable=False, default=False)
+    
+    # [MỚI] Vector đặc trưng khóa học cho AI
+    embedding_vector = db.Column('EmbeddingVector', db.JSON)
+
     created_at = db.Column('CreatedAt', db.DateTime(timezone=True), nullable=False, default=datetime.utcnow)
     updated_at = db.Column('UpdatedAt', db.DateTime(timezone=True), nullable=False, default=datetime.utcnow)
 
+    # Quan hệ cũ
     sections = db.relationship('CourseSection', backref='course')
     enrollments = db.relationship('Enrollment', backref='course')
     invoices = db.relationship('Invoice', backref='course')
+    
+    # [MỚI] Quan hệ cho hệ thống Gợi ý
+    categories = db.relationship('Category', secondary=course_categories, backref='courses')
+    topics = db.relationship('Topic', secondary=course_topics, backref='courses')
+    reviews = db.relationship('Review', backref='course')
+    
+    # Khóa học tiên quyết (Self-referential Many-to-Many)
+    prerequisites = db.relationship(
+        'Course', 
+        secondary=course_prerequisites,
+        primaryjoin=(course_prerequisites.c.CourseId == id),
+        secondaryjoin=(course_prerequisites.c.PrerequisiteCourseId == id),
+        backref='required_for'
+    )
+
+# ========================
+# [MỚI] TƯƠNG TÁC NGƯỜI DÙNG
+# ========================
+class UserInteraction(db.Model):
+    __tablename__ = 'UserInteractions'
+    
+    id = db.Column('Id', db.BigInteger, primary_key=True, autoincrement=True)
+    user_id = db.Column('UserId', db.BigInteger, db.ForeignKey('Users.Id'), nullable=False)
+    entity_id = db.Column('EntityId', db.BigInteger, nullable=False) # ID của Course hoặc Lesson
+    entity_type = db.Column('EntityType', db.String(50), default='course') # 'course', 'lesson'
+    interaction_type = db.Column('InteractionType', db.String(50), nullable=False) # 'view', 'click', 'search', 'wishlist_add'
+    duration_seconds = db.Column('DurationSeconds', db.Integer, default=0)
+    created_at = db.Column('CreatedAt', db.DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+# ========================
+# [MỚI] ĐÁNH GIÁ & REVIEW
+# ========================
+class Review(db.Model):
+    __tablename__ = 'Reviews'
+
+    id = db.Column('Id', db.BigInteger, primary_key=True, autoincrement=True)
+    course_id = db.Column('CourseId', db.BigInteger, db.ForeignKey('Courses.Id'), nullable=False)
+    student_id = db.Column('StudentId', db.BigInteger, db.ForeignKey('Students.Id'), nullable=False)
+    rating = db.Column('Rating', db.Integer, nullable=False) # 1-5
+    comment = db.Column('Comment', db.Text)
+    sentiment_score = db.Column('SentimentScore', db.Numeric(4, 3)) # Điểm cảm xúc từ AI (-1 đến 1)
+    created_at = db.Column('CreatedAt', db.DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    updated_at = db.Column('UpdatedAt', db.DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+# ========================
+# [MỚI] DANH SÁCH YÊU THÍCH
+# ========================
+class Wishlist(db.Model):
+    __tablename__ = 'Wishlists'
+
+    id = db.Column('Id', db.BigInteger, primary_key=True, autoincrement=True)
+    student_id = db.Column('StudentId', db.BigInteger, db.ForeignKey('Students.Id'), nullable=False)
+    course_id = db.Column('CourseId', db.BigInteger, db.ForeignKey('Courses.Id'), nullable=False)
+    created_at = db.Column('CreatedAt', db.DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
 
 # ========================
 # PHẦN HỌC
@@ -205,6 +327,11 @@ class Choice(db.Model):
     content = db.Column('Content', db.Text, nullable=False)
     is_correct = db.Column('IsCorrect', db.Boolean, default=False)
     sort_order = db.Column('SortOrder', db.Integer, default=0)
+    
+    @property
+    def text(self):
+        """Alias for content to support both field names"""
+        return self.content
 
 # ========================
 # TEST CASE CHO CÂU HỎI LẬP TRÌNH

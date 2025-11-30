@@ -257,6 +257,7 @@
 </template>
 
 <script>
+import { getStoredSession } from '../../services/authService'
 import LineChart from "../Instructor/BarChart.vue";
 import PieChart from "../Instructor/PieChart.vue";
 import BarChart from "../Instructor/LineChart.vue";
@@ -303,15 +304,26 @@ export default {
     this.loadReportsData();
   },
   methods: {
+    getAuthHeaders() {
+      const session = getStoredSession();
+      if (!session?.access_token) {
+        throw new Error('No authentication token found');
+      }
+      return {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json'
+      };
+    },
+    
     async loadReportsData() {
       this.loading = true;
       this.error = null;
       
       try {
-        // Hardcode instructor ID = 2 for testing
-        const instructorId = 2;
+        const headers = this.getAuthHeaders();
         
-        const response = await fetch(`http://localhost:5000/api/instructor/reports?instructor_id=${instructorId}`);
+        // Backend sẽ lấy instructor_id từ JWT token
+        const response = await fetch(`http://localhost:5000/api/instructor/reports`, { headers });
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);

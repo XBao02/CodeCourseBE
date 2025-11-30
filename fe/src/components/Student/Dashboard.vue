@@ -7,99 +7,59 @@
     </div>
 
     <!-- Stats Grid -->
-    <div class="stats-grid">
-      <div class="stat-card" v-for="stat in stats" :key="stat.title">
-        <h6>{{ stat.title }}</h6>
-        <h3>{{ stat.value }}</h3>
-      </div>
-    </div>
-
-    <!-- Learning Path -->
-    <div class="content-card">
-      <h5>Learning Path</h5>
-      <div class="learning-path-list">
-        <div class="path-item" v-for="path in learningPath" :key="path.name">
-          <span class="path-name">{{ path.name }}</span>
-          <span class="path-status" :class="{
-            'status-completed': path.status === 'Completed',
-            'status-progress': path.status === 'In Progress',
-            'status-not-started': path.status === 'Not Started'
-          }">
-            {{ path.status }}
-          </span>
+    <div v-if="loading" class="content-card"><p>Loading...</p></div>
+    <div v-else>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <h6>COURSES ENROLLED</h6>
+          <h3>{{ stats.enrolled }}</h3>
+        </div>
+        <div class="stat-card">
+          <h6>COMPLETED COURSES</h6>
+          <h3>{{ stats.completed }}</h3>
+        </div>
+        <div class="stat-card">
+          <h6>PENDING COURSES</h6>
+          <h3>{{ stats.pending }}</h3>
+        </div>
+        <div class="stat-card">
+          <h6>AVERAGE TEST SCORE</h6>
+          <h3>{{ stats.avgScore }}%</h3>
+          <div class="small text-muted" v-if="stats.testsTaken > 0">based on {{ stats.testsTaken }} test{{ stats.testsTaken>1? 's':'' }}</div>
         </div>
       </div>
-    </div>
 
-    <!-- Enrolled Courses -->
-    <div class="content-card">
-      <h5>Enrolled Courses</h5>
-      <div class="courses-grid">
-        <div class="course-card" v-for="course in courses" :key="course.id">
-          <h6>{{ course.title }}</h6>
-          <p>{{ course.description }}</p>
-          <div class="progress-container">
-            <div class="progress-header">
-              <span class="progress-label">Progress</span>
-              <span class="progress-value">{{ course.progress }}%</span>
+      <!-- Learning Path -->
+      <div class="content-card">
+        <h5>Learning Path</h5>
+        <div class="learning-path-list">
+          <div v-for="item in learningPath" :key="item.id" class="path-item">
+            <span class="path-name">{{ item.courseTitle }}</span>
+            <span class="path-status" :class="statusClass(item.status)">{{ item.status }}</span>
+          </div>
+          <div v-if="!learningPath.length" class="path-item">No items</div>
+        </div>
+      </div>
+
+      <!-- Enrolled Courses -->
+      <div class="content-card">
+        <h5>My Courses</h5>
+        <div class="courses-grid">
+          <div v-for="c in courses" :key="c.id" class="course-card">
+            <h6>{{ c.title }}</h6>
+            <p class="course-meta">Level: {{ c.level || '-' }} · {{ c.isPublic ? 'Public' : 'Private' }}</p>
+            <div class="progress-container">
+              <div class="progress-header">
+                <span class="progress-label">Progress</span>
+                <span class="progress-value">{{ c.progressPercent || 0 }}%</span>
+              </div>
+              <div class="progress-bar-wrapper large">
+                <div class="progress-bar-fill" :style="{ width: (c.progressPercent || 0) + '%' }"></div>
+              </div>
             </div>
-            <div class="progress-bar-wrapper">
-              <div class="progress-bar-fill" :style="{ width: course.progress + '%' }"></div>
-            </div>
+            <button class="open-btn" @click="openCourse(c)">Open Course</button>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Overall Progress -->
-    <div class="content-card">
-      <h5>Overall Progress</h5>
-      <div class="overall-progress">
-        <div class="progress-header">
-          <span class="progress-label">Total Completion</span>
-          <span class="progress-value">{{ overallProgress }}%</span>
-        </div>
-        <div class="progress-bar-wrapper large">
-          <div class="progress-bar-fill" :style="{ width: overallProgress + '%' }"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Skill Test Button -->
-    <div class="test-section" v-if="!showTest">
-      <button class="action-button" @click="startTest">
-        Take Skill Test
-      </button>
-    </div>
-
-    <!-- Skill Test Form -->
-    <div v-if="showTest" class="content-card test-card">
-      <h5>Skill Test</h5>
-
-      <div class="test-questions">
-        <div v-for="(question, index) in testQuestions" :key="index" class="question-item">
-          <h6>{{ index + 1 }}. {{ question.question }}</h6>
-          <div class="options-list">
-            <label class="option-label" v-for="option in question.options" :key="option">
-              <input type="radio" :name="'q' + index" :value="option" v-model="question.selected" :disabled="submitted" />
-              <span>{{ option }}</span>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <div class="test-actions">
-        <button v-if="!submitted" class="action-button" @click="submitTest">
-          Submit Test
-        </button>
-
-        <div v-else class="test-result">
-          <div class="result-score">
-            Your Score: <strong>{{ score }}/{{ testQuestions.length }}</strong>
-          </div>
-          <button class="action-button secondary" @click="resetTest">
-            Retake Test
-          </button>
+          <div v-if="!courses.length" class="course-card"><p>No courses</p></div>
         </div>
       </div>
     </div>
@@ -107,424 +67,107 @@
 </template>
 
 <script>
+import axios from 'axios'
+import { getStoredSession } from '../../services/authService'
+
 export default {
-  name: "StudentDashboard",
+  name: 'StudentDashboard',
   data() {
     return {
-      //  Thống kê tổng quan của học viên
-      stats: [
-        { title: "Courses Enrolled", value: 4 },
-        { title: "Completed Courses", value: 2 },
-        { title: "Pending Courses", value: 2 },
-        { title: "Skill Tests Taken", value: 1 },
-      ],
-      //  Lộ trình học tập
-      learningPath: [
-        { name: "HTML & CSS Basics", status: "Completed" },
-        { name: "JavaScript Fundamentals", status: "In Progress" },
-        { name: "Vue.js Framework", status: "Not Started" },
-      ],
-      //  Khóa học học viên đã tham gia
-      courses: [
-        { id: 1, title: "Frontend Development", description: "Learn HTML, CSS, JS", progress: 80 },
-        { id: 2, title: "Vue.js Advanced", description: "Master Vue ecosystem", progress: 40 },
-      ],
-      //  Tiến độ tổng thể
-      overallProgress: 60,
-
-      //  Trạng thái hiển thị form test
-      showTest: false,
-      //  Đã nộp bài hay chưa
-      submitted: false,
-      //  Điểm số đạt được
-      score: 0,
-
-      //  Câu hỏi gốc (nguồn dữ liệu bài test)
-      baseQuestions: [
-        {
-          question: "Which HTML tag is used to define a hyperlink?",
-          options: ["<link>", "<a>", "<href>", "<hyper>"],
-          correct: "<a>",
-        },
-        {
-          question: "Which of the following is a JavaScript framework?",
-          options: ["Laravel", "Vue.js", "Django", "Flask"],
-          correct: "Vue.js",
-        },
-        {
-          question: "What does CSS stand for?",
-          options: [
-            "Computer Style Sheets",
-            "Creative Style Sheets",
-            "Cascading Style Sheets",
-            "Colorful Style Sheets",
-          ],
-          correct: "Cascading Style Sheets",
-        },
-        {
-          question: "Which HTML tag is used for inserting a line break?",
-          options: ["<break>", "<br>", "<lb>", "<newline>"],
-          correct: "<br>",
-        },
-        {
-          question: "Which of these is not a JavaScript data type?",
-          options: ["Boolean", "Undefined", "Float", "Object"],
-          correct: "Float",
-        },
-      ],
-
-      //  Danh sách câu hỏi sau khi được chọn hoặc xáo trộn
-      testQuestions: [],
-    };
+      loading: true,
+      courses: [],
+      learningPath: [],
+      stats: { enrolled: 0, completed: 0, pending: 0, testsTaken: 0, avgScore: 0 },
+      studentId: null,
+    }
   },
-
+  async mounted() {
+    await this.loadData()
+  },
   methods: {
-    //  Bắt đầu làm bài kiểm tra
-    startTest() {
-      this.showTest = true;
-      this.loadRandomQuestions(); // Gọi hàm load câu hỏi ngẫu nhiên
+    authHeaders() {
+      const session = getStoredSession()
+      return session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {}
     },
+    async loadData() {
+      this.loading = true
+      try {
+        // Get my courses (also returns studentId)
+        const myCoursesRes = await axios.get('http://localhost:5000/api/student/my-courses', { headers: this.authHeaders() })
+        const mc = myCoursesRes.data || {}
+        this.studentId = mc.studentId || null
+        this.courses = Array.isArray(mc.courses) ? mc.courses : []
+        // Stats from courses list
+        this.stats.enrolled = this.courses.length
+        this.stats.completed = this.courses.filter(c => (c.enrollmentStatus || '').toLowerCase() === 'completed').length
+        this.stats.pending = this.courses.filter(c => (c.enrollmentStatus || '').toLowerCase() !== 'completed').length
 
-    //  Nộp bài và tính điểm
-    submitTest() {
-      this.submitted = true;
-      // Đếm số câu đúng
-      this.score = this.testQuestions.filter(
-        (q) => q.selected === q.correct
-      ).length;
-    },
+        // Test metrics (average score and attempts)
+        try {
+          const tm = await axios.get('http://localhost:5000/api/student/test-metrics', { headers: this.authHeaders() })
+          const m = tm.data || {}
+          this.stats.testsTaken = m.testsTaken || 0
+          this.stats.avgScore = typeof m.averagePercentage === 'number' ? m.averagePercentage : 0
+        } catch (e) {
+          console.warn('test-metrics not available yet', e?.response?.data || e?.message)
+          this.stats.testsTaken = 0
+          this.stats.avgScore = 0
+        }
 
-    //  Làm lại bài kiểm tra (ngẫu nhiên câu hỏi mới)
-    resetTest() {
-      this.submitted = false;
-      this.score = 0;
-      this.loadRandomQuestions(); // Trộn lại câu hỏi
-    },
-
-    //  Hàm xáo trộn mảng (Fisher–Yates Shuffle)
-    shuffleArray(array) {
-      for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
+        // Learning path
+        if (this.studentId) {
+          const plansRes = await axios.get(`http://localhost:5000/api/student/study-plans/${this.studentId}`, { headers: this.authHeaders() })
+          const plans = (plansRes.data?.studyPlans || [])
+          const items = plans.flatMap(p => p.items || [])
+          this.learningPath = items.map(it => ({
+            id: it.id,
+            courseId: it.courseId,
+            courseTitle: (this.courses.find(c => c.id === it.courseId)?.title) || `Course #${it.courseId}`,
+            status: it.status || 'not started',
+          }))
+        }
+      } catch (e) {
+        console.error('Student dashboard load error:', e)
+      } finally {
+        this.loading = false
       }
-      return array;
     },
-
-    //  Load ngẫu nhiên 3 câu hỏi (và xáo trộn thứ tự đáp án)
-    loadRandomQuestions() {
-      // Sao chép mảng câu hỏi gốc rồi xáo trộn thứ tự
-      const shuffled = this.shuffleArray([...this.baseQuestions]);
-      // Chọn 3 câu đầu và gán lại giá trị selected = null
-      this.testQuestions = shuffled.slice(0, 3).map((q) => ({
-        ...q,
-        selected: null,
-        options: this.shuffleArray([...q.options]), // Xáo luôn cả thứ tự đáp án
-      }));
+    statusClass(s) {
+      const v = (s || '').toLowerCase()
+      if (v.includes('complete')) return 'status-completed'
+      if (v.includes('progress')) return 'status-progress'
+      return 'status-not-started'
     },
-  },
-};
+    openCourse(course) {
+      if (!course?.id) return
+      this.$router.push({ name: 'StudentCourseLesson', params: { courseId: course.id } }).catch(()=>{})
+    }
+  }
+}
 </script>
 
 <style scoped>
-.dashboard-wrapper {
-  background: #f8f9fa;
-  min-height: 100vh;
-  padding: 40px;
-}
-
-.dashboard-header {
-  margin-bottom: 40px;
-}
-
-.dashboard-header h1 {
-  font-size: 32px;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin: 0 0 8px 0;
-  letter-spacing: -0.5px;
-}
-
-.dashboard-header p {
-  color: #666;
-  font-size: 15px;
-  margin: 0;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
-  margin-bottom: 40px;
-}
-
-.stat-card {
-  background: white;
-  padding: 24px;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  transition: all 0.3s ease;
-}
-
-.stat-card:hover {
-  border-color: #d1d5db;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-.stat-card h6 {
-  font-size: 13px;
-  color: #666;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin: 0 0 8px 0;
-}
-
-.stat-card h3 {
-  font-size: 28px;
-  font-weight: 600;
-  margin: 0;
-  color: #1a1a1a;
-}
-
-.content-card {
-  background: white;
-  padding: 28px;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  margin-bottom: 24px;
-}
-
-.content-card h5 {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin: 0 0 24px 0;
-}
-
-.learning-path-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.path-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-  background: #f8f9fa;
-  border-radius: 6px;
-}
-
-.path-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #1a1a1a;
-}
-
-.path-status {
-  font-size: 13px;
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-weight: 500;
-}
-
-.status-completed {
-  background: #dbeafe;
-  color: #2563eb;
-}
-
-.status-progress {
-  background: #fef3c7;
-  color: #d97706;
-}
-
-.status-not-started {
-  background: #f3f4f6;
-  color: #6b7280;
-}
-
-.courses-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px;
-}
-
-.course-card {
-  padding: 20px;
-  background: #f8f9fa;
-  border-radius: 6px;
-}
-
-.course-card h6 {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin: 0 0 8px 0;
-}
-
-.course-card p {
-  font-size: 14px;
-  color: #666;
-  margin: 0 0 16px 0;
-}
-
-.progress-container {
-  margin-top: 16px;
-}
-
-.progress-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.progress-label {
-  font-size: 13px;
-  color: #666;
-  font-weight: 500;
-}
-
-.progress-value {
-  font-size: 14px;
-  color: #1a1a1a;
-  font-weight: 600;
-}
-
-.progress-bar-wrapper {
-  height: 8px;
-  background: #e5e7eb;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.progress-bar-wrapper.large {
-  height: 12px;
-}
-
-.progress-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #3b82f6, #2563eb);
-  transition: width 0.3s ease;
-}
-
-.overall-progress {
-  max-width: 600px;
-}
-
-.test-section {
-  text-align: center;
-  padding: 40px 0;
-}
-
-.action-button {
-  padding: 12px 32px;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 15px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-.action-button:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-}
-
-.action-button.secondary {
-  background: white;
-  color: #1f2937;
-  border: 1px solid #d1d5db;
-}
-
-.action-button.secondary:hover {
-  background: #f8f9fa;
-  border-color: #9ca3af;
-}
-
-.test-card {
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.test-questions {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  margin-bottom: 32px;
-}
-
-.question-item h6 {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin: 0 0 12px 0;
-}
-
-.options-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.option-label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px;
-  background: #f8f9fa;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.option-label:hover {
-  background: #e5e7eb;
-}
-
-.option-label input[type="radio"] {
-  cursor: pointer;
-}
-
-.option-label span {
-  font-size: 14px;
-  color: #1a1a1a;
-}
-
-.test-actions {
-  text-align: center;
-}
-
-.test-result {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-}
-
-.result-score {
-  font-size: 18px;
-  color: #1a1a1a;
-  padding: 20px 32px;
-  background: #eff6ff;
-  border-radius: 8px;
-}
-
-.result-score strong {
-  font-size: 24px;
-  color: #3b82f6;
-}
-
-@media (max-width: 768px) {
-  .dashboard-wrapper {
-    padding: 20px;
-  }
-
-  .courses-grid {
-    grid-template-columns: 1fr;
-  }
-}
+/* Keep existing styles from scaffold if any */
+.dashboard-wrapper { background: #f8f9fa; min-height: 100vh; padding: 40px; }
+.dashboard-header { margin-bottom: 24px; }
+.dashboard-header h1 { font-size: 32px; font-weight: 700; }
+.dashboard-header p { color:#666; }
+.stats-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-bottom:24px; }
+.stat-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:20px; }
+.content-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px; }
+.learning-path-list { display:flex; flex-direction:column; gap:10px; }
+.path-item { display:flex; justify-content:space-between; }
+.path-status { padding:2px 8px; border-radius:10px; font-size:12px; }
+.status-completed { background:#d1fae5; color:#065f46; }
+.status-progress { background:#fef3c7; color:#92400e; }
+.status-not-started { background:#e5e7eb; color:#374151; }
+.courses-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
+.course-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px; }
+.open-btn { align-self:flex-start; background:#2563eb; color:#fff; border:none; padding:8px 14px; border-radius:6px; font-size:14px; cursor:pointer; font-weight:500; }
+.open-btn:hover { background:#1d4ed8; }
+.progress-bar-wrapper { width:100%; height:8px; background:#eef2f7; border-radius:8px; overflow:hidden; }
+.progress-bar-wrapper.large { height:12px; }
+.progress-bar-fill { height:100%; background:#3b82f6; }
 </style>

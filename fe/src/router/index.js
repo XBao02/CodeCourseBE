@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router"; // cài vue-router: npm install vue-router@next --save
+import ForgotPassword from '../components/User/ForgotPassword.vue'
 
 const routes = [
   // ------------------ User ------------------
@@ -29,6 +30,11 @@ const routes = [
     path: "/settings",
     name: "UserSettings",
     component: () => import("../components/User/Settings.vue"),
+  },
+  {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: ForgotPassword
   },
 
   // ------------------ ADMIN ------------------
@@ -94,9 +100,14 @@ const routes = [
           import("../components/Student/Course_Section_Lesson.vue"),
       },
       {
-        path: "minigames",
-        name: "StudentMinigames",
-        component: () => import("../components/Student/Minigames.vue"),
+        path: "course/:courseId/test/:testId",
+        name: "StudentTestTaking",
+        component: () => import("../components/Student/TestTaking.vue"),
+      },
+      {
+        path: "course-store",
+        name: "StudentCourseStore",
+        component: () => import("../components/Student/CourseStore.vue"),
       },
       {
         path: "chat",
