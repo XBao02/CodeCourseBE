@@ -17,8 +17,12 @@ export const fetchAiCourses = async () => {
   return data?.courses ?? [];
 };
 
-export const sendChatMessage = async (prompt, model) => {
-  const payload = { prompt };
+export const sendChatMessage = async (promptOrPayload, model) => {
+  const payload =
+    typeof promptOrPayload === "string"
+      ? { prompt: promptOrPayload }
+      : { ...(promptOrPayload || {}) };
+
   if (model) {
     payload.model = model;
   }

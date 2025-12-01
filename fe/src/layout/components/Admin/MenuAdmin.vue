@@ -54,11 +54,6 @@
                         Permissions
                     </router-link>
                 </li>
-                <li class="nav-item">
-                    <router-link to="/admin/assistant" class="nav-link">
-                        AI Assistant
-                    </router-link>
-                </li>
             </ul>
 
             <!-- User dropdown -->

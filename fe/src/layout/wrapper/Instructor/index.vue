@@ -4,10 +4,12 @@
             <MenuInstructor></MenuInstructor>
         </div>
         <router-view></router-view>
+        <GeminiChatBubble />
     </div>
 </template>
 <script>
 import MenuInstructor from "../../components/Instructor/MenuInstructor.vue";
+import GeminiChatBubble from "../../../components/common/GeminiChatBubble.vue";
 import "../../../assets/js/bootstrap.bundle.min.js";
 import "../../../assets/js/jquery.min.js";
 import "../../../assets/plugins/simplebar/js/simplebar.min.js";
@@ -19,7 +21,8 @@ import "../../../assets/js/pace.min.js";
 export default {
     name: "app",
     components: {
-        MenuInstructor
+        MenuInstructor,
+        GeminiChatBubble
     }
 }
 </script>

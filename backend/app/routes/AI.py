@@ -9,6 +9,10 @@ from pathlib import Path
 from dotenv import load_dotenv
 from flask import Blueprint, current_app, jsonify, request, send_from_directory
 from werkzeug.utils import secure_filename
+from sqlalchemy import or_
+from app.models.model import Course
+import mimetypes
+import base64
 
 try:
     import google.generativeai as genai
@@ -156,6 +160,50 @@ def _prompt_gemini(prompt: str, model_name: str | None = None) -> str:
     ).strip()
 
 
+def _load_local_image(url: str) -> dict | None:
+    """Return Gemini image part from a locally served upload URL."""
+    if not url.startswith("/api/ai/uploads/"):
+        return None
+    filename = url.rsplit("/", 1)[-1]
+    upload_dir = _ensure_upload_dir()
+    path = upload_dir / filename
+    if not path.exists() or not path.is_file():
+        return None
+    mime, _ = mimetypes.guess_type(path)
+    mime = mime or "image/png"
+    with path.open("rb") as f:
+        data = f.read()
+    return {"mime_type": mime, "data": data}
+
+
+def _prompt_gemini_multimodal(prompt: str, attachments: list[dict], model_name: str | None = None) -> str:
+    """Send prompt + image parts to Gemini vision-capable model."""
+    _configure_client()
+    name = model_name or "gemini-1.5-flash"
+    model = genai.GenerativeModel(name)
+
+    parts: list[dict] = [{"text": prompt}]
+    for item in attachments:
+        url = item.get("url") or ""
+        img_part = _load_local_image(url)
+        if img_part:
+            parts.append(img_part)
+    # If no valid images, fall back to text-only.
+    if len(parts) == 1:
+        return _prompt_gemini(prompt, model_name)
+
+    response = model.generate_content(parts)
+    text = getattr(response, "text", None)
+    if text:
+        return text.strip()
+    return " ".join(
+        part.text.strip()
+        for part in getattr(response, "candidates", [])  # type: ignore[attr-defined]
+        for part in getattr(getattr(part, "content", None), "parts", []) or []  # type: ignore[arg-type]
+        if hasattr(part, "text") and part.text
+    ).strip()
+
+
 def _local_reply(prompt: str) -> tuple[str, list[str], list[int]]:
     lower = (prompt or "").lower()
     if any(k in lower for k in ("web", "frontend", "html", "css", "javascript", "react")):
@@ -227,6 +275,39 @@ def _local_reply(prompt: str) -> tuple[str, list[str], list[int]]:
     return text, suggestions, recs
 
 
+def _build_course_context(keyword: str | None = None, limit: int = 10) -> str:
+    """Fetch recent/public courses from DB to ground Gemini responses."""
+    try:
+        query = Course.query.filter_by(is_public=True)
+        if keyword:
+            like = f"%{keyword.lower()}%"
+            query = query.filter(
+                or_(
+                    Course.title.ilike(like),
+                    Course.description.ilike(like),
+                    Course.level.ilike(like),
+                )
+            )
+        courses = (
+            query.order_by(Course.created_at.desc()).limit(limit).all()
+        )
+    except Exception as exc:  # pragma: no cover - DB error fallback
+        current_app.logger.warning("Course fetch failed: %s", exc)
+        return ""
+
+    if not courses:
+        return ""
+
+    lines = []
+    for idx, course in enumerate(courses, 1):
+        price = f"{course.price} {course.currency}" if course.price is not None else "N/A"
+        lines.append(
+            f"{idx}) Ten: {course.title}; Mo ta: {course.description or 'N/A'}; "
+            f"Level: {course.level or 'N/A'}; Gia: {price}"
+        )
+    return "\n".join(lines)
+
+
 @ai_bp.get("/models")
 def get_models():
     models = list_text_models()
@@ -238,6 +319,8 @@ def chat():
     payload = request.get_json(silent=True) or {}
     prompt = (payload.get("prompt") or "").strip()
     model = (payload.get("model") or "").strip() or None
+    attachments = payload.get("attachments") or []
+    keyword = payload.get("q") or None
 
     if not prompt:
         return jsonify({"error": "prompt is required"}), 400
@@ -246,8 +329,22 @@ def chat():
     reply = fallback_text
     model_used = model or "gemini-2.5-flash"
 
+    # Grounding with real course data from DB
+    course_context = _build_course_context(keyword, limit=10)
+    if course_context:
+        prompt = (
+            "Du lieu khoa hoc (tu DB, chi dung de gioi thieu):\n"
+            f"{course_context}\n\n"
+            f"Yeu cau nguoi dung: {prompt}\n"
+            "Chi duoc dua vao cac khoa hoc tren khi goi y/gioi thieu."
+        )
+
     try:
-        ai_answer = _prompt_gemini(prompt, model)
+        if attachments:
+            ai_answer = _prompt_gemini_multimodal(prompt, attachments, model)
+            model_used = model or "gemini-1.5-flash"
+        else:
+            ai_answer = _prompt_gemini(prompt, model)
         if ai_answer:
             reply = ai_answer
     except Exception as exc:  # pragma: no cover - external API

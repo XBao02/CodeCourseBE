@@ -25,9 +25,6 @@
                 <li class="nav-item">
                     <router-link to="/student/profile" class="nav-link">Profile</router-link>
                 </li>
-                <li class="nav-item">
-                    <router-link to="/student/assistant" class="nav-link">AI Assistant</router-link>
-                </li>
             </ul>
 
             <!-- Search and Right section -->

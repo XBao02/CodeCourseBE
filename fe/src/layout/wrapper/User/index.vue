@@ -1,6 +1,7 @@
 <template>
     <div class="wrapper">
         <router-view> </router-view>
+        <GeminiChatBubble v-if="showChat" />
     </div>
 </template>
 <script>
@@ -12,11 +13,19 @@ import "../../../assets/js/index.js";
 import "../../../assets/js/app.js";
 import "../../../assets/js/pace.min.js";
 import MenuUser from '../../components/User/MenuUser.vue';
+import GeminiChatBubble from "../../../components/common/GeminiChatBubble.vue";
 
 export default {
     name: "app",
     components: {
-        MenuUser
+        MenuUser,
+        GeminiChatBubble
+    },
+    computed: {
+        showChat() {
+            // Ẩn chatbot trên trang landing (path "/"), hiển thị ở các trang khác.
+            return this.$route.path !== "/";
+        }
     }
 
 }

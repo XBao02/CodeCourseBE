@@ -6,6 +6,7 @@ import os
 
 # Quan trọng: CHỈ import db – KHÔNG import create_app
 from app.models import db
+from config import MYSQL_CONN
 
 
 def create_app():
@@ -21,11 +22,8 @@ def create_app():
     # Config
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret")
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", app.config["SECRET_KEY"])
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
-        "DATABASE_URL",
-        # "mysql+pymysql://root:@localhost:/CodeCourse"
-        "mysql+pymysql://root:123@localhost:3306/CodeCourse"
-    )
+    # Prefer DATABASE_URL from .env; fallback to local XAMPP MySQL (root, no password)
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", MYSQL_CONN)
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     
     # Debug: Log JWT_SECRET_KEY on startup
@@ -56,6 +54,7 @@ def create_app():
         from app.routes.Instructor import instructor_bp
         from app.routes.Student import student_bp
         from app.routes.AIQuiz import ai_quiz_bp
+        from app.routes.Payment import payment_bp
         
         app.register_blueprint(ai_bp)
         app.register_blueprint(auth_bp)
@@ -63,6 +62,7 @@ def create_app():
         app.register_blueprint(instructor_bp)
         app.register_blueprint(student_bp)
         app.register_blueprint(ai_quiz_bp)
+        app.register_blueprint(payment_bp)
 
     except Exception as e:
         app.logger.error(f"Failed to register blueprints: {e}")

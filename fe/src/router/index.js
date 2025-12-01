@@ -60,11 +60,6 @@ const routes = [
         component: () => import("../components/Admin/Reports.vue"),
       },
       {
-        path: "assistant",
-        name: "AdminAssistant",
-        component: () => import("../components/User/Assistant.vue"),
-      },
-      {
         path: "decentralization",
         name: "AdminDecentralization",
         component: () => import("../components/Admin/Decentralization.vue"),
@@ -107,11 +102,6 @@ const routes = [
         path: "profile",
         name: "StudentProfile",
         component: () => import("../components/Student/Profile.vue"),
-      },
-      {
-        path: "assistant",
-        name: "StudentAssistant",
-        component: () => import("../components/User/Assistant.vue"),
       },
     ],
   },
@@ -161,11 +151,6 @@ const routes = [
         path: "chat",
         name: "InstructorChat",
         component: () => import("../components/Instructor/Chat.vue"),
-      },
-      {
-        path: "assistant",
-        name: "InstructorAssistant",
-        component: () => import("../components/User/Assistant.vue"),
       },
       {
         path: "reports",

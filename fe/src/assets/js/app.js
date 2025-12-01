@@ -96,22 +96,6 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // Tạo sự kiện click cho nút chat-toggle-btn
-    const chatToggleBtn = document.querySelector(".chat-toggle-btn");
-    if (chatToggleBtn) {
-        chatToggleBtn.addEventListener("click", function () {
-            document.querySelector(".chat-wrapper").classList.toggle("chat-toggled");
-        });
-    }
-
-    // Tạo sự kiện click cho nút chat-toggle-btn-mobile
-    const chatToggleBtnMobile = document.querySelector(".chat-toggle-btn-mobile");
-    if (chatToggleBtnMobile) {
-        chatToggleBtnMobile.addEventListener("click", function () {
-            document.querySelector(".chat-wrapper").classList.remove("chat-toggled");
-        });
-    }
-
     // Tạo sự kiện click cho nút email-toggle-btn
     const emailToggleBtn = document.querySelector(".email-toggle-btn");
     if (emailToggleBtn) {
