@@ -92,3 +92,5 @@ def upload_file_to_drive(
     web_view_link = created.get("webViewLink")
     public_download_url = f"https://drive.google.com/uc?id={file_id}&export=download"
     return file_id, web_view_link, public_download_url
+
+# NOTE: Google Drive uploads are deprecated in favor of Cloudinary.

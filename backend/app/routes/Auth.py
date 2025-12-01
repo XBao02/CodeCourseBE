@@ -5,6 +5,8 @@ from app.models import db
 from app.models.model import User, Student, Instructor, Admin
 import re
 import bcrypt
+from datetime import datetime, timedelta
+import secrets
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
@@ -13,6 +15,17 @@ ROLE_TO_ROUTE = {
     "instructor": "/instructor",
     "student": "/student",
 }
+
+# Simple password reset token store (DB table recommended in production)
+class PasswordResetToken(db.Model):
+    __tablename__ = 'PasswordResetTokens'
+    id = db.Column('Id', db.BigInteger, primary_key=True, autoincrement=True)
+    user_id = db.Column('UserId', db.BigInteger, db.ForeignKey('Users.Id'), nullable=False)
+    token = db.Column('Token', db.String(120), unique=True, nullable=False)
+    expires_at = db.Column('ExpiresAt', db.DateTime(timezone=True), nullable=False)
+    used_at = db.Column('UsedAt', db.DateTime(timezone=True))
+    created_at = db.Column('CreatedAt', db.DateTime(timezone=True), default=datetime.utcnow)
+
 
 # Helpers
 
@@ -221,5 +234,65 @@ def me():
 @jwt_required()
 def logout():
     return jsonify({"message": "Logged out (client remove token)"}), 200
+
+
+@auth_bp.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    try:
+        data = request.get_json() or {}
+        email = (data.get('email') or '').strip().lower()
+        if not email:
+            return jsonify({ 'success': False, 'error': 'Email is required' }), 400
+
+        user = User.query.filter(db.func.lower(User.email) == email).first()
+        if not user:
+            # Do not reveal user existence
+            return jsonify({ 'success': True }), 200
+
+        # Create token
+        token = secrets.token_urlsafe(32)
+        expires = datetime.utcnow() + timedelta(hours=1)
+        prt = PasswordResetToken(user_id=user.id, token=token, expires_at=expires)
+        db.session.add(prt)
+        db.session.commit()
+
+        # In real app, send email with reset link. For now, return token for testing.
+        reset_link = f"http://localhost:5000/api/auth/reset-password?token={token}"
+        return jsonify({ 'success': True, 'resetLink': reset_link, 'token': token }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({ 'success': False, 'error': 'Server error' }), 500
+
+
+@auth_bp.route('/reset-password', methods=['POST'])
+def reset_password():
+    try:
+        data = request.get_json() or {}
+        token = data.get('token')
+        new_password = data.get('newPassword')
+        if not token or not new_password:
+            return jsonify({ 'success': False, 'error': 'Token and newPassword are required' }), 400
+
+        prt = PasswordResetToken.query.filter_by(token=token).first()
+        if not prt:
+            return jsonify({ 'success': False, 'error': 'Invalid token' }), 400
+        if prt.used_at:
+            return jsonify({ 'success': False, 'error': 'Token already used' }), 400
+        if prt.expires_at < datetime.utcnow():
+            return jsonify({ 'success': False, 'error': 'Token expired' }), 400
+
+        user = User.query.get(prt.user_id)
+        if not user:
+            return jsonify({ 'success': False, 'error': 'User not found' }), 400
+
+        # Hash password (use proper hashing in production, e.g., werkzeug.security)
+        from werkzeug.security import generate_password_hash
+        user.password_hash = generate_password_hash(new_password)
+        prt.used_at = datetime.utcnow()
+        db.session.commit()
+        return jsonify({ 'success': True }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({ 'success': False, 'error': 'Server error' }), 500
 
 

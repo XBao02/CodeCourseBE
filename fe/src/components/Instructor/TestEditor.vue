@@ -1,124 +1,146 @@
 <template>
-  <div class="test-editor">
-    <div class="header">
-      <button class="btn" @click="goBack">
-        ← Quay lại khóa học
-      </button>
-      <div class="spacer" />
-      <div class="test-title-area">
-        <div class="mini-label">Tên bài kiểm tra</div>
-        <input v-model="meta.title" class="title-input" />
-      </div>
-      <div class="meta-rows">
-        <div class="field small">
-          <div class="mini-label">Thời gian (phút)</div>
-          <input type="number" min="0" v-model.number="meta.timeLimitMinutes" />
-        </div>
-        <div class="field small">
-          <div class="mini-label">Số lần làm</div>
-          <input type="number" min="1" v-model.number="meta.attemptsAllowed" />
-        </div>
-        <div class="field small">
-          <div class="mini-label">Placement</div>
-          <label class="checkbox"><input type="checkbox" v-model="meta.isPlacement" /> Placement</label>
-        </div>
-        <button class="btn primary" @click="saveMeta"><i class="fas fa-save" /> Lưu</button>
-      </div>
-    </div>
-
-    <div class="questions">
-      <div class="questions-header">
-        <div class="questions-title">Câu hỏi ({{ questions.length }})</div>
-        <button class="btn" @click="toggleAddQuestion">
-          <i class="fas fa-plus" /> Thêm câu hỏi
-        </button>
-      </div>
-
-      <div v-if="addingQuestion" class="add-card">
-        <div class="add-card-title">Thêm câu hỏi</div>
-        <div class="form-row">
-          <div class="form-group full">
-            <label>Nội dung câu hỏi</label>
-            <textarea v-model="newQ.content" rows="2" />
-          </div>
-          <div class="form-group">
-            <label>Điểm</label>
-            <input type="number" min="0" v-model.number="newQ.points" />
-          </div>
-          <div class="form-group">
-            <label>Độ khó</label>
-            <select v-model="newQ.difficulty">
-              <option value="easy">Dễ</option>
-              <option value="medium">Trung bình</option>
-              <option value="hard">Khó</option>
-            </select>
-          </div>
-        </div>
-        <div class="choices-edit">
-          <div class="choices-header">
-            <div class="title">Lựa chọn</div>
-            <button class="btn small" @click="addChoice(newQ)"><i class="fas fa-plus"></i> Thêm lựa chọn</button>
-          </div>
-          <div v-if="!newQ.choices.length" class="empty tiny">Chưa có lựa chọn</div>
-          <div v-for="(c, idx) in newQ.choices" :key="idx" class="choice-row">
-            <input v-model="c.text" placeholder="Nội dung lựa chọn" />
-            <label class="checkbox"><input type="checkbox" v-model="c.isCorrect" /> Đúng</label>
-            <button class="btn danger small" @click="removeChoice(newQ, idx)">Xóa</button>
-          </div>
-        </div>
-        <div class="form-actions">
-          <button class="btn" @click="cancelAddQuestion">Hủy</button>
-          <button class="btn primary" @click="saveNewQuestion">Lưu</button>
+  <div class="test-editor test-editor-light">
+    <div class="editor-shell">
+      <div class="panel header-panel">
+        <div class="top-bar">
+          <button class="btn-ghost" @click="goBack">← Back to course</button>
+          <h2 class="panel-title">Test Questions</h2>
         </div>
       </div>
-
-      <div v-if="!questions.length && !addingQuestion" class="empty">Chưa có câu hỏi</div>
-
-      <div v-for="q in questions" :key="q.id" class="question-item">
-        <div class="question-row">
-          <span class="badge">#{{ q.id }}</span>
-          <div class="q-content">{{ q.content }}</div>
-          <div class="q-meta">{{ q.points }}đ • {{ labelDifficulty(q.difficulty) }}</div>
-          <div class="spacer" />
-          <button class="btn small" @click="q.expanded = !q.expanded">
-            <i class="fas" :class="q.expanded ? 'fa-chevron-up' : 'fa-chevron-down'" />
-          </button>
-          <button class="btn danger small" @click="deleteQuestion(q)">Xóa</button>
+      <div class="panel questions-panel">
+        <div class="panel-header">
+          <h3 class="panel-title">Questions <span class="count">({{ questions.length }})</span></h3>
+          <div class="bulk-tools">
+            <label class="select-all">
+              <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" /> Select all
+            </label>
+            <button class="danger-btn" v-if="selectedCount" @click="deleteSelectedQuestions">Delete Selected ({{ selectedCount }})</button>
+          </div>
+          <div class="actions">
+            <button class="soft-btn" @click="toggleAddQuestion"><i class="fas fa-plus"></i> Add Question</button>
+            <button class="primary-outline-btn" @click="toggleAISettings" :disabled="aiGenerating">
+              <i :class="aiGenerating ? 'fas fa-spinner fa-spin' : 'fas fa-robot'" />
+              {{ showAISettings ? 'Close AI Settings' : (aiGenerating ? 'Generating...' : 'AI Generator') }}
+            </button>
+          </div>
         </div>
-        <div v-if="q.expanded" class="question-edit">
-          <div class="form-row">
-            <div class="form-group full">
-              <label>Nội dung câu hỏi</label>
-              <textarea v-model="q.editContent" rows="2" />
+        <transition name="fade">
+          <div v-if="showAISettings" class="editor-card ai-settings-card">
+            <div class="editor-card-header">AI Generation Settings</div>
+            <div class="form-grid">
+              <div>
+                <label class="meta-label">Number of Questions</label>
+                <input type="number" min="1" max="50" v-model.number="aiConfig.num_questions" class="form-input" />
+              </div>
+              <div>
+                <label class="meta-label">Difficulty</label>
+                <select v-model="aiConfig.difficulty" class="form-input">
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
             </div>
-            <div class="form-group">
-              <label>Điểm</label>
-              <input type="number" min="0" v-model.number="q.editPoints" />
-            </div>
-            <div class="form-group">
-              <label>Độ khó</label>
-              <select v-model="q.editDifficulty">
-                <option value="easy">Dễ</option>
-                <option value="medium">Trung bình</option>
-                <option value="hard">Khó</option>
-              </select>
-            </div>
-          </div>
-          <div class="choices-edit">
-            <div class="choices-header">
-              <div class="title">Lựa chọn</div>
-              <button class="btn small" @click="addChoice(q)"><i class="fas fa-plus"></i> Thêm lựa chọn</button>
-            </div>
-            <div v-if="!q.editChoices.length" class="empty tiny">Chưa có lựa chọn</div>
-            <div v-for="(c, idx) in q.editChoices" :key="idx" class="choice-row">
-              <input v-model="c.text" placeholder="Nội dung lựa chọn" />
-              <label class="checkbox"><input type="checkbox" v-model="c.isCorrect" /> Đúng</label>
-              <button class="btn danger small" @click="removeChoice(q, idx)">Xóa</button>
+            <div class="card-actions">
+              <button class="soft-btn" @click="showAISettings=false">Cancel</button>
+              <button class="primary-btn" :disabled="aiGenerating" @click="generateWithAI">
+                <i :class="aiGenerating ? 'fas fa-spinner fa-spin' : 'fas fa-magic'" />
+                {{ aiGenerating ? 'Generating...' : 'Generate' }}
+              </button>
             </div>
           </div>
-          <div class="form-actions">
-            <button class="btn" @click="q.expanded = false">Đóng</button>
-            <button class="btn primary" @click="saveQuestion(q)">Lưu</button>
+        </transition>
+        <transition name="fade">
+          <div v-if="addingQuestion" class="editor-card add-question-card">
+            <div class="editor-card-header">Add Question</div>
+            <div class="add-q-block">
+              <label class="meta-label block-label">Question Content</label>
+              <textarea v-model="newQ.content" rows="3" class="form-input stretched"></textarea>
+            </div>
+            <div class="add-q-row">
+              <div class="field-inline">
+                <label class="meta-label">Points</label>
+                <input type="number" min="0" v-model.number="newQ.points" class="form-input" />
+              </div>
+              <div class="field-inline">
+                <label class="meta-label">Difficulty</label>
+                <select v-model="newQ.difficulty" class="form-input">
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+              <div class="choices-inline-action">
+                <button class="soft-btn small" @click="addChoice(newQ)"><i class="fas fa-plus"></i> Add choice</button>
+              </div>
+            </div>
+            <div class="choices-section">
+              <div class="sub-title">Choices</div>
+              <div v-if="!newQ.choices.length" class="empty tiny">No choices</div>
+              <div v-for="(c, idx) in newQ.choices" :key="idx" class="choice-row">
+                <input v-model="c.text" class="form-input" placeholder="Choice text" />
+                <label class="checkbox"><input type="checkbox" v-model="c.isCorrect" /> Correct</label>
+                <button class="danger-btn small" @click="removeChoice(newQ, idx)">Delete</button>
+              </div>
+            </div>
+            <div class="card-actions">
+              <button class="soft-btn" @click="cancelAddQuestion">Cancel</button>
+              <button class="primary-btn" @click="saveNewQuestion">Save</button>
+            </div>
+          </div>
+        </transition>
+        <div v-if="!questions.length && !addingQuestion" class="empty">No questions</div>
+        <div class="question-list">
+          <div v-for="q in questions" :key="q.id" class="question-row" :class="{ expanded: q.expanded }">
+            <div class="q-head" @click="q.expanded = !q.expanded">
+              <input type="checkbox" class="q-select" v-model="q.selected" @click.stop />
+              <span class="badge">#{{ q.id }}</span>
+              <div class="q-text">{{ q.content }}</div>
+              <div class="q-meta">{{ q.points }} pts • {{ labelDifficulty(q.difficulty) }}</div>
+              <div class="spacer"></div>
+              <button class="toggle-btn" :title="q.expanded ? 'Collapse' : 'Expand'">
+                <i :class="q.expanded ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
+              </button>
+              <button class="danger-btn small" @click.stop="deleteQuestion(q)">Delete</button>
+            </div>
+            <transition name="slide">
+              <div v-if="q.expanded" class="q-edit">
+                <div class="form-grid">
+                  <div class="col-span-3">
+                    <label class="meta-label">Question Content</label>
+                    <textarea v-model="q.editContent" rows="2" class="form-input"></textarea>
+                  </div>
+                  <div>
+                    <label class="meta-label">Points</label>
+                    <input type="number" min="0" v-model.number="q.editPoints" class="form-input" />
+                  </div>
+                  <div>
+                    <label class="meta-label">Difficulty</label>
+                    <select v-model="q.editDifficulty" class="form-input">
+                      <option value="easy">Easy</option>
+                      <option value="medium">Medium</option>
+                      <option value="hard">Hard</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="choices-section">
+                  <div class="choices-bar">
+                    <div class="sub-title">Choices</div>
+                    <button class="soft-btn small" @click="addChoice(q)"><i class="fas fa-plus"></i> Add choice</button>
+                  </div>
+                  <div v-if="!q.editChoices.length" class="empty tiny">No choices</div>
+                  <div v-for="(c, idx) in q.editChoices" :key="idx" class="choice-row">
+                    <input v-model="c.text" class="form-input" placeholder="Choice text" />
+                    <label class="checkbox"><input type="checkbox" v-model="c.isCorrect" /> Correct</label>
+                    <button class="danger-btn small" @click="removeChoice(q, idx)">Delete</button>
+                  </div>
+                </div>
+                <div class="card-actions">
+                  <button class="soft-btn" @click="q.expanded = false">Close</button>
+                  <button class="primary-btn" @click="saveQuestion(q)">Save</button>
+                </div>
+              </div>
+            </transition>
           </div>
         </div>
       </div>
@@ -127,6 +149,7 @@
 </template>
 
 <script>
+import { getStoredSession } from "../../services/authService";
 export default {
   name: 'TestEditor',
   data() {
@@ -148,7 +171,15 @@ export default {
         difficulty: 'medium',
         choices: [],
       },
+      aiGenerating: false,
+      aiError: null,
+      aiConfig: { num_questions: 10, difficulty: 'medium' },
+      showAISettings: false,
     }
+  },
+  computed: {
+    selectedCount() { return this.questions.filter(q => q.selected).length },
+    allSelected() { return this.questions.length > 0 && this.selectedCount === this.questions.length }
   },
   async mounted() {
     this.testId = Number(this.$route.params.id)
@@ -156,6 +187,14 @@ export default {
     await this.fetchTest()
   },
   methods: {
+    authHeaders(extra = {}) {
+      const session = getStoredSession();
+      const token = session?.access_token;
+      return {
+        ...(extra || {}),
+        Authorization: token ? `Bearer ${token}` : "",
+      };
+    },
     goBack() {
       if (this.courseId) {
         this.$router.push({ name: 'InstructorCourseLessons', params: { id: this.courseId }})
@@ -164,14 +203,16 @@ export default {
       }
     },
     labelDifficulty(d) {
-      return d === 'easy' ? 'Dễ' : d === 'hard' ? 'Khó' : 'Trung bình'
+      return d === 'easy' ? 'Easy' : d === 'hard' ? 'Hard' : 'Medium'
     },
     async fetchTest() {
       this.loading = true
       try {
-        const res = await fetch(`http://localhost:5000/api/tests/${this.testId}`)
+        const res = await fetch(`http://localhost:5000/api/tests/${this.testId}`, {
+          headers: this.authHeaders(),
+        })
         const data = await res.json()
-        if (!res.ok) throw new Error(data.message || 'Không thể tải test')
+        if (!res.ok) throw new Error(data.message || 'Cannot load test')
         // map meta
         this.meta = {
           title: data.title || '',
@@ -186,7 +227,8 @@ export default {
           editContent: q.content,
           editPoints: q.points || 1,
           editDifficulty: q.difficulty || 'medium',
-          editChoices: (q.choices || []).map(c => ({ text: c.text, isCorrect: !!c.isCorrect }))
+          editChoices: (q.choices || []).map(c => ({ text: c.text, isCorrect: !!c.isCorrect })),
+          selected: false, // add selected flag
         }))
       } catch (e) {
         alert(e.message)
@@ -215,20 +257,8 @@ export default {
         target.editChoices.splice(idx, 1)
       }
     },
-    async saveMeta() {
-      try {
-        const payload = { ...this.meta }
-        const res = await fetch(`http://localhost:5000/api/tests/${this.testId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.message || 'Không thể lưu meta')
-        await this.fetchTest()
-      } catch (e) {
-        alert(e.message)
-      }
+    cancelAddQuestion() {
+      this.addingQuestion = false
     },
     async saveNewQuestion() {
       try {
@@ -240,19 +270,16 @@ export default {
         }
         const res = await fetch(`http://localhost:5000/api/tests/${this.testId}/questions`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(payload)
         })
         const data = await res.json()
-        if (!res.ok) throw new Error(data.message || 'Không thể thêm câu hỏi')
+        if (!res.ok) throw new Error(data.message || 'Cannot create question')
         this.addingQuestion = false
         await this.fetchTest()
       } catch (e) {
         alert(e.message)
       }
-    },
-    cancelAddQuestion() {
-      this.addingQuestion = false
     },
     async saveQuestion(q) {
       try {
@@ -264,11 +291,11 @@ export default {
         }
         const res = await fetch(`http://localhost:5000/api/questions/${q.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(payload)
         })
         const data = await res.json()
-        if (!res.ok) throw new Error(data.message || 'Không thể cập nhật câu hỏi')
+        if (!res.ok) throw new Error(data.message || 'Cannot update question')
         q.expanded = false
         await this.fetchTest()
       } catch (e) {
@@ -276,181 +303,162 @@ export default {
       }
     },
     async deleteQuestion(q) {
-      if (!confirm('Xóa câu hỏi này?')) return
+      if (!confirm('Delete this question?')) return
       try {
-        const res = await fetch(`http://localhost:5000/api/questions/${q.id}`, { method: 'DELETE' })
+        const res = await fetch(`http://localhost:5000/api/questions/${q.id}`, {
+          method: 'DELETE',
+          headers: this.authHeaders(),
+        })
         const data = await res.json()
-        if (!res.ok) throw new Error(data.message || 'Không thể xóa câu hỏi')
+        if (!res.ok) throw new Error(data.message || 'Cannot delete question')
         await this.fetchTest()
       } catch (e) {
         alert(e.message)
       }
-    }
+    },
+    toggleAISettings() { this.showAISettings = !this.showAISettings },
+    async openAIGenerator() {
+      this.aiError = null
+      this.aiGenerating = true
+      try {
+        const payload = {
+          lesson_title: this.meta.title || 'Lesson Quiz',
+          num_questions: this.aiConfig.num_questions,
+          difficulty: this.aiConfig.difficulty,
+        }
+        const res = await fetch('http://localhost:5000/api/ai/quiz/generate', {
+          method: 'POST',
+          headers: this.authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify(payload)
+        })
+        const data = await res.json()
+        if (!res.ok || !data.questions) throw new Error(data.error || 'Error generating questions')
+        // append into current test
+        for (const q of data.questions) {
+          const choices = q.options.map((opt, idx) => ({ text: opt, isCorrect: q.correctAnswer === idx }))
+          const qPayload = { content: q.question, points: 1, difficulty: this.aiConfig.difficulty, choices }
+          const qRes = await fetch(`http://localhost:5000/api/tests/${this.testId}/questions`, {
+            method: 'POST',
+            headers: this.authHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify(qPayload)
+          })
+          const qData = await qRes.json().catch(() => ({}))
+          if (!qRes.ok) throw new Error(qData.message || 'Error saving question')
+        }
+        await this.fetchTest()
+      } catch (e) {
+        this.aiError = e.message || 'Error creating AI questions'
+        alert(this.aiError)
+      } finally {
+        this.aiGenerating = false
+      }
+    },
+    generateWithAI() { this.openAIGenerator() },
+    toggleSelectAll() { const target = !this.allSelected; this.questions.forEach(q => q.selected = target) },
+    async deleteSelectedQuestions() {
+      const targets = this.questions.filter(q => q.selected)
+      if (!targets.length) return
+      if (!confirm(`Delete ${targets.length} selected question(s)?`)) return
+      try {
+        for (const q of targets) {
+          const res = await fetch(`http://localhost:5000/api/questions/${q.id}`, { method: 'DELETE', headers: this.authHeaders() })
+          const data = await res.json().catch(()=>({}))
+          if (!res.ok) throw new Error(data.message || 'Failed to delete one question')
+        }
+        await this.fetchTest()
+      } catch (e) { alert(e.message) }
+    },
   }
 }
 </script>
 
 <style scoped>
-.test-editor {
-  padding: 20px;
-  max-width: 1100px;
-  margin: 0 auto;
-}
-.header {
-  background: #ffffff;
-  border: 1px solid #eaeaea;
-  border-radius: 10px;
-  padding: 12px;
-  display: grid;
-  grid-template-columns: 160px 1fr;
-  align-items: end;
-  gap: 12px 16px;
-}
-.spacer { flex: 1; }
-.test-title-area { grid-column: 1 / -1; }
-.title-input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-}
-.meta-rows {
-  display: flex;
-  gap: 10px;
-  align-items: end;
-}
-.mini-label {
-  font-size: 11px;
-  color: #8a8a8a;
-  margin-bottom: 4px;
-}
-.btn {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  background: #f8f9fa;
-  border-radius: 6px;
-  cursor: pointer;
-}
-.btn.primary {
-  background: #3498db;
-  color: #fff;
-  border-color: #3498db;
-}
-.btn.danger {
-  background: #ffebee;
-  color: #d32f2f;
-  border-color: #ffcdd2;
-}
-.checkbox {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.field.small input,
-.field.small select {
-  width: 140px;
-}
+/* Light theme (white background, slightly darker accents) */
+.test-editor-light { background: #ffffff; min-height: 100vh; padding: 40px 26px; }
+.editor-shell { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 32px; }
+.panel { background: #ffffff; border: 1px solid #dbe1e8; border-radius: 12px; padding: 24px 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+.header-panel { display: flex; flex-direction: column; gap: 20px; }
+.top-bar { display: flex; align-items: center; gap: 12px; }
+.meta-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)); gap: 18px; }
+.title-block { grid-column: 1 / -1; }
+.meta-label { font-size: 12px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: #64748b; margin-bottom: 6px; }
+.form-input { background: #f1f5f9; border: 1px solid #cbd5e1; color: #1f2937; border-radius: 6px; padding: 10px 12px; font-size: 14px; transition: border-color .2s, background .2s, box-shadow .2s; }
+.form-input.large { font-size: 15px; }
+.form-input:focus { outline: none; background: #ffffff; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.2); }
+.checkbox.inline { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.checkbox input { width:20px; height:20px; accent-color:#2563eb; }
 
-.questions {
-  margin-top: 16px;
-}
-.questions-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.questions-title {
-  font-weight: 600;
-  color: #2c3e50;
-}
-.add-card {
-  background: #ffffff;
-  border: 1px solid #eaeaea;
-  border-radius: 10px;
-  padding: 16px;
-  margin: 10px 0;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.04);
-}
-.add-card-title {
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 12px;
-}
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 160px 160px;
-  gap: 12px;
-}
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.form-group.full { grid-column: 1 / -1; }
-.form-group input,
-.form-group select,
-.form-group textarea {
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-}
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 10px;
-}
+/* Buttons */
+.primary-btn, .primary-outline-btn, .soft-btn, .btn-ghost, .danger-btn, .toggle-btn { border-radius:6px; }
+.primary-btn { background: linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%); color:#fff; border:none; padding:9px 16px; font-weight:600; font-size:14px; box-shadow:0 4px 16px -2px rgba(37,99,235,.35); cursor:pointer; transition:.25s; }
+.primary-btn:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 8px 22px -4px rgba(37,99,235,.45); }
+.primary-btn:disabled { opacity:.5; cursor:not-allowed; }
+.primary-outline-btn { background:#ffffff; color:#2563eb; border:1px solid #cbd5e1; padding:9px 16px; font-weight:600; font-size:14px; cursor:pointer; transition:.25s; }
+.primary-outline-btn:hover:not(:disabled){ border-color:#2563eb; color:#1d4ed8; box-shadow:0 2px 8px rgba(0,0,0,.06); }
+.soft-btn { background:#f1f5f9; color:#1f2937; border:1px solid #cbd5e1; padding:9px 14px; font-size:14px; font-weight:500; cursor:pointer; transition:.2s; }
+.soft-btn.small { padding:5px 8px; font-size:12px; }
+.soft-btn:hover { background:#e2e8f0; border-color:#94a3b8; }
+.btn-ghost { background:#f1f5f9; color:#1f2937; border:1px solid #cbd5e1; padding:9px 14px; cursor:pointer; font-weight:500; }
+.btn-ghost:hover { background:#e2e8f0; border-color:#94a3b8; }
+.danger-btn { background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; padding:6px 10px; cursor:pointer; font-size:12px; font-weight:600; transition:.2s; }
+.danger-btn.small { padding:5px 8px; }
+.danger-btn:hover { background:#fecaca; }
+.toggle-btn { background:#f1f5f9; color:#475569; padding:5px 8px; cursor:pointer; font-size:12px; transition:.2s; }
+.toggle-btn:hover { background:#e2e8f0; color:#1f2937; }
 
-.question-item {
-  background: #fff;
-  border: 1px solid #eaeaea;
-  border-radius: 10px;
-  padding: 12px;
-  margin-top: 10px;
-}
-.question-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.badge {
-  background: #eef7ff;
-  color: #1976d2;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-}
-.q-content { flex: 1; color: #34495e; }
-.q-meta { color: #888; font-size: 12px; }
-.question-edit { margin-top: 10px; }
+/* Questions */
+.questions-panel { display:flex; flex-direction:column; gap:32px; }
+.panel-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom: 8px; }
+.panel-title { margin:0; font-size:18px; font-weight:700; color:#1f2937; display:flex; align-items:center; gap:6px; }
+.panel-title .count { font-size:14px; font-weight:500; color:#64748b; }
+.actions { display:flex; gap:16px; }
+.editor-card { background:#ffffff; border:1px solid #dbe1e8; border-radius:12px; padding:22px 24px; display:flex; flex-direction:column; gap:20px; box-shadow:0 4px 14px -2px rgba(0,0,0,.08); }
+.editor-card + .editor-card { margin-top: 20px; }
+.editor-card-header { font-weight:600; font-size:15px; color:#1f2937; }
+.form-grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:18px; }
+.col-span-3 { grid-column:1 / -1; }
+.choices-section { display:flex; flex-direction:column; gap:18px; }
+.choices-bar { display:flex; justify-content:space-between; align-items:center; }
+.sub-title { font-weight:600; font-size:13px; color:#64748b; letter-spacing:.5px; text-transform:uppercase; }
+.choice-row { display:grid; grid-template-columns: 1fr auto auto; gap:12px; align-items:center; background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0; }
+.choice-row + .choice-row { margin-top:8px; }
+.card-actions { display:flex; justify-content:flex-end; gap:14px; margin-top: 8px; }
+.question-list { display:flex; flex-direction:column; gap:16px; }
+.question-row { background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden; transition: border-color .25s, box-shadow .25s; }
+.question-row.expanded { box-shadow:0 6px 24px -4px rgba(0,0,0,.12); border-color:#2563eb; }
+.q-head { display:flex; align-items:center; gap:16px; padding:16px 20px; cursor:pointer; }
+.badge { background:#2563eb; color:#fff; border-radius:5px; padding:3px 6px; font-size:12px; font-weight:600; letter-spacing:.5px; }
+.q-text { flex:1; color:#1f2937; font-weight:500; }
+.q-meta { color:#64748b; font-size:12px; font-weight:500; }
+.q-edit { padding:0 20px 20px; display:flex; flex-direction:column; gap:20px; }
+.empty { text-align:center; padding:32px 18px; font-size:14px; color:#64748b; border:1px dashed #cbd5e1; border-radius:14px; background:#f8fafc; margin-top: 4px; }
+.empty.tiny { padding:8px 10px; font-size:12px; }
 
-.choices-edit {
-  margin-top: 10px;
-  background: #fafbff;
-  border: 1px dashed #e5e7fb;
-  border-radius: 10px;
-  padding: 10px;
-}
-.choices-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-}
-.choice-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-top: 6px;
-}
+/* Animations */
+.fade-enter-active, .fade-leave-active { transition:opacity .25s; }
+.fade-enter-from, .fade-leave-to { opacity:0; }
+.slide-enter-active { transition:max-height .35s ease, opacity .35s ease; }
+.slide-enter-from { max-height:0; opacity:0; }
+.slide-enter-to { max-height:1000px; opacity:1; }
+.slide-leave-active { transition:max-height .25s ease, opacity .25s ease; }
+.slide-leave-to { max-height:0; opacity:0; }
 
-.empty { color: #666; padding: 8px; text-align: center; }
-.empty.tiny { color: #888; padding: 4px; font-size: 13px; text-align: left; }
-.btn.small { padding: 5px 8px; font-size: 12px; }
+.ai-settings-card { border-color:#cbd5e1; margin-top: 4px; }
+.ai-settings-card .editor-card-header { display:flex; align-items:center; gap:6px; }
+.ai-settings-card .editor-card-header:before { content:'🤖'; font-size:16px; }
 
-@media (max-width: 768px) {
-  .header { grid-template-columns: 1fr; }
-  .form-row { grid-template-columns: 1fr; }
+.bulk-tools { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+.select-all { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:500; color:#475569; }
+.select-all input { width:20px; height:20px; accent-color:#2563eb; cursor:pointer; }
+.q-select { width:20px; height:20px; accent-color:#2563eb; cursor:pointer; margin-right:6px; }
+
+@media (max-width: 900px) {
+  .meta-grid { grid-template-columns: 1fr 1fr; }
+  .editor-shell { gap: 28px; }
+  .questions-panel { gap: 28px; }
+  .form-grid { grid-template-columns: 1fr 1fr; gap:14px; }
+  .col-span-3 { grid-column:1 / -1; }
+  .actions { width:100%; justify-content:flex-start; }
+  .q-head { padding:14px 16px; gap: 12px; }
 }
 </style>

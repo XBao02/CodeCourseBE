@@ -70,7 +70,7 @@
 </template>
 
 <script>
-import instructorService from '../../services/instructorService'
+import { getStoredSession } from '../../services/authService'
 
 export default {
     name: 'InstructorDashboard',
@@ -89,27 +89,39 @@ export default {
         this.loadDashboardData()
     },
     methods: {
+        getAuthHeaders() {
+            const session = getStoredSession()
+            if (!session?.access_token) {
+                throw new Error('No authentication token found')
+            }
+            return {
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json'
+            }
+        },
+        
         async loadDashboardData() {
             this.isLoading = true
             try {
-                // Tạm thời hardcode instructor ID = 2 để test
-                const instructorId = 2
+                const headers = this.getAuthHeaders()
                 
-                if (!instructorId) {
-                    console.error('Không thể lấy instructor ID')
-                    this.showErrorMessage()
-                    return
+                // Gọi API dashboard với token - instructor ID được lấy từ token ở backend
+                const response = await fetch('http://localhost:5000/api/instructor/dashboard', {
+                    headers
+                })
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`)
                 }
                 
-                // Gọi API dashboard từ service
-                const data = await instructorService.getDashboard(instructorId)
+                const data = await response.json()
                 
                 // Cập nhật dữ liệu
                 this.instructorName = data.instructor.name
                 this.totalCourses = data.stats.totalCourses
                 this.totalStudents = data.stats.totalStudents
                 this.averageRating = data.stats.averageRating.toFixed(1)
-                this.totalRevenue = instructorService.formatCurrency(data.stats.totalRevenue)
+                this.totalRevenue = this.formatCurrency(data.stats.totalRevenue)
                 
                 // Format lại dữ liệu khóa học
                 this.recentCourses = data.recentCourses.map(course => ({
@@ -127,18 +139,11 @@ export default {
             }
         },
         
-        extractInstructorIdFromAuth() {
-            // Thử lấy từ auth state hoặc user info
-            try {
-                const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-                return userInfo.instructorId || userInfo.id
-            } catch (e) {
-                return null
-            }
-        },
-        
         formatCurrency(amount) {
-            return instructorService.formatCurrency(amount)
+            return new Intl.NumberFormat('vi-VN', {
+                style: 'currency',
+                currency: 'VND'
+            }).format(amount || 0)
         },
         
         showErrorMessage() {

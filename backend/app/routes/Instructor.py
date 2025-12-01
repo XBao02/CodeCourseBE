@@ -1,26 +1,40 @@
 from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 # Import db và các Models cần thiết
-from ..models.model import db, Course, Instructor, CourseSection, Lesson, Test, Question, Choice, Enrollment
+from ..models.model import db, Course, Instructor, CourseSection, Lesson, Test, Question, Choice, Enrollment, User
 import re
 import os
 
 # Khởi tạo Blueprint cho các routes liên quan đến Giảng viên
 instructor_bp = Blueprint('instructor', __name__)
 
+# Helper function to get instructor ID from JWT token
+def get_current_instructor_id():
+    """Get instructor ID from JWT token"""
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        if not user or user.role != 'instructor':
+            return None
+        instructor = Instructor.query.filter_by(user_id=user_id).first()
+        return instructor.id if instructor else None
+    except Exception as e:
+        print(f"Error getting instructor ID: {e}")
+        return None
+
 @instructor_bp.route("/api/courses", methods=['GET'])
 @instructor_bp.route("/courses", methods=['GET'])
+@jwt_required()
 def get_instructor_courses():
     """
-    Lấy danh sách khóa học của một Giảng viên dựa trên instructor_id.
-    Ví dụ: /api/courses?instructor_id=2
+    Lấy danh sách khóa học của Giảng viên hiện tại dựa trên JWT token.
     """
-    # 1. Lấy instructor_id từ query parameters
-    instructor_id = request.args.get('instructor_id', type=int)
-
-    if instructor_id is None:
-        # Nếu không có instructor_id, trả về danh sách trống hoặc lỗi
-        return jsonify({"message": "Thiếu tham số instructor_id"}), 400
+    # Get instructor_id from JWT token
+    instructor_id = get_current_instructor_id()
+    
+    if not instructor_id:
+        return jsonify({"message": "Unauthorized or invalid instructor"}), 401
 
     try:
         # 2. Truy vấn các khóa học của instructor_id đã cho
@@ -60,6 +74,7 @@ def get_instructor_courses():
 
 @instructor_bp.route("/api/courses", methods=['POST'])
 @instructor_bp.route("/courses", methods=['POST'])
+@jwt_required()
 def create_course():
     """
     Tạo khóa học mới
@@ -71,22 +86,26 @@ def create_course():
         "thumbnail": "url",
         "level": "beginner",
         "status": "draft",
-        "instructor_id": 2,
         "category": "Web Development",
         "requirements": "HTML/CSS cơ bản"
     }
     """
     try:
+        # Get instructor_id from JWT token
+        instructor_id = get_current_instructor_id()
+        if not instructor_id:
+            return jsonify({"message": "Unauthorized or invalid instructor"}), 401
+        
         data = request.get_json()
         
-        # Validate required fields
-        required_fields = ['title', 'description', 'price', 'instructor_id']
+        # Validate required fields (no longer need instructor_id in body)
+        required_fields = ['title', 'description', 'price']
         for field in required_fields:
             if field not in data or not data[field]:
                 return jsonify({"message": f"Thiếu trường bắt buộc: {field}"}), 400
         
-        # Check if instructor exists
-        instructor = Instructor.query.filter_by(id=data['instructor_id']).first()
+        # Instructor already verified from token
+        instructor = Instructor.query.filter_by(id=instructor_id).first()
         if not instructor:
             return jsonify({"message": "Giảng viên không tồn tại"}), 404
         
@@ -101,9 +120,9 @@ def create_course():
         # Map status to is_public
         is_public = data.get('status', 'draft') == 'active'
         
-        # Create new course
+        # Create new course using instructor_id from token
         new_course = Course(
-            instructor_id=data['instructor_id'],
+            instructor_id=instructor_id,  # Use instructor_id from JWT token
             title=data['title'],
             slug=slug,
             description=data['description'],
@@ -132,16 +151,21 @@ def create_course():
 
 
 @instructor_bp.route("/courses/<int:course_id>", methods=['GET'])
+@jwt_required()
 def get_course_detail(course_id):
     """
     Xem chi tiết một khóa học
     GET /api/courses/<course_id>
     """
     try:
-        course = Course.query.filter_by(id=course_id).first()
+        instructor_id = get_current_instructor_id()
+        if not instructor_id:
+            return jsonify({"message": "Unauthorized"}), 401
+        
+        course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
         
         if not course:
-            return jsonify({"message": "Khóa học không tồn tại"}), 404
+            return jsonify({"message": "Khóa học không tồn tại hoặc không có quyền truy cập"}), 404
         
         status = 'active' if course.is_public else 'draft'
         
@@ -170,6 +194,7 @@ def get_course_detail(course_id):
 
 
 @instructor_bp.route("/courses/<int:course_id>", methods=['PUT'])
+@jwt_required()
 def update_course(course_id):
     """
     Cập nhật khóa học
@@ -183,10 +208,14 @@ def update_course(course_id):
     }
     """
     try:
-        course = Course.query.filter_by(id=course_id).first()
+        instructor_id = get_current_instructor_id()
+        if not instructor_id:
+            return jsonify({"message": "Unauthorized"}), 401
+        
+        course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
         
         if not course:
-            return jsonify({"message": "Khóa học không tồn tại"}), 404
+            return jsonify({"message": "Khóa học không tồn tại hoặc không có quyền truy cập"}), 404
         
         data = request.get_json()
         
@@ -225,16 +254,21 @@ def update_course(course_id):
 
 
 @instructor_bp.route("/courses/<int:course_id>", methods=['DELETE'])
+@jwt_required()
 def delete_course(course_id):
     """
     Xóa khóa học
     DELETE /api/courses/<course_id>
     """
     try:
-        course = Course.query.filter_by(id=course_id).first()
+        instructor_id = get_current_instructor_id()
+        if not instructor_id:
+            return jsonify({"message": "Unauthorized"}), 401
+        
+        course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
         
         if not course:
-            return jsonify({"message": "Khóa học không tồn tại"}), 404
+            return jsonify({"message": "Khóa học không tồn tại hoặc không có quyền truy cập"}), 404
         
         # Check if course has enrollments
         enrollment_count = db.session.query(db.func.count(Enrollment.id)).filter_by(course_id=course_id).scalar()
@@ -253,6 +287,7 @@ def delete_course(course_id):
 
 
 @instructor_bp.route("/courses/<int:course_id>/archive", methods=['PUT'])
+@jwt_required()
 def archive_course(course_id):
     """
     Lưu trữ hoặc bỏ lưu trữ khóa học
@@ -262,10 +297,14 @@ def archive_course(course_id):
     }
     """
     try:
-        course = Course.query.filter_by(id=course_id).first()
+        instructor_id = get_current_instructor_id()
+        if not instructor_id:
+            return jsonify({"message": "Unauthorized"}), 401
+        
+        course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
         
         if not course:
-            return jsonify({"message": "Khóa học không tồn tại"}), 404
+            return jsonify({"message": "Khóa học không tồn tại hoặc không có quyền truy cập"}), 404
         
         data = request.get_json()
         
@@ -325,11 +364,16 @@ def _serialize_section(section, include_lessons=False):
 
 @instructor_bp.route("/api/courses/<int:course_id>/curriculum", methods=['GET'])
 @instructor_bp.route("/courses/<int:course_id>/curriculum", methods=['GET'])
+@jwt_required()
 def get_course_curriculum(course_id):
     try:
-        course = Course.query.filter_by(id=course_id).first()
+        instructor_id = get_current_instructor_id()
+        if not instructor_id:
+            return jsonify({"message": "Unauthorized"}), 401
+        
+        course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
         if not course:
-            return jsonify({"message": "Khóa học không tồn tại"}), 404
+            return jsonify({"message": "Khóa học không tồn tại hoặc không có quyền truy cập"}), 404
         sections = CourseSection.query.filter_by(course_id=course_id).order_by(CourseSection.sort_order, CourseSection.id).all()
         return jsonify([_serialize_section(s, include_lessons=True) for s in sections]), 200
     except Exception as e:
@@ -339,11 +383,16 @@ def get_course_curriculum(course_id):
 
 @instructor_bp.route("/api/courses/<int:course_id>/sections", methods=['GET'])
 @instructor_bp.route("/courses/<int:course_id>/sections", methods=['GET'])
+@jwt_required()
 def list_sections(course_id):
     try:
-        course = Course.query.filter_by(id=course_id).first()
+        instructor_id = get_current_instructor_id()
+        if not instructor_id:
+            return jsonify({"message": "Unauthorized"}), 401
+        
+        course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
         if not course:
-            return jsonify({"message": "Khóa học không tồn tại"}), 404
+            return jsonify({"message": "Khóa học không tồn tại hoặc không có quyền truy cập"}), 404
         sections = CourseSection.query.filter_by(course_id=course_id).order_by(CourseSection.sort_order, CourseSection.id).all()
         return jsonify([_serialize_section(s) for s in sections]), 200
     except Exception as e:
@@ -353,11 +402,16 @@ def list_sections(course_id):
 
 @instructor_bp.route("/api/courses/<int:course_id>/sections", methods=['POST'])
 @instructor_bp.route("/courses/<int:course_id>/sections", methods=['POST'])
+@jwt_required()
 def create_section(course_id):
     try:
-        course = Course.query.filter_by(id=course_id).first()
+        instructor_id = get_current_instructor_id()
+        if not instructor_id:
+            return jsonify({"message": "Unauthorized"}), 401
+        
+        course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
         if not course:
-            return jsonify({"message": "Khóa học không tồn tại"}), 404
+            return jsonify({"message": "Khóa học không tồn tại hoặc không có quyền truy cập"}), 404
         data = request.get_json() or {}
         title = (data.get('title') or '').strip()
         if not title:
@@ -379,6 +433,7 @@ def create_section(course_id):
 
 @instructor_bp.route("/api/sections/<int:section_id>", methods=['PUT'])
 @instructor_bp.route("/sections/<int:section_id>", methods=['PUT'])
+@jwt_required()
 def update_section(section_id):
     try:
         section = CourseSection.query.filter_by(id=section_id).first()
@@ -399,6 +454,7 @@ def update_section(section_id):
 
 @instructor_bp.route("/api/sections/<int:section_id>", methods=['DELETE'])
 @instructor_bp.route("/sections/<int:section_id>", methods=['DELETE'])
+@jwt_required()
 def delete_section(section_id):
     try:
         section = CourseSection.query.filter_by(id=section_id).first()
@@ -417,6 +473,7 @@ def delete_section(section_id):
 
 @instructor_bp.route("/api/sections/<int:section_id>/lessons", methods=['GET'])
 @instructor_bp.route("/sections/<int:section_id>/lessons", methods=['GET'])
+@jwt_required()
 def list_lessons(section_id):
     try:
         section = CourseSection.query.filter_by(id=section_id).first()
@@ -445,6 +502,7 @@ def list_lessons(section_id):
 
 @instructor_bp.route("/api/sections/<int:section_id>/lessons", methods=['POST'])
 @instructor_bp.route("/sections/<int:section_id>/lessons", methods=['POST'])
+@jwt_required()
 def create_lesson(section_id):
     try:
         section = CourseSection.query.filter_by(id=section_id).first()
@@ -489,6 +547,7 @@ def create_lesson(section_id):
 
 @instructor_bp.route("/api/lessons/<int:lesson_id>", methods=['PUT'])
 @instructor_bp.route("/lessons/<int:lesson_id>", methods=['PUT'])
+@jwt_required()
 def update_lesson(lesson_id):
     try:
         lesson = Lesson.query.filter_by(id=lesson_id).first()
@@ -531,6 +590,7 @@ def update_lesson(lesson_id):
 
 
 @instructor_bp.route("/lessons/<int:lesson_id>", methods=['DELETE'])
+@jwt_required()
 def delete_lesson(lesson_id):
     try:
         lesson = Lesson.query.filter_by(id=lesson_id).first()
@@ -590,6 +650,7 @@ def _serialize_question(q, include_choices=True):
 
 @instructor_bp.route("/api/lessons/<int:lesson_id>/tests", methods=['GET'])
 @instructor_bp.route("/lessons/<int:lesson_id>/tests", methods=['GET'])
+@jwt_required()
 def list_tests(lesson_id):
     try:
         lesson = Lesson.query.filter_by(id=lesson_id).first()
@@ -604,6 +665,7 @@ def list_tests(lesson_id):
 
 @instructor_bp.route("/api/lessons/<int:lesson_id>/tests", methods=['POST'])
 @instructor_bp.route("/lessons/<int:lesson_id>/tests", methods=['POST'])
+@jwt_required()
 def create_test(lesson_id):
     try:
         lesson = Lesson.query.filter_by(id=lesson_id).first()
@@ -632,6 +694,7 @@ def create_test(lesson_id):
 
 
 @instructor_bp.route("/tests/<int:test_id>", methods=['GET'])
+@jwt_required()
 def get_test_detail(test_id):
     try:
         t = Test.query.filter_by(id=test_id).first()
@@ -645,6 +708,7 @@ def get_test_detail(test_id):
 
 @instructor_bp.route("/api/tests/<int:test_id>", methods=['PUT'])
 @instructor_bp.route("/tests/<int:test_id>", methods=['PUT'])
+@jwt_required()
 def update_test(test_id):
     try:
         t = Test.query.filter_by(id=test_id).first()
@@ -669,6 +733,7 @@ def update_test(test_id):
 
 
 @instructor_bp.route("/tests/<int:test_id>", methods=['DELETE'])
+@jwt_required()
 def delete_test(test_id):
     try:
         t = Test.query.filter_by(id=test_id).first()
@@ -689,6 +754,7 @@ def delete_test(test_id):
 
 
 @instructor_bp.route("/tests/<int:test_id>/questions", methods=['GET'])
+@jwt_required()
 def list_questions(test_id):
     try:
         t = Test.query.filter_by(id=test_id).first()
@@ -703,6 +769,7 @@ def list_questions(test_id):
 
 @instructor_bp.route("/api/tests/<int:test_id>/questions", methods=['POST'])
 @instructor_bp.route("/tests/<int:test_id>/questions", methods=['POST'])
+@jwt_required()
 def create_question(test_id):
     try:
         t = Test.query.filter_by(id=test_id).first()
@@ -741,6 +808,7 @@ def create_question(test_id):
 
 @instructor_bp.route("/api/questions/<int:question_id>", methods=['PUT'])
 @instructor_bp.route("/questions/<int:question_id>", methods=['PUT'])
+@jwt_required()
 def update_question(question_id):
     try:
         q = Question.query.filter_by(id=question_id).first()
@@ -778,6 +846,7 @@ def update_question(question_id):
 
 @instructor_bp.route("/api/questions/<int:question_id>", methods=['DELETE'])
 @instructor_bp.route("/questions/<int:question_id>", methods=['DELETE'])
+@jwt_required()
 def delete_question(question_id):
     try:
         q = Question.query.filter_by(id=question_id).first()
@@ -816,6 +885,7 @@ def generate_slug(title):
     return slug
 
 @instructor_bp.route('/api/tests/<int:test_id>', methods=['GET'])
+@jwt_required()
 def get_test(test_id):
     try:
         test = Test.query.get(test_id)
@@ -1184,67 +1254,26 @@ def get_course(course_id):
 # Đã có hàm create_course ở trên (dòng 63) với đầy đủ validation
 # ========== New: Google Drive upload ==========
 @instructor_bp.route('/api/upload/video', methods=['POST'])
-def upload_video_to_drive():
+def upload_video_to_cloudinary():
     """
-    Upload a video file to Google Drive using a Service Account.
+    Upload a video file to Cloudinary.
     Form-Data:
       - file: binary file
-      - folder_id (optional): Google Drive folder ID to upload into
-    Response: { fileId, viewUrl, downloadUrl }
-    Env required: GOOGLE_SERVICE_ACCOUNT_JSON (file path or JSON string)
-    Optionally set default folder via GOOGLE_DRIVE_FOLDER_ID
+    Response: { publicId, url }
     """
+    from flask import request, jsonify
     try:
-        print(f"\n{'='*80}")
-        print(f"📤 /api/upload/video - Starting upload")
-        print(f"{'='*80}")
-        
         if 'file' not in request.files:
-            print(f"❌ Missing file field in request")
             return jsonify({'message': 'Missing file field'}), 400
-        
         f = request.files['file']
         if f.filename == '':
-            print(f"❌ Empty filename")
             return jsonify({'message': 'Empty filename'}), 400
-        
-        print(f"📝 File: {f.filename} (size: {len(f.read())} bytes)")
-        f.seek(0)  # Reset stream position
-        print(f"📝 MIME type: {f.mimetype}")
-        
-        # Prefer explicit folder_id from request, else fallback to env
-        folder_id = request.form.get('folder_id') or os.getenv('GOOGLE_DRIVE_FOLDER_ID')
-        print(f"📁 Target folder ID: {folder_id}")
 
-        from ..utils.google_drive import upload_file_to_drive
-        import io
+        from app.utils.cloudinary_upload import upload_video
+        public_id, secure_url = upload_video(f.stream, f.filename)
 
-        stream = io.BytesIO(f.read())
-        print(f"✅ Reading file into memory... {len(stream.getvalue())} bytes")
-        
-        print(f"🔄 Uploading to Google Drive...")
-        file_id, web_view_link, public_download_url = upload_file_to_drive(
-            stream,
-            f.filename,
-            f.mimetype or 'application/octet-stream',
-            folder_id=folder_id
-        )
-        
-        print(f"✅ Upload successful!")
-        print(f"   File ID: {file_id}")
-        print(f"   View URL: {web_view_link}")
-        print(f"   Download URL: {public_download_url}")
-        print(f"{'='*80}\n")
-        
-        return jsonify({
-            'fileId': file_id,
-            'viewUrl': web_view_link,
-            'downloadUrl': public_download_url
-        }), 200
+        return jsonify({'publicId': public_id, 'url': secure_url}), 200
     except Exception as e:
-        print(f"\n{'='*80}")
-        print(f"❌ Error uploading to drive: {e}")
         import traceback
-        print(f"❌ Traceback: {traceback.format_exc()}")
-        print(f"{'='*80}\n")
+        print(f"❌ Cloudinary upload error: {e}\n{traceback.format_exc()}")
         return jsonify({'message': f'Upload failed: {str(e)}'}), 500

@@ -133,7 +133,8 @@ export default {
 
 <style scoped>
 .auth-page.login-theme {
-  background: linear-gradient(120deg, #f8fafc 0%, #e0e7ef 100%);
+  /* Darken overall background slightly while keeping white card contrast */
+  background: linear-gradient(120deg, #eef2f6 0%, #d7dee6 100%);
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -157,7 +158,8 @@ export default {
 .auth-card {
   background: #fff;
   border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(60, 130, 246, 0.08);
+  /* Slightly darker shadow */
+  box-shadow: 0 8px 32px rgba(37, 99, 235, 0.15);
   padding: 40px 32px;
   display: flex;
   flex-direction: column;
@@ -203,9 +205,10 @@ export default {
 }
 
 .field input {
-  background: #f1f5f9;
-  border: 1px solid #cbd5e1;
-  color: #1e293b;
+  /* Darken input base & border a touch */
+  background: #e9eff5;
+  border: 1px solid #b0bfcc;
+  color: #0f172a;
   border-radius: 8px;
   padding: 0.75rem 1rem;
   font-size: 0.95rem;
@@ -217,10 +220,10 @@ export default {
 }
 
 .field input:focus {
-  border-color: #3b82f6;
+  border-color: #1d4ed8;
   background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.18);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .inline-link {
@@ -263,7 +266,7 @@ export default {
 
 button[type="submit"] {
   width: 100%;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -277,9 +280,9 @@ button[type="submit"] {
 }
 
 button[type="submit"]:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(59, 130, 246, 0.25);
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 }
 
 button[type="submit"]:disabled {
@@ -303,9 +306,9 @@ button[type="submit"]:disabled {
 }
 
 .secondary-btn:hover:not(:disabled) {
-  background: #e0e7ff;
-  border-color: #3b82f6;
-  color: #2563eb;
+  background: #dbe7ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
 }
 
 .secondary-btn:disabled {
@@ -330,9 +333,9 @@ button[type="submit"]:disabled {
   width: 40px;
   height: 40px;
   border-radius: 8px;
-  background: #f1f5f9;
-  color: #1e293b;
-  border: 1px solid #cbd5e1;
+  background: #e9eff5;
+  border: 1px solid #b0bfcc;
+  color: #0f172a;
   text-decoration: none;
   font-size: 1.2rem;
   font-weight: 600;
@@ -342,9 +345,9 @@ button[type="submit"]:disabled {
 }
 
 .back-button:hover {
-  background: #e0e7ff;
-  border-color: #3b82f6;
-  color: #3b82f6;
+  background: #dbe7ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
   transform: translateX(-2px);
 }
 </style>

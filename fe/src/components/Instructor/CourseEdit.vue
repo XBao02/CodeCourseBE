@@ -95,6 +95,8 @@
 </template>
 
 <script>
+import { getStoredSession } from '../../services/authService'
+
 export default {
     name: 'CourseEdit',
     data() {
@@ -114,20 +116,30 @@ export default {
         this.loadCourse()
     },
     methods: {
+        getAuthHeaders() {
+            const session = getStoredSession()
+            if (!session?.access_token) {
+                throw new Error('No authentication token found')
+            }
+            return {
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json'
+            }
+        },
+        
         async loadCourse() {
             this.loading = true
             try {
                 const courseId = this.$route.params.id
                 if (courseId) {
                     this.isEdit = true
-                    // Fetch real course data from backend
-                    const res = await fetch(`http://localhost:5000/api/courses/${courseId}`)
+                    const headers = this.getAuthHeaders()
+                    const res = await fetch(`http://localhost:5000/api/courses/${courseId}`, { headers })
                     if (!res.ok) {
                         const err = await res.json().catch(() => ({}))
                         throw new Error(err.message || `Failed to load course (HTTP ${res.status})`)
                     }
                     const course = await res.json()
-                    // Map to form fields (assuming backend returns basic fields)
                     this.form = {
                         title: course.title || '',
                         description: course.description || '',
@@ -147,15 +159,16 @@ export default {
 
         async saveCourse() {
             try {
+                const headers = this.getAuthHeaders()
                 const baseUrl = 'http://localhost:5000/api/courses'
-                const instructorId = 2 // TODO: use auth state/token
+                
+                // Backend lấy instructor_id từ JWT token
                 const payload = {
                     title: this.form.title,
                     description: this.form.description,
                     price: Number(this.form.price),
                     thumbnail: this.form.thumbnail,
                     status: this.form.status,
-                    instructor_id: instructorId,
                 }
 
                 let res
@@ -163,13 +176,13 @@ export default {
                     const id = this.$route.params.id
                     res = await fetch(`${baseUrl}/${id}`, {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers,
                         body: JSON.stringify(payload),
                     })
                 } else {
                     res = await fetch(baseUrl, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers,
                         body: JSON.stringify(payload),
                     })
                 }

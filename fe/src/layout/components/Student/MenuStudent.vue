@@ -20,7 +20,7 @@
                     <router-link to="/student/courses" class="nav-link">My Courses</router-link>
                 </li>
                 <li class="nav-item">
-                    <router-link to="/student/minigames" class="nav-link">Minigames</router-link>
+                    <router-link to="/student/course-store" class="nav-link">Course Store</router-link>
                 </li>
                 <li class="nav-item">
                     <router-link to="/student/profile" class="nav-link">Profile</router-link>
