@@ -126,6 +126,48 @@ def _instructor_to_json(inst: Instructor):
     }
 
 
+def _ensure_enrollment(student_id: int, course_id: int):
+    """Activate or create an enrollment when invoice is marked paid."""
+    existing = Enrollment.query.filter_by(student_id=student_id, course_id=course_id).first()
+    now = datetime.utcnow()
+    if existing:
+        existing.status = "active"
+        existing.updated_at = now
+    else:
+        db.session.add(
+            Enrollment(
+                student_id=student_id,
+                course_id=course_id,
+                status="active",
+                progress_percent=0,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+
+
+def _invoice_to_json(inv: Invoice):
+    student = inv.student
+    course = inv.course
+    user = student.user if student else None
+    return {
+        "invoiceNumber": inv.invoice_number,
+        "paymentMethod": inv.payment_method,
+        "paymentStatus": inv.payment_status,
+        "amount": float(inv.amount or 0),
+        "currency": inv.currency,
+        "referenceCode": inv.reference_code,
+        "studentId": inv.student_id,
+        "studentName": user.full_name if user else None,
+        "studentEmail": user.email if user else None,
+        "courseId": inv.course_id,
+        "courseTitle": course.title if course else None,
+        "issuedAt": inv.issued_at.isoformat() if inv.issued_at else None,
+        "paidAt": inv.paid_at.isoformat() if inv.paid_at else None,
+        "updatedAt": inv.updated_at.isoformat() if inv.updated_at else None,
+    }
+
+
 # --------------------------
 # Health check
 # --------------------------
@@ -853,4 +895,48 @@ def export_reports():
             "Content-Disposition": f"attachment; filename={filename}"
         },
     )
+
+
+# --------------------------
+# Invoice approval (VietQR)
+# --------------------------
+@admin_bp.get("/invoices/pending")
+def list_pending_invoices():
+    """List invoices awaiting manual review (VietQR)."""
+    method = request.args.get("method")
+    statuses = ["pending"]
+    query = Invoice.query.filter(Invoice.payment_status.in_(statuses))
+    if method:
+        query = query.filter(Invoice.payment_method == method)
+    invoices = query.order_by(Invoice.updated_at.desc()).limit(200).all()
+    return jsonify([_invoice_to_json(inv) for inv in invoices])
+
+
+@admin_bp.post("/invoices/<invoice_number>/approve")
+def approve_invoice(invoice_number: str):
+    """Mark invoice paid and enroll the student."""
+    invoice = Invoice.query.filter_by(invoice_number=invoice_number).first()
+    if not invoice:
+        return jsonify({"error": "Invoice not found"}), 404
+
+    now = datetime.utcnow()
+    invoice.payment_status = "paid"
+    invoice.paid_at = now
+    invoice.updated_at = now
+    _ensure_enrollment(invoice.student_id, invoice.course_id)
+    db.session.commit()
+    return jsonify(_invoice_to_json(invoice))
+
+
+@admin_bp.post("/invoices/<invoice_number>/reject")
+def reject_invoice(invoice_number: str):
+    """Mark invoice failed/rejected."""
+    invoice = Invoice.query.filter_by(invoice_number=invoice_number).first()
+    if not invoice:
+        return jsonify({"error": "Invoice not found"}), 404
+
+    invoice.payment_status = "failed"
+    invoice.updated_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify(_invoice_to_json(invoice))
 

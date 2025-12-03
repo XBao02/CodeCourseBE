@@ -92,50 +92,30 @@
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">
-              <span v-if="paymentStep==='info'">Course Information</span>
-              <span v-else>Payment - Scan QR Code</span>
-            </h5>
+            <h5 class="modal-title">Thanh toan VietQR</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" @click="resetPayment"></button>
           </div>
 
-          <!-- Step: Info -->
-          <div v-if="paymentStep==='info'" class="modal-body">
-            <div v-if="selectedCourse" class="modal-course-info">
-              <h6>{{ selectedCourse.title }}</h6>
-              <p class="course-meta">{{ selectedCourse.instructorName || 'N/A' }} · {{ selectedCourse.level || 'beginner' }}</p>
-              <div class="info-list">
-                <div class="info-row">
-                  <span class="info-label">Status</span>
-                  <span class="info-value">{{ selectedCourse.isPublic? 'Public':'Private' }}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-label">Price</span>
-                  <span class="info-value">{{ formatPrice(selectedCourse.price, selectedCourse.currency) }}</span>
-                </div>
-              </div>
-              <div class="modal-actions">
-                <button v-if="selectedCourse.price==0" class="action-button" @click="enroll(selectedCourse)">Enroll Now</button>
-                <button v-else class="action-button" @click="proceedToQR">Proceed to Payment</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Step: QR -->
-          <div v-else class="modal-body text-center">
+          <div class="modal-body text-center">
             <div v-if="selectedCourse" class="qr-section">
               <h6>{{ selectedCourse.title }}</h6>
-              <p class="payment-amount">Amount: <strong>{{ formatPrice(selectedCourse.price, selectedCourse.currency) }}</strong></p>
+              <p class="payment-amount">So tien: <strong>{{ formatPrice(selectedCourse.price, selectedCourse.currency) }}</strong></p>
               <div class="qr-code"><img :src="qrUrl" alt="QR" /></div>
-              <p class="qr-instruction">Scan the QR code to complete payment. Use Confirm Payment after paying.</p>
-              <div v-if="isChecking" class="checking-status">Checking payment status...</div>
+              <div class="qr-details" v-if="paymentDetails">
+                <p class="qr-instruction">Quet ma VietQR, nhap dung so tien va noi dung chuyen khoan.</p>
+                <p class="qr-info"><strong>Ghi chu chuyen khoan:</strong> {{ paymentDetails.transfer_note }}</p>
+                <p class="qr-info"><strong>Chu tai khoan:</strong> {{ paymentDetails.account_name }} - {{ paymentDetails.account_number }} ({{ paymentDetails.bank_name }})</p>
+                <p class="qr-info" v-if="paymentDetails.invoice_number"><strong>Ma hoa don:</strong> {{ paymentDetails.invoice_number }}</p>
+              </div>
+              <div v-if="paymentStatusText" class="checking-status">{{ paymentStatusText }}</div>
+              <div v-if="isChecking" class="checking-status">Dang kiem tra trang thai...</div>
             </div>
           </div>
 
           <div class="modal-footer">
-            <button class="action-button secondary" data-bs-dismiss="modal" @click="resetPayment">Close</button>
-            <button v-if="paymentStep==='qr'" class="action-button test-purchase" @click="testPurchase">Test Purchase</button>
-            <button v-if="paymentStep==='qr'" class="action-button" @click="confirmPaid">Confirm Payment</button>
+            <button class="action-button secondary" data-bs-dismiss="modal" @click="resetPayment">Dong</button>
+            <button class="action-button secondary" @click="refreshInvoice" :disabled="isChecking">Lam moi trang thai</button>
+            <button class="action-button" @click="confirmPaid" :disabled="confirming">Toi da thanh toan</button>
           </div>
         </div>
       </div>
@@ -219,6 +199,9 @@
 import axios from 'axios'
 import { getStoredSession } from '../../services/authService'
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
+const VIETQR_FALLBACK = import.meta.env.VITE_VIETQR_IMAGE_URL || ''
+
 export default {
   name: 'StudentCourseStore',
   data() {
@@ -231,9 +214,12 @@ export default {
       levelFilter: '',
       // payment state
       selectedCourse: null,
-      paymentStep: 'info',
+      paymentStep: 'qr',
       isChecking: false,
       qrUrl: '',
+      paymentDetails: null,
+      paymentStatusText: '',
+      confirming: false,
       paymentInterval: null,
       // filter state
       showFilterPanel: false, // no longer used, kept for compatibility
@@ -293,7 +279,7 @@ export default {
     async loadAll(params = {}) {
       this.loading = true
       try {
-        const allRes = await axios.get('http://localhost:5000/api/student/courses', { params })
+        const allRes = await axios.get(`${API_BASE}/student/courses`, { params })
         const list = Array.isArray(allRes.data?.courses) ? allRes.data.courses : []
         this.courses = list.map(c => ({
           ...c,
@@ -311,7 +297,7 @@ export default {
         this.availableCategories = Array.from(catSet).sort()
         this.availableTopics = Array.from(topicSet).sort()
         try {
-          const mineRes = await axios.get('http://localhost:5000/api/student/my-courses', { headers: this.authHeaders() })
+          const mineRes = await axios.get(`${API_BASE}/student/my-courses`, { headers: this.authHeaders() })
           const mine = mineRes.data?.courses || []
           this.myCourseIds = new Set(mine.map(m => m.id))
         } catch { this.myCourseIds = new Set() }
@@ -324,7 +310,7 @@ export default {
       if (!course?.id || this.isEnrolled(course.id)) return
       this.enrollingIds.add(course.id)
       try {
-        const res = await axios.post('http://localhost:5000/api/student/register', { courseId: course.id }, { headers: this.authHeaders() })
+        const res = await axios.post(`${API_BASE}/student/register`, { courseId: course.id }, { headers: this.authHeaders() })
         if (res.data?.success) {
           this.myCourseIds.add(course.id)
           // Close payment modal if open
@@ -345,42 +331,75 @@ export default {
       }
     },
     openCourse(c) { if (!c?.id) return; this.$router.push({ name: 'StudentCourseLesson', params: { courseId: c.id } }).catch(()=>{}) },
-    // Payment flow
-    openPayment(course) {
+    // Payment flow (VietQR)
+    async openPayment(course) {
+      const session = getStoredSession()
+      const studentId = session?.user?.studentId
+      if (!session?.access_token || !studentId) {
+        alert('Vui lòng đăng nhập để thanh toán.')
+        this.$router.push({ name: 'Login' }).catch(()=>{})
+        return
+      }
       this.selectedCourse = course
-      this.paymentStep = 'info'
-      const modal = this.ensureModal()
-      modal.show()
-    },
-    proceedToQR() {
-      if(!this.selectedCourse) return
       this.paymentStep = 'qr'
-      this.qrUrl = this.makeQrUrl(this.selectedCourse)
-      const modal = this.ensureModal()
-      modal.show()
-      this.startPaymentCheck()
+      this.paymentStatusText = ''
+      try {
+        const { data } = await axios.post(
+          `${API_BASE}/payments/vietqr/checkout`,
+          { student_id: studentId, course_id: course.id },
+          { headers: this.authHeaders() }
+        )
+        this.paymentDetails = data
+        this.qrUrl = data.qr_with_amount_url || data.qr_image_url || VIETQR_FALLBACK
+        this.paymentStatusText = `Trang thai: ${data.payment_status || 'pending'}`
+        const modal = this.ensureModal()
+        modal.show()
+      } catch (e) {
+        console.error('Checkout VietQR thất bại', e)
+        alert('Không tạo được thanh toán VietQR.')
+      }
     },
-    makeQrUrl(course) {
-      const data = encodeURIComponent(`COURSE:${course.slug||course.id}|AMOUNT:${course.price}${course.currency||'USD'}`)
-      return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${data}`
+    async confirmPaid() {
+      if (!this.paymentDetails?.invoice_number) return
+      this.confirming = true
+      try {
+        const { data } = await axios.post(
+          `${API_BASE}/payments/vietqr/confirm`,
+          { invoice_number: this.paymentDetails.invoice_number, transfer_reference: this.paymentDetails.transfer_note },
+          { headers: this.authHeaders() }
+        )
+        this.paymentDetails = { ...this.paymentDetails, ...data }
+        this.paymentStatusText = `Da gui xac nhan. Trang thai: ${data.payment_status || 'pending'}. Cho admin duyet.`
+      } catch (e) {
+        console.error('Confirm payment failed', e)
+        alert('Không gửi được xác nhận thanh toán.')
+      } finally {
+        this.confirming = false
+      }
     },
-    startPaymentCheck() {
-      // Placeholder for future real-time payment status polling
-      this.isChecking = false
-    },
-    testPurchase() {
-      if (!this.selectedCourse) return
-      this.enroll(this.selectedCourse) // direct enroll for test
-    },
-    confirmPaid() {
-      if (!this.selectedCourse) return
-      // After user confirms payment, call enroll
-      this.enroll(this.selectedCourse)
+    async refreshInvoice() {
+      if (!this.paymentDetails?.invoice_number) return
+      this.isChecking = true
+      try {
+        const { data } = await axios.get(
+          `${API_BASE}/payments/vietqr/${this.paymentDetails.invoice_number}`,
+          { headers: this.authHeaders() }
+        )
+        this.paymentDetails = data
+        this.paymentStatusText = `Trang thai: ${data.payment_status}`
+      } catch (e) {
+        console.error('Refresh invoice failed', e)
+        alert('Không tải được trạng thái hoá đơn.')
+      } finally {
+        this.isChecking = false
+      }
     },
     resetPayment() {
-      this.paymentStep = 'info'
+      this.paymentStep = 'qr'
       this.isChecking = false
       this.qrUrl = ''
+      this.paymentDetails = null
+      this.paymentStatusText = ''
       this.selectedCourse = null
       if (this.paymentInterval) { clearInterval(this.paymentInterval); this.paymentInterval = null }
     },

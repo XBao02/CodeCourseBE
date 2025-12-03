@@ -45,6 +45,11 @@
                     </router-link>
                 </li>
                 <li class="nav-item">
+                    <router-link to="/admin/payments" class="nav-link">
+                        Payments
+                    </router-link>
+                </li>
+                <li class="nav-item">
                     <router-link to="/admin/reports" class="nav-link">
                         Reports
                     </router-link>

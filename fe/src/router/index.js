@@ -70,6 +70,11 @@ const routes = [
         name: "AdminDecentralization",
         component: () => import("../components/Admin/Decentralization.vue"),
       },
+      {
+        path: "payments",
+        name: "AdminPayments",
+        component: () => import("../components/Admin/VietQRPayments.vue"),
+      },
     ],
   },
 
