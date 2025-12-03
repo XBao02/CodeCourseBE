@@ -45,6 +45,11 @@
                     </router-link>
                 </li>
                 <li class="nav-item">
+                    <router-link to="/admin/payments" class="nav-link">
+                        Payments
+                    </router-link>
+                </li>
+                <li class="nav-item">
                     <router-link to="/admin/reports" class="nav-link">
                         Reports
                     </router-link>
@@ -52,11 +57,6 @@
                 <li class="nav-item">
                     <router-link to="/admin/decentralization" class="nav-link">
                         Permissions
-                    </router-link>
-                </li>
-                <li class="nav-item">
-                    <router-link to="/admin/assistant" class="nav-link">
-                        AI Assistant
                     </router-link>
                 </li>
             </ul>

@@ -238,7 +238,7 @@ def get_my_courses():
         if student_id and not student:
             student = Student.query.get(student_id)
         if not student:
-            return jsonify({'courses': [], 'studentId': None}), 404
+            return jsonify({'error': 'Unauthorized or student not found'}), 401
 
         enrollments = Enrollment.query.filter(
             Enrollment.student_id == student.id,
@@ -381,10 +381,10 @@ def register_course():
 # ✅ 4. Lấy lộ trình học (StudyPlan & PlanItem)
 @student_bp.route('/study-plans/<int:student_id>', methods=['GET'])
 def get_study_plans(student_id):
-    plans = StudyPlan.query.filter_by(StudentID=student_id).all()
+    plans = StudyPlan.query.filter_by(student_id=student_id).all()
     data = []
     for plan in plans:
-        items = PlanItem.query.filter_by(PlanID=plan.Id).order_by(PlanItem.SortOrder.asc()).all()
+        items = PlanItem.query.filter_by(plan_id=plan.id).order_by(PlanItem.sort_order.asc()).all()
         plan_data = {
             'id': plan.id,
             'studentId': plan.student_id,

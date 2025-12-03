@@ -4,11 +4,13 @@
             <MenuStudent></MenuStudent>
         </div>
         <router-view></router-view>
+        <GeminiChatBubble />
 
     </div>
 </template>
 <script>
 import MenuStudent from "../../components/Student/MenuStudent.vue";
+import GeminiChatBubble from "../../../components/common/GeminiChatBubble.vue";
 import "../../../assets/js/bootstrap.bundle.min.js";
 import "../../../assets/js/jquery.min.js";
 import "../../../assets/plugins/simplebar/js/simplebar.min.js";
@@ -20,7 +22,8 @@ import "../../../assets/js/pace.min.js";
 export default {
     name: "app",
     components: {
-        MenuStudent
+        MenuStudent,
+        GeminiChatBubble
     }
 }
 </script>
