@@ -32,13 +32,7 @@
 
             <!-- Search and Right section -->
             <div class="navbar-right">
-                <div class="search-container">
-                    <input type="text" class="search-input" placeholder="Search courses...">
-                </div>
-                <button class="notification-btn" @click="toggleNotifications">
-                    Notifications
-                    <span class="notification-badge">3</span>
-                </button>
+
 
                 <!-- User dropdown -->
                 <div class="dropdown">

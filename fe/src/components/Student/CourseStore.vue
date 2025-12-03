@@ -48,8 +48,9 @@
       <section class="store-content">
         <div v-if="loading" class="loading"><span>Loading courses...</span></div>
         <div v-else class="courses-grid">
-          <div v-for="c in filteredCourses" :key="c.id" class="course-card">
+          <div v-for="c in paginatedCourses" :key="c.id" class="course-card">
             <h3 class="title">{{ c.title }}</h3>
+            <p class="instructor" v-if="c.instructorName">By {{ c.instructorName }}</p>
             <p class="desc" v-if="c.description">{{ truncate(c.description,140) }}</p>
             <div class="meta">
               <span class="badge level">{{ c.level || 'beginner' }}</span>
@@ -83,6 +84,20 @@
             </div>
           </div>
           <div v-if="!filteredCourses.length" class="empty">No courses found.</div>
+        </div>
+        <div v-if="totalPages > 1" class="pagination">
+          <button class="page-btn" :disabled="currentPage===1" @click="setPage(currentPage-1)">Prev</button>
+          <template v-for="item in displayedPages">
+            <span v-if="item.type==='ellipsis'" :key="item.key + '-e'" class="page-ellipsis">…</span>
+            <button
+              v-else
+              :key="item.key + '-p'"
+              class="page-btn"
+              :class="{ active: item.num===currentPage }"
+              @click="setPage(item.num)"
+            >{{ item.num }}</button>
+          </template>
+          <button class="page-btn" :disabled="currentPage===totalPages" @click="setPage(currentPage+1)">Next</button>
         </div>
       </section>
     </div>
@@ -163,10 +178,7 @@
                   <input v-model="recoInput" :placeholder="recoPlaceholder" class="chat-input" />
                   <button class="send-btn" :disabled="recoLoading || !recoInput.trim()">{{ recoLoading? '...' : 'Send' }}</button>
                 </form>
-                <div v-if="followUp" class="followup-row">
-                  <span class="followup-label">Gợi ý:</span>
-                  <button class="followup-btn" @click="acceptFollowUp" :disabled="recoLoading">{{ followUp }}</button>
-                </div>
+                
               </div>
               <!-- Recommendations Column -->
               <div class="courses-column">
@@ -198,16 +210,11 @@
                     </div>
                   </div>
                 </div>
-                <div v-if="recoCompleted && recoCourses.length" class="refine-row">
-                  <button class="btn-refine" @click="quickRefine('more')" :disabled="recoLoading">More</button>
-                  <button class="btn-refine" @click="quickRefine('more advanced')" :disabled="recoLoading">More Advanced</button>
-                  <button class="btn-refine" @click="quickRefine('beginner alternatives')" :disabled="recoLoading">More Beginner</button>
-                </div>
               </div>
             </div>
           </div>
           <div class="modal-footer">
-            <button class="action-button secondary" data-bs-dismiss="modal" @click="resetReco">Close</button>
+            <button class="action-button secondary" data-bs-dismiss="modal" @click="onCloseReco">Close</button>
           </div>
         </div>
       </div>
@@ -249,6 +256,9 @@ export default {
       recoCompleted: false,
       chatSessionId: null,
       followUp: null,
+      // pagination
+      currentPage: 1,
+      pageSize: 6,
     }
   },
   computed: {
@@ -277,10 +287,69 @@ export default {
     },
     recoPlaceholder(){
       return 'Nhập câu hỏi hoặc level/category/topic (tùy chọn)'
-    }
+    },
+    paginatedCourses(){
+      const start = (this.currentPage - 1) * this.pageSize
+      return this.filteredCourses.slice(start, start + this.pageSize)
+    },
+    totalPages(){
+      const total = this.filteredCourses.length
+      return total ? Math.ceil(total / this.pageSize) : 1
+    },
+    displayedPages(){
+      const pages = []
+      const total = this.totalPages
+      const current = this.currentPage
+      if(total <= 10){
+        for(let i=1;i<=total;i++) pages.push({ type:'page', num:i, key:'p'+i })
+        return pages
+      }
+      const windowSize = 2 // pages before/after current
+      const start = Math.max(2, current - windowSize)
+      const end = Math.min(total - 1, current + windowSize)
+      // Always show first page
+      pages.push({ type:'page', num:1, key:'p1' })
+      if(start > 2){ pages.push({ type:'ellipsis', key:'e-start' }) }
+      for(let i=start;i<=end;i++){
+        pages.push({ type:'page', num:i, key:'p'+i })
+      }
+      if(end < total - 1){ pages.push({ type:'ellipsis', key:'e-end' }) }
+      pages.push({ type:'page', num: total, key:'p'+total })
+      return pages
+    },
+    pageButtons(){
+      const total = this.totalPages
+      const current = this.currentPage
+      const windowSize = 6
+      const buttons = []
+      if(total <= windowSize + 2){
+        // show all pages directly
+        for(let i=1;i<=total;i++) buttons.push({ type:'page', number:i, key:'p'+i })
+        return buttons
+      }
+      let start = Math.max(1, current - Math.floor(windowSize/2))
+      let end = start + windowSize - 1
+      if(end > total){ end = total; start = end - windowSize + 1 }
+      if(start > 1){
+        buttons.push({ type:'page', number:1, key:'p1' })
+        if(start > 2) buttons.push({ type:'ellipsis', key:'e-start' })
+      }
+      for(let i=start;i<=end;i++){
+        buttons.push({ type:'page', number:i, key:'p'+i })
+      }
+      if(end < total){
+        if(end < total - 1) buttons.push({ type:'ellipsis', key:'e-end' })
+        buttons.push({ type:'page', number: total, key:'p'+total })
+      }
+      return buttons
+    },
   },
   watch: {
-    categoryFilter() { this.topicFilter = '' }
+    categoryFilter() { this.topicFilter = '' },
+    search(){ this.currentPage = 1 },
+    levelFilter(){ this.currentPage = 1 },
+    categoryFilter(){ this.currentPage = 1 },
+    topicFilter(){ this.currentPage = 1 },
   },
   async mounted() {
     await this.loadAll()
@@ -297,6 +366,7 @@ export default {
         const list = Array.isArray(allRes.data?.courses) ? allRes.data.courses : []
         this.courses = list.map(c => ({
           ...c,
+          instructorName: c.instructorName || c.instructor_name || null,
           category: Array.isArray(c.categories) && c.categories.length ? c.categories[0] : c.category || null,
           topic: Array.isArray(c.topics) && c.topics.length ? c.topics[0] : c.topic || null,
           categoriesArr: Array.isArray(c.categories) ? c.categories : [],
@@ -412,6 +482,39 @@ export default {
       await this.loadAll(params)
       this.closeFilterPanel()
     },
+    // ---------- Chat persistence ----------
+    storageKey(){ return 'ai_reco_chat_v1' },
+    saveRecoState(){
+      try{
+        const payload = {
+          chatSessionId: this.chatSessionId,
+          recoMessages: this.recoMessages,
+          recoCourses: this.recoCourses,
+          recoCompleted: this.recoCompleted,
+          followUp: this.followUp,
+          savedAt: Date.now()
+        }
+        localStorage.setItem(this.storageKey(), JSON.stringify(payload))
+      }catch{}
+    },
+    loadRecoState(){
+      try{
+        const raw = localStorage.getItem(this.storageKey())
+        if(!raw) return false
+        const s = JSON.parse(raw)
+        this.chatSessionId = s.chatSessionId || null
+        this.recoMessages = Array.isArray(s.recoMessages)? s.recoMessages : []
+        this.recoCourses = Array.isArray(s.recoCourses)? s.recoCourses : []
+        this.recoCompleted = !!s.recoCompleted
+        this.followUp = s.followUp || null
+        this.$nextTick(()=>this.scrollChatBottom())
+        return true
+      }catch{ return false }
+    },
+    onCloseReco(){
+      // Do not reset; persist current chat
+      this.saveRecoState()
+    },
     ensureRecoModal(){
       // Create / get Bootstrap modal instance for AI recommendation
       let modal = window.bootstrap?.Modal.getInstance(this.$refs.recoModal)
@@ -419,8 +522,12 @@ export default {
       return modal
     },
     openRecoModal(){
-      this.resetReco()
-      this.initRecoChat()
+      // Try restore existing chat; if none, start fresh
+      const restored = this.loadRecoState()
+      if(!restored){
+        this.resetReco()
+        this.initRecoChat()
+      }
       const m = this.ensureRecoModal(); m && m.show()
     },
     resetReco(){
@@ -431,18 +538,22 @@ export default {
       this.recoCompleted = false
       this.chatSessionId = null
       this.followUp = null
+      // Do not clear localStorage here intentionally
     },
     async initRecoChat(){
       try{
         const res = await axios.post('http://localhost:5000/api/student/recommend/chat/init', {}, { headers: this.authHeaders() })
         if(res.data?.success){
           this.chatSessionId = res.data.sessionId
-          this.recoMessages.push({ role:'system', text: res.data.message })
-          // Optional guidance (not enforced)
-          this.recoMessages.push({
-            role:'system',
-            text:'Bạn có thể (tùy chọn) cung cấp level (beginner/intermediate/advanced), category (vd: web, game dev) và topic (vd: react, c#, solidity) để gợi ý chính xác hơn; hoặc cứ hỏi tự do.'
-          })
+          if(!this.recoMessages.length){
+            this.recoMessages.push({ role:'system', text: res.data.message })
+            // Optional guidance (not enforced)
+            this.recoMessages.push({
+              role:'system',
+              text:'Bạn có thể (tùy chọn) cung cấp level (beginner/intermediate/advanced), category (vd: web, game dev) và topic (vd: react, c#, solidity) để gợi ý chính xác hơn; hoặc cứ hỏi tự do.'
+            })
+          }
+          this.saveRecoState()
         } else {
           this.recoMessages.push({ role:'assistant', text:'Failed to start AI session.' })
         }
@@ -454,6 +565,7 @@ export default {
       const val = this.recoInput.trim(); if(!val) return
       this.recoMessages.push({ role:'user', text: val })
       this.recoInput=''
+      this.saveRecoState()
       await this.sendChatMessage(val)
       this.$nextTick(()=>{ this.scrollChatBottom() })
     },
@@ -461,23 +573,31 @@ export default {
       if(!this.chatSessionId){ await this.initRecoChat() }
       this.recoLoading = true
       try{
-        // Support manual semantic search command
         if(message.startsWith('/semantic ')){
           const query = message.replace('/semantic ','').trim()
           await this.fetchSemantic(query)
           this.recoMessages.push({ role:'assistant', text:`Semantic suggestions for: ${query}` })
+          this.saveRecoState()
           return
         }
-        const res = await axios.post('http://localhost:5000/api/student/recommend/chat/message', { sessionId: this.chatSessionId, message }, { headers: this.authHeaders() })
+        // Backend expects JSON only; avoid form payloads to prevent 415
+        const headers = { ...this.authHeaders(), 'Content-Type': 'application/json' }
+        const payload = { session_id: this.chatSessionId, text: message }
+        let res = await axios.post('http://localhost:5000/api/student/recommend/chat/message', payload, { headers })
+        // If API uses camelCase, retry once
         if(!res.data?.success){
-          this.recoMessages.push({ role:'assistant', text:'Error: chat failed.' })
+          res = await axios.post('http://localhost:5000/api/student/recommend/chat/message', { sessionId: this.chatSessionId, message }, { headers })
+        }
+        if(!res.data?.success){
+          const msg = res.data?.message || res.data?.error || 'Chat failed.'
+          this.recoMessages.push({ role:'assistant', text: msg })
+          this.saveRecoState();
           return
         }
         const rawReply = res.data.reply || ''
         const cleaned = this.stripJsonBlock(rawReply)
         this.recoMessages.push({ role:'assistant', text: cleaned })
         this.followUp = res.data.followUp || null
-        // Map courses
         const items = res.data.coursesWithReasons || []
         this.recoCourses = items.map(it => ({
           id: it.course.id,
@@ -486,17 +606,34 @@ export default {
           level: it.course.level,
           price: it.course.price,
           currency: it.course.currency,
-            categories: Array.isArray(it.course.categories)? it.course.categories : [],
-            topics: Array.isArray(it.course.topics)? it.course.topics : [],
+          categories: Array.isArray(it.course.categories)? it.course.categories : [],
+          topics: Array.isArray(it.course.topics)? it.course.topics : [],
           reason: it.reason
         }))
         if(this.recoCourses.length) this.recoCompleted = true
+        this.saveRecoState()
       }catch(e){
-        this.recoMessages.push({ role:'assistant', text:'Chat error occurred.' })
+        const status = e?.response?.status
+        if(status === 401){
+          this.recoMessages.push({ role:'assistant', text:'Please log in to use AI recommendations.' })
+        }else if(status === 415){
+          this.recoMessages.push({ role:'assistant', text:'Unsupported media type. Using JSON payload.' })
+        }else if(status === 400){
+          this.recoMessages.push({ role:'assistant', text:'Bad request. Please try again.' })
+        }else{
+          this.recoMessages.push({ role:'assistant', text:'Chat error occurred.' })
+        }
+        this.saveRecoState()
       }finally{
         this.recoLoading = false
         this.$nextTick(()=>this.scrollChatBottom())
       }
+    },
+    scrollChatBottom(){
+      try{
+        const el = this.$refs.chatWindow
+        if(el){ el.scrollTop = el.scrollHeight }
+      }catch{}
     },
     quickRefine(text){ this.recoInput = text; this.sendRecoInput() },
     acceptFollowUp(){ if(this.followUp){ this.quickRefine(this.followUp) } },
@@ -518,8 +655,10 @@ export default {
         this.recoMessages.push({ role:'assistant', text:'Semantic recommendation failed.' })
       }finally{ this.recoLoading=false }
     },
-    // Remove old step-based methods
-    // ...existing code...
+    setPage(p){
+      if(!p || p<1 || p>this.totalPages) return
+      this.currentPage = p
+    },
   }
 }
 </script>
@@ -536,6 +675,7 @@ export default {
 .course-card { background:var(--card-bg); border:1px solid var(--border); border-radius:var(--radius); padding:20px 20px 16px; display:flex; flex-direction:column; position:relative; min-height:265px; box-shadow:0 1px 2px rgba(0,0,0,.04); transition:.2s; }
 .course-card:hover { border-color:#d1d5db; box-shadow:0 4px 12px rgba(0,0,0,.06); transform:translateY(-2px); }
 .title { font-size:18px; font-weight:600; margin:0 0 4px; color:var(--text); line-height:1.3; }
+.instructor{ font-size:12px; color:#555; margin:0 0 6px; }
 .desc { font-size:13px; color:var(--muted); margin:0 0 12px; line-height:1.45; display:-webkit-box; -webkit-line-clamp:3; line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
 .meta { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 8px; }
 .badge { font-size:11px; padding:4px 10px; border-radius:8px; font-weight:600; letter-spacing:.5px; line-height:1; user-select:none; }
@@ -641,4 +781,14 @@ export default {
 .followup-btn { background:#6366f1; color:#fff; border:none; border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer; }
 .followup-btn:hover { background:#4f46e5; }
 .reason { font-size:11px; color:#334155; background:#f1f5f9; padding:6px 8px; border-radius:6px; margin:0 0 8px; }
+.chat-window{ max-height: 360px; overflow-y:auto; padding-right:6px; }
+.chat-window::-webkit-scrollbar{ width:8px; }
+.chat-window::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:20px; }
+.chat-window::-webkit-scrollbar-track{ background:transparent; }
+.pagination { margin:28px 0 0; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.page-btn { min-width:42px; padding:8px 10px; border:1px solid #d1d5db; background:#fff; border-radius:8px; font-size:13px; cursor:pointer; transition:.15s; }
+.page-btn:hover:not(:disabled){ background:#f1f5f9; }
+.page-btn.active { background:#1d4ed8; color:#fff; border-color:#1d4ed8; font-weight:600; }
+.page-btn:disabled { opacity:.5; cursor:not-allowed; }
+.page-ellipsis { min-width:42px; display:inline-flex; justify-content:center; align-items:center; font-size:13px; color:#555; }
 </style>

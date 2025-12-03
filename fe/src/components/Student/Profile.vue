@@ -99,62 +99,109 @@
                                 <label>Address</label>
                                 <textarea v-model="editStudent.address" class="form-input" rows="2"></textarea>
                             </div>
-                            <button type="submit" class="action-button full-width">Save Changes</button>
+                            <button type="submit" class="action-button full-width" :disabled="saving">
+                                <span v-if="saving" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                Save Changes
+                            </button>
                         </form>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- Loading Spinner -->
+        <div v-if="loading" class="loading-overlay">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
     </div>
 </template>
 
 <script>
+import axios from 'axios'
+import { getStoredSession } from '../../services/authService'
+
 export default {
-    name: "StudentProfile",
-    data() {
-        return {
-            student: {
-                name: "Nguyen Van A",
-                dob: "2002-05-15",
-                phone: "+84 987 654 321",
-                email: "nguyenvana@student.edu.vn",
-                address: "45 Tran Hung Dao, Da Nang, Vietnam",
-                photo: "https://img.lovepik.com/free-png/20211204/lovepik-cartoon-avatar-png-image_401302777_wh1200.png",
-                courses: [
-                    { id: 1, title: "Frontend Development", progress: 75 },
-                    { id: 2, title: "Database Management", progress: 50 },
-                    { id: 3, title: "Backend Development", progress: 20 },
-                ],
-            },
-            editStudent: {}
-        };
-    },
-    methods: {
-        triggerFileInput() {
-            this.$refs.fileInput.click();
-        },
-        onFileChange(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    this.student.photo = e.target.result; // hiển thị ảnh mới
-                };
-                reader.readAsDataURL(file);
-            }
-        },
-        saveChanges() {
-            this.student = { ...this.editStudent, photo: this.student.photo };
-            const modalEl = document.getElementById("editProfileModal");
-            const modal = bootstrap.Modal.getInstance(modalEl);
-            modal.hide();
-        }
-    },
-    mounted() {
-        this.editStudent = { ...this.student };
+  name: 'StudentProfile',
+  data(){
+    return {
+      student: {
+        name: '', dob: '', phone: '', email: '', address: '', photo: '',
+        courses: []
+      },
+      editStudent: {},
+      saving: false,
+      loading: true
     }
-};
+  },
+  methods:{
+    authHeaders(){
+      const s = getStoredSession();
+      return s?.access_token ? { Authorization: `Bearer ${s.access_token}` } : {}
+    },
+    async loadProfile(){
+      this.loading = true
+      try{
+        const headers = this.authHeaders()
+        if(!headers.Authorization){ console.warn('No JWT token found; redirecting to login'); this.loading=false; this.$router.push({ name:'Login' }).catch(()=>{}); return }
+        const res = await axios.get('http://localhost:5000/api/student/profile', { headers })
+        const st = res.data?.student || {}
+        this.student = {
+          name: st.name || '',
+          dob: st.dob || '',
+          phone: st.phone || '',
+          email: st.email || '',
+          address: st.address || '',
+          photo: st.photo || this.student.photo || '',
+          courses: Array.isArray(st.courses)? st.courses : (this.student.courses||[])
+        }
+        this.editStudent = { ...this.student }
+      }catch(e){
+        console.error('Load profile failed', e)
+        const status = e?.response?.status
+        if(status === 401){ this.$router.push({ name:'Login' }).catch(()=>{}) }
+      }finally{ this.loading = false }
+    },
+    triggerFileInput(){ this.$refs.fileInput.click() },
+    async onFileChange(evt){
+      const file = evt.target.files?.[0]; if(!file) return
+      const reader = new FileReader(); reader.onload = e => { this.student.photo = e.target.result }; reader.readAsDataURL(file)
+      try{
+        const headers = this.authHeaders();
+        if(!headers.Authorization){ this.$router.push({ name:'Login' }).catch(()=>{}); return }
+        const fd = new FormData(); fd.append('file', file)
+        const res = await axios.post('http://localhost:5000/api/student/profile/avatar', fd, { headers: { ...headers, 'Content-Type':'multipart/form-data' } })
+        const url = res.data?.url
+        if(url){ this.student.photo = url; this.editStudent.photo = url }
+      }catch(e){
+        console.error('Upload avatar failed', e)
+        if(e?.response?.status===401){ this.$router.push({ name:'Login' }).catch(()=>{}) }
+      }
+    },
+    async saveChanges(){
+      this.saving = true
+      try{
+        const headers = this.authHeaders();
+        if(!headers.Authorization){ this.saving=false; this.$router.push({ name:'Login' }).catch(()=>{}); return }
+        const payload = { ...this.editStudent, photo: this.student.photo }
+        const res = await axios.put('http://localhost:5000/api/student/profile', payload, { headers })
+        if(res.data?.success){
+          await this.loadProfile() // fetch again from server to ensure latest data
+        }
+        const modalEl = document.getElementById('editProfileModal')
+        const modal = window.bootstrap?.Modal.getInstance(modalEl) || (window.bootstrap? new window.bootstrap.Modal(modalEl): null)
+        modal && modal.hide()
+      }catch(e){
+        console.error('Update profile failed', e)
+        if(e?.response?.status===401){ this.$router.push({ name:'Login' }).catch(()=>{}) }
+      } finally { this.saving = false }
+    }
+  },
+  async mounted(){
+    await this.loadProfile()
+  }
+}
 </script>
 
 <style scoped>
@@ -372,6 +419,25 @@ export default {
     outline: none;
     border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.3em;
 }
 
 @media (max-width: 768px) {

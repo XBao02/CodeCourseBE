@@ -120,11 +120,6 @@ export default {
         return;
       }
 
-      if (!this.agreedToTerms) {
-        this.errorMessage = "You must agree to the Terms of Service.";
-        return;
-      }
-
       this.isSubmitting = true;
       try {
         const payload = await registerUser({

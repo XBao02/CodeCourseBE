@@ -30,43 +30,30 @@ def get_instructor_courses():
     """
     Lấy danh sách khóa học của Giảng viên hiện tại dựa trên JWT token.
     """
-    # Get instructor_id from JWT token
     instructor_id = get_current_instructor_id()
-    
     if not instructor_id:
         return jsonify({"message": "Unauthorized or invalid instructor"}), 401
-
     try:
-        # 2. Truy vấn các khóa học của instructor_id đã cho
         courses = Course.query.filter_by(instructor_id=instructor_id).all()
-
-        # 3. Chuyển đổi kết quả sang định dạng JSON
         course_list = []
         for course in courses:
-            # Map cột 'is_public' sang 'status' string mà frontend mong đợi
-            # Giả định: is_public=True là 'active', False là 'draft'
             status = 'active' if course.is_public else 'draft'
-
-            # CHÚ Ý: Các trường 'students', 'rating', 'thumbnail' là dữ liệu giả lập 
-            # vì không có trong Model Course ban đầu. Bạn cần tính toán thực tế sau.
-            course_data = {
+            # Backward compatible thumbnail mapping
+            img = course.image_url or f"/images/course/{course.id}.jpg"
+            course_list.append({
                 "id": course.id,
                 "title": course.title,
                 "description": course.description,
                 "price": float(course.price) if course.price is not None else 0.00,
                 "level": course.level,
                 "status": status,
-                # Dữ liệu giả lập cho Frontend
-                "students": 120, 
-                "rating": "4.5", 
-                "thumbnail": f"/images/course/{course.id}.jpg",
+                "students": 120,  # mock
+                "rating": "4.5", # mock
+                "image_url": course.image_url,  # new
+                "thumbnail": img,              # legacy field for FE until refactor complete
                 "updatedAt": course.updated_at.isoformat() if course.updated_at else None
-            }
-            course_list.append(course_data)
-
-        # 4. Trả về danh sách khóa học
+            })
         return jsonify(course_list)
-
     except Exception as e:
         print(f"Lỗi khi truy vấn database: {e}")
         return jsonify({"message": "Lỗi server nội bộ khi lấy dữ liệu khóa học"}), 500
@@ -91,38 +78,23 @@ def create_course():
     }
     """
     try:
-        # Get instructor_id from JWT token
         instructor_id = get_current_instructor_id()
         if not instructor_id:
             return jsonify({"message": "Unauthorized or invalid instructor"}), 401
-        
-        data = request.get_json()
-        
-        # Validate required fields (no longer need instructor_id in body)
+        data = request.get_json() or {}
         required_fields = ['title', 'description', 'price']
-        for field in required_fields:
-            if field not in data or not data[field]:
-                return jsonify({"message": f"Thiếu trường bắt buộc: {field}"}), 400
-        
-        # Instructor already verified from token
+        for f in required_fields:
+            if not data.get(f):
+                return jsonify({"message": f"Thiếu trường bắt buộc: {f}"}), 400
         instructor = Instructor.query.filter_by(id=instructor_id).first()
         if not instructor:
             return jsonify({"message": "Giảng viên không tồn tại"}), 404
-        
-        # Generate slug from title
         slug = generate_slug(data['title'])
-        
-        # Check if slug already exists
-        existing_course = Course.query.filter_by(slug=slug).first()
-        if existing_course:
+        if Course.query.filter_by(slug=slug).first():
             slug = f"{slug}-{datetime.utcnow().timestamp()}"
-        
-        # Map status to is_public
         is_public = data.get('status', 'draft') == 'active'
-        
-        # Create new course using instructor_id from token
         new_course = Course(
-            instructor_id=instructor_id,  # Use instructor_id from JWT token
+            instructor_id=instructor_id,
             title=data['title'],
             slug=slug,
             description=data['description'],
@@ -130,20 +102,19 @@ def create_course():
             currency=data.get('currency', 'VND'),
             level=data.get('level', 'beginner'),
             is_public=is_public,
+            image_url=data.get('image_url') or data.get('thumbnail'),  # save Cloudinary URL
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow()
         )
-        
         db.session.add(new_course)
         db.session.commit()
-        
         return jsonify({
             "message": "Khóa học đã được tạo thành công",
             "id": new_course.id,
             "title": new_course.title,
-            "slug": new_course.slug
+            "slug": new_course.slug,
+            "image_url": new_course.image_url
         }), 201
-        
     except Exception as e:
         db.session.rollback()
         print(f"Lỗi khi tạo khóa học: {e}")
@@ -161,15 +132,12 @@ def get_course_detail(course_id):
         instructor_id = get_current_instructor_id()
         if not instructor_id:
             return jsonify({"message": "Unauthorized"}), 401
-        
         course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
-        
         if not course:
             return jsonify({"message": "Khóa học không tồn tại hoặc không có quyền truy cập"}), 404
-        
         status = 'active' if course.is_public else 'draft'
-        
-        course_data = {
+        img = course.image_url or f"/images/course/{course.id}.jpg"
+        return jsonify({
             "id": course.id,
             "title": course.title,
             "description": course.description,
@@ -177,22 +145,21 @@ def get_course_detail(course_id):
             "level": course.level,
             "status": status,
             "instructor_id": course.instructor_id,
-            "students": 0,  # Tính từ Enrollment table
-            "rating": 0.0,  # Tính từ Reviews table
-            "lessons": 0,   # Tính từ Lesson table
-            "duration": 0,  # Tính từ Lesson table
-            "thumbnail": f"/images/course/{course.id}.jpg",
+            "students": 0,
+            "rating": 0.0,
+            "lessons": 0,
+            "duration": 0,
+            "image_url": course.image_url,
+            "thumbnail": img,
             "createdAt": course.created_at.isoformat() if course.created_at else None,
             "updatedAt": course.updated_at.isoformat() if course.updated_at else None
-        }
-        
-        return jsonify(course_data), 200
-        
+        }), 200
     except Exception as e:
         print(f"Lỗi khi lấy chi tiết khóa học: {e}")
         return jsonify({"message": "Lỗi server nội bộ"}), 500
 
 
+@instructor_bp.route("/api/courses/<int:course_id>", methods=['PUT'])
 @instructor_bp.route("/courses/<int:course_id>", methods=['PUT'])
 @jwt_required()
 def update_course(course_id):
@@ -211,48 +178,38 @@ def update_course(course_id):
         instructor_id = get_current_instructor_id()
         if not instructor_id:
             return jsonify({"message": "Unauthorized"}), 401
-        
         course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
-        
         if not course:
             return jsonify({"message": "Khóa học không tồn tại hoặc không có quyền truy cập"}), 404
-        
-        data = request.get_json()
-        
-        # Update fields
-        if 'title' in data:
+        data = request.get_json() or {}
+        if 'title' in data and data['title']:
             course.title = data['title']
-            # Regenerate slug if title changed
             course.slug = generate_slug(data['title'])
-        
         if 'description' in data:
             course.description = data['description']
-        
         if 'price' in data:
             course.price = data['price']
-        
         if 'level' in data:
             course.level = data['level']
-        
         if 'status' in data:
             course.is_public = data['status'] == 'active'
-        
+        if 'image_url' in data or 'thumbnail' in data:
+            course.image_url = data.get('image_url') or data.get('thumbnail')
         course.updated_at = datetime.utcnow()
-        
         db.session.commit()
-        
         return jsonify({
             "message": "Khóa học đã được cập nhật thành công",
             "id": course.id,
-            "title": course.title
+            "title": course.title,
+            "image_url": course.image_url
         }), 200
-        
     except Exception as e:
         db.session.rollback()
         print(f"Lỗi khi cập nhật khóa học: {e}")
         return jsonify({"message": f"Lỗi khi cập nhật khóa học: {str(e)}"}), 500
 
 
+@instructor_bp.route("/api/courses/<int:course_id>", methods=['DELETE'])
 @instructor_bp.route("/courses/<int:course_id>", methods=['DELETE'])
 @jwt_required()
 def delete_course(course_id):
@@ -264,28 +221,23 @@ def delete_course(course_id):
         instructor_id = get_current_instructor_id()
         if not instructor_id:
             return jsonify({"message": "Unauthorized"}), 401
-        
         course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
-        
         if not course:
             return jsonify({"message": "Khóa học không tồn tại hoặc không có quyền truy cập"}), 404
-        
         # Check if course has enrollments
         enrollment_count = db.session.query(db.func.count(Enrollment.id)).filter_by(course_id=course_id).scalar()
         if enrollment_count > 0:
             return jsonify({"message": "Không thể xóa khóa học có học viên đang tham gia"}), 400
-        
         db.session.delete(course)
         db.session.commit()
-        
         return jsonify({"message": "Khóa học đã được xóa thành công"}), 200
-        
     except Exception as e:
         db.session.rollback()
         print(f"Lỗi khi xóa khóa học: {e}")
         return jsonify({"message": f"Lỗi khi xóa khóa học: {str(e)}"}), 500
 
 
+@instructor_bp.route("/api/courses/<int:course_id>/archive", methods=['PUT'])
 @instructor_bp.route("/courses/<int:course_id>/archive", methods=['PUT'])
 @jwt_required()
 def archive_course(course_id):
@@ -300,30 +252,22 @@ def archive_course(course_id):
         instructor_id = get_current_instructor_id()
         if not instructor_id:
             return jsonify({"message": "Unauthorized"}), 401
-        
         course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
-        
         if not course:
             return jsonify({"message": "Khóa học không tồn tại hoặc không có quyền truy cập"}), 404
-        
         data = request.get_json()
-        
         if 'is_archived' in data:
             # Nếu is_archived là True, đặt is_public thành False (không công khai)
             # Nếu is_archived là False, đặt is_public thành True (công khai)
             course.is_public = not data['is_archived']
-        
         course.updated_at = datetime.utcnow()
         db.session.commit()
-        
         status = 'active' if course.is_public else 'archived'
-        
         return jsonify({
             "message": "Trạng thái khóa học đã được cập nhật",
             "id": course.id,
             "status": status
         }), 200
-        
     except Exception as e:
         db.session.rollback()
         print(f"Lỗi khi cập nhật trạng thái lưu trữ: {e}")
@@ -370,7 +314,6 @@ def get_course_curriculum(course_id):
         instructor_id = get_current_instructor_id()
         if not instructor_id:
             return jsonify({"message": "Unauthorized"}), 401
-        
         course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
         if not course:
             return jsonify({"message": "Khóa học không tồn tại hoặc không có quyền truy cập"}), 404
@@ -389,7 +332,6 @@ def list_sections(course_id):
         instructor_id = get_current_instructor_id()
         if not instructor_id:
             return jsonify({"message": "Unauthorized"}), 401
-        
         course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
         if not course:
             return jsonify({"message": "Khóa học không tồn tại hoặc không có quyền truy cập"}), 404
@@ -408,7 +350,6 @@ def create_section(course_id):
         instructor_id = get_current_instructor_id()
         if not instructor_id:
             return jsonify({"message": "Unauthorized"}), 401
-        
         course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
         if not course:
             return jsonify({"message": "Khóa học không tồn tại hoặc không có quyền truy cập"}), 404
@@ -930,60 +871,38 @@ def get_test(test_id):
 # =============================
 
 @instructor_bp.route('/api/instructor/dashboard', methods=['GET'])
+@jwt_required()
 def get_instructor_dashboard():
-    """
-    Lấy dữ liệu dashboard cho giảng viên
-    Query: ?instructor_id=X
-    Response: {
-        instructor: { name, email, avatar },
-        stats: { totalCourses, totalStudents, averageRating, totalRevenue },
-        recentCourses: [...]
-    }
-    """
+    """Lấy dữ liệu dashboard cho giảng viên.
+    Nếu không truyền instructor_id sẽ lấy từ JWT."""
     try:
         instructor_id = request.args.get('instructor_id', type=int)
-        
         if not instructor_id:
-            return jsonify({'message': 'Thiếu tham số instructor_id'}), 400
-        
-        # Lấy thông tin giảng viên
+            instructor_id = get_current_instructor_id()
+        if not instructor_id:
+            return jsonify({'message': 'Unauthorized'}), 401
         instructor = Instructor.query.get(instructor_id)
         if not instructor:
             return jsonify({'message': 'Giảng viên không tồn tại'}), 404
-        
         user = instructor.user
         if not user:
             return jsonify({'message': 'Người dùng không tồn tại'}), 404
-        
-        # Lấy danh sách khóa học
         courses = Course.query.filter_by(instructor_id=instructor_id).all()
-        
-        # Tính toán thống kê
         total_courses = len(courses)
         total_students = 0
         total_revenue = 0.0
         ratings = []
-        
         for course in courses:
-            # Đếm học viên đăng ký
             enrollments = Enrollment.query.filter_by(course_id=course.id).all()
             total_students += len(enrollments)
-            
-            # Tính doanh thu (giả định là price * số học viên đã thanh toán)
-            total_revenue += float(course.price or 0) * len([e for e in enrollments if e.status == 'completed'])
-            
-            # Giả định đánh giá (có thể thêm bảng Rating sau)
+            total_revenue += float(course.price or 0) * len([e for e in enrollments if getattr(e,'status',None)== 'completed'])
             ratings.append(4.5)
-        
         average_rating = sum(ratings) / len(ratings) if ratings else 0.0
-        
-        # Lấy 5 khóa học gần đây
         recent_courses = courses[-5:][::-1]
         recent_courses_data = []
-        
         for course in recent_courses:
             enrollments = Enrollment.query.filter_by(course_id=course.id).all()
-            course_data = {
+            recent_courses_data.append({
                 'id': course.id,
                 'title': course.title,
                 'description': course.description,
@@ -993,17 +912,15 @@ def get_instructor_dashboard():
                 'status': 'active' if course.is_public else 'draft',
                 'createdAt': course.created_at.isoformat() if course.created_at else None,
                 'updatedAt': course.updated_at.isoformat() if course.updated_at else None
-            }
-            recent_courses_data.append(course_data)
-        
+            })
         dashboard_data = {
             'instructor': {
                 'id': instructor.id,
-                'name': user.full_name,
-                'email': user.email,
-                'avatar': user.avatar_url,
-                'expertise': instructor.expertise,
-                'yearsExperience': instructor.years_experience
+                'name': getattr(user,'full_name',None) or getattr(user,'FullName',None) or getattr(user,'name',None),
+                'email': getattr(user,'email',None) or getattr(user,'Email',None),
+                'avatar': getattr(user,'avatar_url',None) or getattr(user,'AvatarUrl',None),
+                'expertise': getattr(instructor,'expertise',None),
+                'yearsExperience': getattr(instructor,'years_experience',None)
             },
             'stats': {
                 'totalCourses': total_courses,
@@ -1013,30 +930,24 @@ def get_instructor_dashboard():
             },
             'recentCourses': recent_courses_data
         }
-        
         return jsonify(dashboard_data), 200
-        
     except Exception as e:
         print(f'Error getting dashboard: {e}')
         return jsonify({'message': 'Lỗi server nội bộ'}), 500
 
-
 @instructor_bp.route('/api/instructor/statistics', methods=['GET'])
+@jwt_required()
 def get_instructor_statistics():
-    """
-    Lấy thống kê chi tiết cho giảng viên
-    Query: ?instructor_id=X
-    """
+    """Chi tiết thống kê giảng viên; instructor_id tùy chọn, fallback JWT."""
     try:
         instructor_id = request.args.get('instructor_id', type=int)
-        
         if not instructor_id:
-            return jsonify({'message': 'Thiếu tham số instructor_id'}), 400
-        
+            instructor_id = get_current_instructor_id()
+        if not instructor_id:
+            return jsonify({'message': 'Unauthorized'}), 401
         instructor = Instructor.query.get(instructor_id)
         if not instructor:
             return jsonify({'message': 'Giảng viên không tồn tại'}), 404
-        
         courses = Course.query.filter_by(instructor_id=instructor_id).all()
         
         stats = {
@@ -1100,18 +1011,18 @@ def get_instructor_statistics():
 
 
 @instructor_bp.route('/api/instructor/reports', methods=['GET'])
+@jwt_required()
 def get_instructor_reports():
     """
-    Get comprehensive analytics and reports for instructor
-    Query: ?instructor_id=X
-    Returns: Time-series data, course metrics, student progress, and performance analytics
+    Get comprehensive analytics and reports for instructor.
+    If instructor_id not provided, derive from JWT.
     """
     try:
         instructor_id = request.args.get('instructor_id', type=int)
-        
         if not instructor_id:
-            return jsonify({'message': 'Missing instructor_id parameter'}), 400
-        
+            instructor_id = get_current_instructor_id()
+        if not instructor_id:
+            return jsonify({'message': 'Unauthorized'}), 401
         instructor = Instructor.query.get(instructor_id)
         if not instructor:
             return jsonify({'message': 'Instructor not found'}), 404
@@ -1178,7 +1089,9 @@ def get_instructor_reports():
             avg_score = (sum(course_scores) / len(course_scores)) if course_scores else 0
             
             report['coursePerformance'].append({
+                'courseId': course.id,
                 'courseName': course.title,
+                'description': course.description or '',
                 'students': course_enrollments,
                 'completed': course_completed,
                 'inProgress': course_in_progress,
@@ -1238,13 +1151,16 @@ def get_course(course_id):
         course = Course.query.filter_by(id=course_id).first()
         if not course:
             return jsonify({'message': 'Course not found'}), 404
+        status = 'active' if course.is_public else 'draft'
+        img = course.image_url or f"/images/course/{course.id}.jpg"
         return jsonify({
             'id': course.id,
             'title': course.title,
             'description': course.description,
             'price': float(course.price) if course.price is not None else 0,
-            'thumbnail': getattr(course, 'thumbnail', None),
-            'status': course.status or 'draft'
+            'image_url': course.image_url,
+            'thumbnail': img,
+            'status': status
         }), 200
     except Exception as e:
         print('Error fetching course:', e)
@@ -1277,3 +1193,33 @@ def upload_video_to_cloudinary():
         import traceback
         print(f"❌ Cloudinary upload error: {e}\n{traceback.format_exc()}")
         return jsonify({'message': f'Upload failed: {str(e)}'}), 500
+
+
+@instructor_bp.route('/upload/thumbnail', methods=['POST'])
+@instructor_bp.route('/api/instructor/upload/thumbnail', methods=['POST'])
+@jwt_required()
+def upload_course_thumbnail():
+    try:
+        # Accept any authenticated user to upload thumbnail
+        user_id = get_jwt_identity()
+        if not user_id:
+            return jsonify({'message': 'Unauthorized'}), 401
+        if 'file' not in request.files:
+            return jsonify({'message': 'Missing file'}), 400
+        f = request.files['file']
+        try:
+            from app.utils.cloudinary_upload import cloudinary, DEFAULT_FOLDER
+            result = cloudinary.uploader.upload(
+                f,
+                folder=DEFAULT_FOLDER,
+                overwrite=True,
+                resource_type='image',
+            )
+            url = result.get('secure_url') or result.get('url')
+            return jsonify({'success': True, 'url': url, 'public_id': result.get('public_id')}), 200
+        except Exception as e:
+            print('Cloudinary upload error:', e)
+            return jsonify({'message': 'Upload failed'}), 500
+    except Exception as e:
+        print('Upload thumbnail error:', e)
+        return jsonify({'message': 'Internal server error'}), 500

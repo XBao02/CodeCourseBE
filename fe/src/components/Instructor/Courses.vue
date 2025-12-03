@@ -14,7 +14,6 @@
                     <option value="all">All</option>
                     <option value="active">Active</option>
                     <option value="draft">Draft</option>
-                    <option value="archived">Archived</option>
                 </select>
             </div>
 
@@ -33,7 +32,9 @@
             <div v-else class="courses-grid">
                 <div v-for="course in filteredCourses" :key="course.id" class="course-card">
                     <div class="course-image">
-                        <img :src="course.thumbnail" :alt="course.title" />
+                        <img :src="course.image_url || course.thumbnail || placeholderUrl"
+                             :alt="course.title"
+                             @error="onImgError($event)" />
                         <div class="course-status" :class="course.status">
                             {{ getStatusText(course.status) }}
                         </div>
@@ -81,10 +82,26 @@
                         <label>Price (VND):</label>
                         <input type="number" v-model="courseForm.price" min="0">
                     </div>
+                    <div class="form-group">
+                        <label>Status:</label>
+                        <div class="status-group">
+                            <label class="status-option">
+                                <input type="checkbox" :checked="courseForm.status==='active'" @change="setStatus('active')"> Active
+                            </label>
+                            <label class="status-option">
+                                <input type="checkbox" :checked="courseForm.status==='draft'" @change="setStatus('draft')"> Draft
+                            </label>
+                        </div>
+                    </div>
 
                     <div class="form-group">
-                        <label>Thumbnail URL:</label>
-                        <input type="url" v-model="courseForm.thumbnail">
+                        <label>Upload Image (Cloudinary):</label>
+                        <input type="file" accept="image/*" @change="onThumbnailFileChange" />
+                        <small v-if="uploadingThumb" style="display:block;color:#666;margin-top:6px;">Uploading...</small>
+                        <small v-if="courseForm.image_url" class="uploaded-url">
+                            Uploaded URL:
+                            <a :href="courseForm.image_url" target="_blank" rel="noopener">{{ courseForm.image_url }}</a>
+                        </small>
                     </div>
 
                     <div class="form-actions">
@@ -138,8 +155,11 @@ export default {
                 title: '',
                 description: '',
                 price: 0,
-                thumbnail: ''
-            }
+                image_url: '',
+                status: 'draft'
+            },
+            uploadingThumb: false,
+            placeholderUrl: 'https://th.bing.com/th/id/R.3566b6dc407982faae0488c840a60a55?rik=5eM0TcgU0gC7MA&pid=ImgRaw&r=0'
         }
     },
     mounted() {
@@ -163,7 +183,7 @@ export default {
             this.filteredCourses = []
             try {
                 const headers = this.getAuthHeaders()
-                // Backend now uses instructor ID from JWT token
+                // Use existing endpoint
                 const res = await fetch('http://localhost:5000/api/courses', { headers }) 
                 
                 if (!res.ok) {
@@ -230,7 +250,8 @@ export default {
                 title: '',
                 description: '',
                 price: 0,
-                thumbnail: ''
+                image_url: '',
+                status: 'draft'
             }
             this.showCourseModal = true
         },
@@ -239,7 +260,8 @@ export default {
             const course = this.courses.find(c => c.id === courseId)
             if (course) {
                 this.editingCourse = courseId
-                this.courseForm = { ...course }
+                // Map legacy thumbnail to image_url if needed
+                this.courseForm = { title: course.title, description: course.description, price: course.price, image_url: course.image_url || course.thumbnail || '', status: course.status || 'draft' }
                 this.showCourseModal = true
             }
         },
@@ -276,51 +298,29 @@ export default {
         async saveCourse() {
             try {
                 const headers = this.getAuthHeaders()
-                
-                // Backend sẽ lấy instructor_id từ JWT token
                 const payload = {
-                    ...this.courseForm,
+                    title: this.courseForm.title,
+                    description: this.courseForm.description,
                     price: Number(this.courseForm.price),
                     status: this.courseForm.status || 'draft',
                     level: 'beginner',
-                    currency: 'VND'
-                };
-
-                const url = 'http://localhost:5000/api/courses';
-                let res;
-                let data;
-
-                if (this.editingCourse) {
-                    // Cập nhật khóa học
-                    const updateUrl = `${url}/${this.editingCourse}`;
-                    res = await fetch(updateUrl, {
-                        method: 'PUT',
-                        headers,
-                        body: JSON.stringify(payload)
-                    });
-                } else {
-                    // Tạo khóa học mới
-                    res = await fetch(url, {
-                        method: 'POST',
-                        headers,
-                        body: JSON.stringify(payload)
-                    });
+                    currency: 'VND',
+                    image_url: this.courseForm.image_url
                 }
-
-                data = await res.json();
-
-                if (!res.ok) {
-                    throw new Error(data.message || `Lỗi khi lưu khóa học (HTTP ${res.status})`);
+                const base = 'http://localhost:5000/api/courses'
+                let res
+                if(this.editingCourse){
+                    res = await fetch(`${base}/${this.editingCourse}`, { method:'PUT', headers, body: JSON.stringify(payload) })
+                }else{
+                    res = await fetch(base, { method:'POST', headers, body: JSON.stringify(payload) })
                 }
-
-                this.closeModal();
-                await this.loadCourses(); 
-                
-                alert(`Khóa học "${data.title}" đã được ${this.editingCourse ? 'cập nhật' : 'tạo'} thành công!`);
-
-            } catch (error) {
-                console.error('Lỗi khi lưu khóa học:', error);
-                alert(`Lỗi: ${error.message}`);
+                const data = await res.json()
+                if(!res.ok) throw new Error(data.message || `HTTP ${res.status}`)
+                this.closeModal(); await this.loadCourses()
+                alert(`Khóa học \"${payload.title}\" đã được ${this.editingCourse?'cập nhật':'tạo'} thành công!`)
+            }catch(e){
+                console.error('Lỗi khi lưu khóa học:', e)
+                alert(`Lỗi: ${e.message}`)
             }
         },
 
@@ -345,7 +345,38 @@ export default {
         closeModal() {
             this.showCourseModal = false
             this.editingCourse = null
-        }
+        },
+
+        async onThumbnailFileChange(evt){
+            const file = evt.target.files?.[0]; if(!file) return
+            try{
+                this.uploadingThumb = true
+                const headers = this.getAuthHeaders()
+                // Build multipart form
+                const fd = new FormData(); fd.append('file', file)
+                // Backend endpoint to upload instructor thumbnails (expects Cloudinary configured)
+                const res = await fetch('http://localhost:5000/api/instructor/upload/thumbnail', {
+                    method: 'POST',
+                    headers: { Authorization: headers.Authorization },
+                    body: fd
+                })
+                const data = await res.json()
+                if(!res.ok){ throw new Error(data.message || `Upload failed (${res.status})`) }
+                const url = data.url || data.secure_url
+                if(url){ this.courseForm.image_url = url }
+            }catch(e){
+                console.error('Thumbnail upload failed', e)
+                alert(`Upload failed: ${e.message}`)
+            }finally{
+                this.uploadingThumb = false
+            }
+        },
+        setStatus(s){ this.courseForm.status = s },
+        onImgError(e){
+            if(e && e.target && e.target.src !== this.placeholderUrl){
+                e.target.src = this.placeholderUrl
+            }
+        },
     }
 }
 </script>
@@ -738,6 +769,13 @@ export default {
 .no-courses {
     font-size: 15px;
 }
+
+.status-group{ display:flex; gap:16px; }
+.status-option{ font-size:13px; color:#374151; display:flex; align-items:center; gap:6px; }
+.status-option input{ cursor:pointer; }
+
+.uploaded-url{ display:block; color:#2563eb; margin-top:6px; max-width:100%; overflow-wrap:anywhere; word-break:break-word; white-space:normal; }
+.uploaded-url a{ color:#2563eb; text-decoration:underline; overflow-wrap:anywhere; word-break:break-word; }
 
 @media (max-width: 768px) {
     .instructor-courses {

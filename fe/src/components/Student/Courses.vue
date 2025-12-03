@@ -22,7 +22,7 @@
                     <div class="card-body">
                         <div v-if="registeredCourses.length" class="enrolled-courses-list">
                             <div v-for="course in registeredCourses" :key="'reg-' + course.id" class="enrolled-course-item">
-                                <img :src="course.image" class="enrolled-course-image" />
+                                <img :src="course.image" class="enrolled-course-image" @error="onImgError($event)" />
                                 <div class="enrolled-course-details">
                                     <h6>{{ course.title }}</h6>
                                     <p class="enrolled-course-meta">
@@ -67,6 +67,7 @@ export default {
         return {
             courses: [],
             myCourses: [],
+            placeholderUrl: 'https://th.bing.com/th/id/R.3566b6dc407982faae0488c840a60a55?rik=5eM0TcgU0gC7MA&pid=ImgRaw&r=0',
         };
     },
 
@@ -94,7 +95,7 @@ export default {
                     price: Number(c.price || 0),
                     currency: c.currency || "VND",
                     isPublic: c.is_public === true || c.isPublic === true,
-                    image: c.thumbnail || c.image || "/public/vite.svg",
+                    image: c.image_url || c.thumbnail || c.image || this.placeholderUrl,
                 }));
 
                 if (studentId) {
@@ -106,7 +107,7 @@ export default {
                         level: c.level || "beginner",
                         price: Number(c.price || 0),
                         currency: c.currency || "VND",
-                        image: c.thumbnail || c.image || "/public/vite.svg",
+                        image: c.image_url || c.thumbnail || c.image || this.placeholderUrl,
                     }));
                 } else {
                     this.myCourses = [];
@@ -132,6 +133,11 @@ export default {
         enterCourse(course) {
             this.$router.push({ name: "StudentCourseLesson", params: { courseId: course.id } }).catch(() => { });
         },
+        onImgError(e){
+            if(e && e.target && e.target.src !== this.placeholderUrl){
+                e.target.src = this.placeholderUrl;
+            }
+        }
     },
 };
 </script>

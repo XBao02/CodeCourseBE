@@ -60,14 +60,12 @@
         <div class="chart-card">
           <h5>Course Details</h5>
           <div v-if="courseProgress.length > 0" class="course-progress-list">
-            <div v-for="course in courseProgress" :key="course.name" class="progress-item">
+            <div v-for="course in courseProgress" :key="course.id || course.name" class="progress-item">
               <div class="progress-header">
                 <span class="course-name">{{ course.name }}</span>
-                <span class="progress-text">{{ course.done }}/{{ course.total }} ({{ course.percent }}%)</span>
+                <button class="retry-btn" @click="viewCourseContent(course)">View Content</button>
               </div>
-              <div class="progress-bar-container">
-                <div class="progress-bar-fill" :style="{ width: course.percent + '%' }"></div>
-              </div>
+              <p class="progress-text" style="margin: 6px 0 0 0;">{{ course.description || 'No description available' }}</p>
             </div>
           </div>
           <p v-else class="no-data">No courses available</p>
@@ -378,7 +376,9 @@ export default {
         
         // Update course progress
         this.courseProgress = data.coursePerformance.map(course => ({
+          id: course.courseId || course.id,
           name: course.courseName,
+          description: course.description || '',
           done: course.completed,
           total: course.students,
           percent: course.completionRate
@@ -398,6 +398,20 @@ export default {
         this.error = 'Failed to load reports data. Please try again.';
       } finally {
         this.loading = false;
+      }
+    },
+    viewCourseContent(course) {
+      const id = course.id;
+      if (this.$router && id) {
+        // Try common routes; fallback to alert
+        const target = `/instructor/courses/${id}`;
+        this.$router.push(target).catch(() => {
+          this.$router.push(`/courses/${id}`).catch(() => {
+            alert(`Open content for: ${course.name}`);
+          });
+        });
+      } else {
+        alert(`Open content for: ${course.name}`);
       }
     }
   }
@@ -572,13 +586,14 @@ export default {
 .progress-item {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .progress-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
 }
 
 .course-name {
@@ -800,6 +815,47 @@ export default {
 .status-badge.inactive {
   background: #fee2e2;
   color: #dc2626;
+}
+
+.course-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.course-item {
+  background: #f8f9fa;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.course-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.course-description {
+  font-size: 14px;
+  color: #666;
+  margin: 0 0 12px 0;
+}
+
+.view-btn {
+  padding: 8px 14px;
+  background: #1f2937;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.view-btn:hover {
+  background: #111827;
 }
 
 @media (max-width: 768px) {

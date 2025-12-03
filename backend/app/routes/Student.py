@@ -1,29 +1,40 @@
 from flask import Blueprint
 from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt, verify_jwt_in_request
 from datetime import datetime
 from app.models import db, Course, Enrollment, StudyPlan, PlanItem, Student
 from app.models.model import User, LessonProgress, Instructor, Category, Topic
-from flask_jwt_extended import get_jwt_identity, verify_jwt_in_request, jwt_required, get_jwt
-import traceback
 from app.services.recommender import semantic_recommend, recommend_courses  # new import
+from app.utils.cloudinary_upload import upload_video  # placeholder import if using cloudinary for images too
+import traceback
 import os, uuid, time
+import json
 try:
     import google.generativeai as genai  # type: ignore
 except Exception:
     genai = None
 
 _AI_CHAT_SESSIONS = {}  # session_id -> {user_id, history:[{"role":"user"|"assistant","text":...}], created_at}
-_GEMINI_KEY = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY') or os.getenv('GOOGLE_GEMINI_KEY')
-_GEMINI_MODEL_NAME = os.getenv('GEMINI_RECO_MODEL', 'gemini-1.5-flash')
+_GEMINI_MODEL_NAME = os.getenv('GEMINI_RECO_MODEL', 'gemini-2.5-flash')
 
-def _init_genai():
-    if genai and _GEMINI_KEY:
-        try:
-            genai.configure(api_key=_GEMINI_KEY)
-            return True
-        except Exception:
-            return False
-    return False
+def _configure_client():
+    """Configure Gemini client similar to AIQuiz flow."""
+    from dotenv import load_dotenv
+    load_dotenv()
+    if genai is None:
+        return False
+    api_key = (
+        os.getenv("GEMINI_API_KEY")
+        or os.getenv("GOOGLE_API_KEY")
+        or os.getenv("GOOGLE_GEMINI_KEY")
+    )
+    if not api_key:
+        return False
+    try:
+        genai.configure(api_key=api_key)
+        return True
+    except Exception:
+        return False
 
 def _serialize_courses(limit=40):
     # Provide condensed course info for AI context
@@ -60,25 +71,38 @@ def _build_system_instruction():
     )
 
 def _ai_generate_reply(history, course_context):
-    ready = _init_genai()
+    ready = _configure_client()
     if not ready:
-        return { 'text': 'AI is unavailable, using fallback heuristic. Provide level/category/topic.', 'courses': [] }
+        return { 'text': 'AI is unavailable, using fallback heuristic. Provide level, category, topic.', 'courses': [] }
     try:
-        # Compose prompt with context + conversation
-        context_json = course_context
-        msgs = []
-        msgs.append({ 'role':'system', 'parts': [_build_system_instruction() + "\nCourse dataset (JSON):\n" + str(context_json)] })
-        for m in history:
-            msgs.append({ 'role': 'user' if m['role']=='user' else 'model', 'parts': [m['text']] })
+        # Build a single prompt string (more compatible across API versions)
+        sys = _build_system_instruction()
+        convo = "\n".join([
+            ("User: " + m['text']) if m['role']=='user' else ("Assistant: " + m['text'])
+            for m in history
+        ])
+        dataset = json.dumps(course_context, ensure_ascii=False)
+        prompt = (
+            f"{sys}\n\n"
+            f"Conversation so far:\n{convo}\n\n"
+            f"Course dataset (JSON):\n{dataset}\n\n"
+            f"Respond to the last user message with advice and optional recommendations."
+        )
         model = genai.GenerativeModel(_GEMINI_MODEL_NAME)
-        resp = model.generate_content(msgs)
-        text = ''
-        try:
-            text = resp.text or ''
-        except Exception:
-            text = str(resp)
+        resp = model.generate_content(prompt)
+        # Robust text extraction (like AIQuiz)
+        text = getattr(resp, 'text', None)
+        if not text:
+            parts = []
+            for cand in getattr(resp, 'candidates', []):
+                content = getattr(cand, 'content', None)
+                for part in getattr(content, 'parts', []) or []:
+                    if hasattr(part, 'text') and part.text:
+                        parts.append(part.text)
+            text = " ".join(parts)
+        text = (text or '').strip()
         # Extract JSON block
-        import re, json
+        import re
         courses = []
         follow_up = None
         m = re.search(r'<JSON>(.*?)</JSON>', text, re.DOTALL)
@@ -898,4 +922,172 @@ def recommend_chat_message():
         'coursesWithReasons': detailed,
         'followUp': ai.get('follow_up')
     }), 200
+
+
+# --- Profile endpoints ---
+from sqlalchemy import text as _sa_text
+
+# Reuse existing blueprint if already declared above in this module
+try:
+    student_bp  # type: ignore[name-defined]
+except NameError:  # pragma: no cover
+    from flask import Blueprint as _Blueprint
+    student_bp = _Blueprint('student', __name__, url_prefix='/api/student')
+
+
+def _get_current_user():
+    try:
+        uid = int(get_jwt_identity())
+    except Exception:
+        uid = None
+    if not uid:
+        return None
+    return db.session.get(User, uid)
+
+
+def _get_student_for_user(user: User):
+    if not user:
+        return None
+    # Prefer ORM; fall back to raw query if mapping is used in schema
+    try:
+        user_id = getattr(user, 'Id', None) or getattr(user, 'id', None)
+        return db.session.query(Student).filter_by(UserId=user_id).first()
+    except Exception:
+        m = db.session.execute(_sa_text('SELECT * FROM Students WHERE UserId=:uid'), {'uid': user_id}).mappings().first()
+        return m
+
+
+def _pick(*names, src=None, default=None):
+    for n in names:
+        try:
+            if isinstance(src, dict) and n in src:
+                return src[n]
+            v = getattr(src, n)
+            return v
+        except Exception:
+            continue
+    return default
+
+
+def _serialize_student(st, user: User):
+    return {
+        'id': _pick('Id', 'id', src=st),
+        'name': _pick('FullName', 'name', src=user) or _pick('Name', 'name', src=st),
+        'email': _pick('Email', 'email', src=user) or _pick('Email', 'email', src=st),
+        'phone': _pick('Phone', 'phone', src=user) or _pick('Phone', 'phone', src=st),
+        'photo': _pick('AvatarUrl', 'avatar_url', 'photo', src=user) or _pick('AvatarUrl', 'avatar_url', 'photo', src=st),
+        'dob': _pick('Dob', 'DOB', 'DateOfBirth', 'BirthDate', 'dob', src=user) or _pick('Dob', 'DOB', 'DateOfBirth', 'BirthDate', 'dob', src=st),
+        'address': _pick('Address', 'address', src=user) or _pick('Address', 'address', src=st),
+        'createdAt': _pick('CreatedAt', 'created_at', src=user) or _pick('CreatedAt', 'created_at', src=st),
+        'updatedAt': _pick('UpdatedAt', 'updated_at', src=user) or _pick('UpdatedAt', 'updated_at', src=st),
+        'courses': [],  # can be populated later
+    }
+
+
+@student_bp.get('/profile')
+@jwt_required()
+def get_profile():
+    user = _get_current_user()
+    if not user:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    st = _get_student_for_user(user)
+    if not st:
+        return jsonify({'success': False, 'error': 'Student not found'}), 404
+    return jsonify({'success': True, 'student': _serialize_student(st, user)})
+
+
+@student_bp.put('/profile')
+@jwt_required()
+def update_profile():
+    user = _get_current_user()
+    if not user:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    data = request.get_json(silent=True) or {}
+    name = data.get('name') or data.get('fullName')
+    phone = data.get('phone')
+    email = data.get('email')
+    dob = data.get('dob') or data.get('dateOfBirth')
+    address = data.get('address')
+    photo = data.get('photo')
+    try:
+        # --- Update User ---
+        if name is not None:
+            if hasattr(user, 'FullName'): user.FullName = name
+            elif hasattr(user, 'name'): user.name = name
+        if phone is not None and hasattr(user, 'Phone'): user.Phone = phone
+        if email is not None:
+            if hasattr(user, 'Email'): user.Email = email
+            elif hasattr(user, 'email'): user.email = email
+        if dob is not None:
+            for attr in ['Dob','DOB','DateOfBirth','BirthDate','dob']:
+                if hasattr(user, attr): setattr(user, attr, dob); break
+        if address is not None:
+            for attr in ['Address','address']:
+                if hasattr(user, attr): setattr(user, attr, address); break
+        if photo is not None:
+            for attr in ['AvatarUrl','avatar_url','photo']:
+                if hasattr(user, attr): setattr(user, attr, photo); break
+        if hasattr(user, 'UpdatedAt'):
+            user.UpdatedAt = datetime.utcnow()
+
+        # --- Update Student row as well ---
+        st = _get_student_for_user(user)
+        if st is not None and not isinstance(st, dict):
+            if name is not None:
+                for attr in ['FullName','Name','name']:
+                    if hasattr(st, attr): setattr(st, attr, name); break
+            if phone is not None:
+                for attr in ['Phone','phone']:
+                    if hasattr(st, attr): setattr(st, attr, phone); break
+            if dob is not None:
+                for attr in ['Dob','DOB','DateOfBirth','BirthDate','dob']:
+                    if hasattr(st, attr): setattr(st, attr, dob); break
+            if address is not None:
+                for attr in ['Address','address']:
+                    if hasattr(st, attr): setattr(st, attr, address); break
+            if photo is not None:
+                for attr in ['AvatarUrl','avatar_url','photo']:
+                    if hasattr(st, attr): setattr(st, attr, photo); break
+            if hasattr(st, 'UpdatedAt'):
+                st.UpdatedAt = datetime.utcnow()
+
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@student_bp.post('/profile/avatar')
+@jwt_required()
+def upload_avatar():
+    user = _get_current_user()
+    if not user:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'Missing file'}), 400
+    f = request.files['file']
+    try:
+        # Prefer Cloudinary if available
+        try:
+            from app.utils.cloudinary_upload import cloudinary, DEFAULT_FOLDER
+            result = cloudinary.uploader.upload(
+                f,
+                folder=DEFAULT_FOLDER,
+                overwrite=True,
+                resource_type='image',
+            )
+            url = result.get('secure_url') or result.get('url')
+        except Exception:
+            url = None
+        if not url:
+            # Fallback: return a data URL preview (not persisted server-side)
+            return jsonify({'success': True, 'url': ''})
+        for attr in ['AvatarUrl','avatar_url','photo']:
+            if hasattr(user, attr): setattr(user, attr, url); break
+        db.session.commit()
+        return jsonify({'success': True, 'url': url})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
