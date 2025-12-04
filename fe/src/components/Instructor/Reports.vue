@@ -56,22 +56,8 @@
       </div>
 
       <div class="charts-grid">
-        <!-- Progress bars -->
-        <div class="chart-card">
-          <h5>Course Details</h5>
-          <div v-if="courseProgress.length > 0" class="course-progress-list">
-            <div v-for="course in courseProgress" :key="course.id || course.name" class="progress-item">
-              <div class="progress-header">
-                <span class="course-name">{{ course.name }}</span>
-                <button class="retry-btn" @click="viewCourseContent(course)">View Content</button>
-              </div>
-              <p class="progress-text" style="margin: 6px 0 0 0;">{{ course.description || 'No description available' }}</p>
-            </div>
-          </div>
-          <p v-else class="no-data">No courses available</p>
-        </div>
         <!-- Bar chart -->
-        <div class="chart-card">
+        <div class="chart-card full-width">
           <h5>Average Quiz & Lab Scores</h5>
           <bar-chart v-if="barChartData.length > 0" :data="barChartData"></bar-chart>
           <p v-else class="no-data">No score data available</p>

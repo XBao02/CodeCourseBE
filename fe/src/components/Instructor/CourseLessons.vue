@@ -54,9 +54,6 @@
                 <option value="quiz">Quiz</option>
               </select>
             </div>
-            <div class="form-group align-end">
-              <label class="checkbox"><input type="checkbox" v-model="section.newLesson.isPreview" /> Allow Preview</label>
-            </div>
           </div>
 
           <!-- Add Lesson Inline Card (video fields) -->
@@ -107,7 +104,6 @@
               </button>
               <div class="lesson-title-display">{{ lesson.editTitle || lesson.title }}</div>
               <span class="type-pill">{{ lesson.editType || lesson.type }}</span>
-              <span v-if="lesson.editPreview || lesson.isPreview" class="pill preview-pill">Preview</span>
               <div class="spacer"></div>
               <button class="btn danger" @click="deleteLesson(lesson)">Delete</button>
             </div>
@@ -132,10 +128,6 @@
                     <option value="video">Video</option>
                     <option value="quiz">Quiz</option>
                   </select>
-                </div>
-                <div class="field">
-                  <div class="mini-label">Preview</div>
-                  <label class="preview"><input type="checkbox" v-model="lesson.editPreview" /> Preview</label>
                 </div>
               </div>
               
@@ -352,7 +344,6 @@ export default {
           newLesson: {
             title: "",
             type: "video",
-            isPreview: false,
             videoUrl: "",
           },
         }));
@@ -362,7 +353,6 @@ export default {
             ...l,
             editTitle: l.title,
             editType: l.type,
-            editPreview: !!l.isPreview,
             editVideoUrl: l.videoUrl || '',
             expanded: false,
             testsExpanded: false,
@@ -503,7 +493,6 @@ export default {
       section.newLesson = {
         title: "",
         type: "video",
-        isPreview: false,
         videoUrl: "",
       };
     },
@@ -517,7 +506,6 @@ export default {
         const payload = {
           title: section.newLesson.title,
           type: section.newLesson.type,
-          isPreview: !!section.newLesson.isPreview,
           videoUrl: section.newLesson.videoUrl || undefined,
         };
         const res = await fetch(
@@ -542,7 +530,6 @@ export default {
         const payload = {
           title: lesson.editTitle,
           type: lesson.editType,
-          isPreview: !!lesson.editPreview,
         };
         
         // Add type-specific fields

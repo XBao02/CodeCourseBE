@@ -48,15 +48,6 @@
           <div v-for="c in courses" :key="c.id" class="course-card">
             <h6>{{ c.title }}</h6>
             <p class="course-meta">Level: {{ c.level || '-' }} · {{ c.isPublic ? 'Public' : 'Private' }}</p>
-            <div class="progress-container">
-              <div class="progress-header">
-                <span class="progress-label">Progress</span>
-                <span class="progress-value">{{ c.progressPercent || 0 }}%</span>
-              </div>
-              <div class="progress-bar-wrapper large">
-                <div class="progress-bar-fill" :style="{ width: (c.progressPercent || 0) + '%' }"></div>
-              </div>
-            </div>
             <button class="open-btn" @click="openCourse(c)">Open Course</button>
           </div>
           <div v-if="!courses.length" class="course-card"><p>No courses</p></div>

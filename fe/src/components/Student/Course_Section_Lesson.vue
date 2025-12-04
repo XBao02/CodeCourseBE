@@ -1,6 +1,5 @@
 <template>
     <div class="container py-4" style="min-height: calc(100vh - 120px);">
-        <!-- Breadcrumb card -->
         <div class="card mb-3 border-0 shadow-sm rounded-4">
             <div class="card-body d-flex justify-content-between align-items-center">
                 <nav aria-label="breadcrumb" class="mb-0">
@@ -14,7 +13,6 @@
         </div>
 
         <div class="row g-4">
-            <!-- Left: sections/modules -->
             <div class="col-md-6">
                 <div class="card border-0 shadow-sm rounded-4 h-100">
                     <div class="card-header bg-white d-flex justify-content-between align-items-center">
@@ -46,7 +44,7 @@
                                                 </div>
                                             </div>
                                             <div class="text-end">
-                                                <span v-if="lesson.isCompleted" class="badge bg-success me-2">Done</span>
+                                                <span v-if="lesson.completed || lesson.isCompleted" class="badge bg-success me-2">✓ Done</span>
                                                 <button class="btn btn-sm btn-outline-primary" @click="selectLesson(lesson)">Open</button>
                                             </div>
                                         </div>
@@ -61,7 +59,6 @@
                 </div>
             </div>
 
-            <!-- Right: lesson viewer -->
             <div class="col-md-6 d-flex flex-column">
                 <div class="card border-0 shadow-sm rounded-4 mb-3 flex-grow-1">
                     <div class="card-header bg-white d-flex justify-content-between align-items-center">
@@ -104,7 +101,10 @@
                             <div v-if="activeLesson.tests && activeLesson.tests.length" class="mb-3">
                                 <button class="btn btn-warning btn-sm" @click="takeLessonTest">Take Test</button>
                                 <span class="badge bg-secondary ms-2" v-if="activeLesson.tests[0].timeLimitMinutes">{{ activeLesson.tests[0].timeLimitMinutes }} min</span>
-                                <span v-if="activeLesson.tests[0].lastScore !== undefined" class="ms-2 text-muted">Score: {{ activeLesson.tests[0].lastScore }}/{{ activeLesson.tests[0].totalScore }}</span>
+                                
+                                <span v-if="activeLesson.tests[0].lastScore !== undefined && activeLesson.tests[0].lastScore !== null" class="ms-2 text-muted">
+                                    Score: {{ activeLesson.tests[0].lastScore }}/10
+                                </span>
                             </div>
                         </div>
 
@@ -114,7 +114,17 @@
                     <div class="card-footer d-flex justify-content-between align-items-center">
                         <div class="small text-muted">Sections: {{ sectionsWithLessons.length }}</div>
                         <div>
-                            <button v-if="isEnrolled && activeLesson" class="btn btn-primary btn-sm" @click="markDone(activeLesson)">Mark Complete</button>
+                            <button 
+                                v-if="isEnrolled && activeLesson && !activeLesson.completed" 
+                                class="btn btn-primary btn-sm" 
+                                @click="markDone(activeLesson)">
+                                Mark Complete
+                            </button>
+                            <span 
+                                v-else-if="activeLesson && activeLesson.completed" 
+                                class="badge bg-success px-3 py-2">
+                                ✓ Completed
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -166,22 +176,73 @@ export default {
         formatDuration(sec) { if (!sec) return '-'; const m = Math.floor(sec / 60); const s = sec % 60; return `${m}m ${s}s`; },
         enrollNow() { this.enrollment = { id: Math.floor(Math.random()*1000)+100, studentId: 0, courseId: this.course.id, status: 'active', progressPercent: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; },
         async markDone(lesson) {
-            if (!lesson) return;
+            if (!lesson || !lesson.id) return;
+            
+            // Show loading state
+            const btn = event?.target;
+            const originalText = btn?.textContent;
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Marking...';
+            }
+            
             try {
+                const payload = { lessonId: lesson.id, courseId: this.course?.id };
                 const res = await axios.post(
                     'http://localhost:5000/api/student/lesson-progress/complete',
-                    { lessonId: lesson.id },
+                    payload,
                     { headers: this.authHeaders() }
                 );
-                if (res.data && res.data.success) {
-                    const section = (this.sections||[]).find(s=>s.id===lesson.sectionId);
-                    if (section) {
-                        const l = (section.lessons||[]).find(x=>x.id===lesson.id);
-                        if (l) l.isCompleted = true;
+                const ok = res?.data?.success === true;
+                if (ok) {
+                    // Update lesson state locally (Vue 3 direct assignment)
+                    lesson.completed = true;
+                    lesson.completedAt = new Date().toISOString();
+                    
+                    // Update the lesson in sections array to trigger reactivity
+                    const section = (this.sections || []).find(s => s.id === lesson.sectionId);
+                    if (section && section.lessons) {
+                        const lessonIndex = section.lessons.findIndex(l => l.id === lesson.id);
+                        if (lessonIndex !== -1) {
+                            section.lessons[lessonIndex] = { ...section.lessons[lessonIndex], completed: true, completedAt: new Date().toISOString() };
+                        }
+                        
+                        // Recompute section progress
+                        const total = section.lessons.length;
+                        const done = section.lessons.filter(l => l.completed).length;
+                        section.progressPercent = total ? Math.round((done / total) * 100) : 0;
+                    }
+                    
+                    // Force re-render by updating activeLesson reference
+                    if (this.activeLesson?.id === lesson.id) {
+                        this.activeLesson = { ...this.activeLesson, completed: true, completedAt: new Date().toISOString() };
+                    }
+                    
+                    // Show success message
+                    alert('✅ Lesson marked as completed!');
+                    
+                    // Update button to show completion
+                    if (btn) {
+                        btn.textContent = '✓ Completed';
+                        btn.classList.remove('btn-primary');
+                        btn.classList.add('btn-success');
+                    }
+                } else {
+                    console.warn('Complete lesson failed:', res?.data);
+                    alert(res?.data?.message || res?.data?.error || 'Failed to mark as completed');
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = originalText;
                     }
                 }
-            } catch(e){
-                console.error('markDone error:', e);
+            } catch (e) {
+                const msg = e?.response?.data?.message || e?.response?.data?.error || e?.message || 'Request error';
+                console.error('markDone error:', msg);
+                alert(`❌ Error: ${msg}`);
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
             }
         },
         computeEmbedUrl(url) {
@@ -206,16 +267,14 @@ export default {
             const lower=url.toLowerCase();
             return lower.endsWith('.mp4')||lower.endsWith('.webm')||lower.endsWith('.ogg');
         },
+        
+        // SỬA: Hàm này giờ đây chỉ lấy lastScore (đã là hệ 10 từ backend) và nối thêm chuỗi "/10"
         formatLessonScore(lesson) {
             const test = lesson.tests && lesson.tests[0];
-            if (!test) return '';
-            const total = (test.totalScore !== undefined ? test.totalScore :
-                           test.total_score !== undefined ? test.total_score :
-                           test.maxScore !== undefined ? test.maxScore :
-                           test.max_score !== undefined ? test.max_score : 10);
-            const scored = (test.lastScore !== undefined ? test.lastScore :
-                            test.score !== undefined ? test.score : 0);
-            return `${scored}/${total}`;
+            if (!test || test.lastScore === undefined || test.lastScore === null) return '';
+            
+            // Backend đã trả về scale 10, hiển thị trực tiếp
+            return `${test.lastScore}/10`;
         },
     }
 };

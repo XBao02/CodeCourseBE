@@ -10,7 +10,6 @@
     </div>
 
     <div class="store-layout">
-      <!-- Left: Persistent Filter Sidebar -->
       <aside class="filters-sidebar">
         <div class="filters-card">
           <h4>Filters</h4>
@@ -30,13 +29,13 @@
               <option v-for="cat in availableCategories" :key="cat" :value="cat">{{ cat }}</option>
             </select>
           </div>
-          <div class="filter-section">
+          <!-- <div class="filter-section">
             <label>Topic</label>
             <select v-model="topicFilter">
               <option value="">All Topics</option>
               <option v-for="t in filteredAvailableTopics" :key="t" :value="t">{{ t }}</option>
             </select>
-          </div>
+          </div> -->
           <div class="filter-actions">
             <button class="apply-btn" @click="applyFilters">Apply</button>
             <button class="reset-btn" @click="resetFilters">Reset</button>
@@ -44,7 +43,6 @@
         </div>
       </aside>
 
-      <!-- Right: Courses -->
       <section class="store-content">
         <div v-if="loading" class="loading"><span>Loading courses...</span></div>
         <div v-else class="courses-grid">
@@ -102,7 +100,6 @@
       </section>
     </div>
 
-    <!-- Payment Modal -->
     <div class="modal fade" id="paymentModal" tabindex="-1" ref="paymentModal">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -136,17 +133,15 @@
       </div>
     </div>
 
-    <!-- Recommendation Modal -->
     <div class="modal fade" id="recoModal" tabindex="-1" ref="recoModal">
       <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content ai-modal">
           <div class="modal-header">
             <h5 class="modal-title">AI Course Recommendation</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" @click="resetReco"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" @click="onCloseReco"></button>
           </div>
           <div class="modal-body">
             <div class="reco-layout">
-              <!-- Chat Column -->
               <div class="chat-column">
                 <div class="chat-window" ref="chatWindow">
                   <div v-for="(m,i) in recoMessages" :key="i" class="msg" :class="m.role">
@@ -160,7 +155,6 @@
                 </form>
                 
               </div>
-              <!-- Recommendations Column -->
               <div class="courses-column">
                 <div class="panel-header">
                   <h6>Recommended Courses</h6>
@@ -229,7 +223,6 @@ export default {
       confirming: false,
       paymentInterval: null,
       // filter state
-      showFilterPanel: false, // no longer used, kept for compatibility
       categoryFilter: '',
       topicFilter: '',
       availableCategories: [],
@@ -248,7 +241,6 @@ export default {
     }
   },
   computed: {
-    // Keep search filtering client-side; server already filtered by chosen params
     filteredCourses() {
       const term = this.search.trim().toLowerCase()
       return this.courses.filter(c => {
@@ -303,32 +295,6 @@ export default {
       pages.push({ type:'page', num: total, key:'p'+total })
       return pages
     },
-    pageButtons(){
-      const total = this.totalPages
-      const current = this.currentPage
-      const windowSize = 6
-      const buttons = []
-      if(total <= windowSize + 2){
-        // show all pages directly
-        for(let i=1;i<=total;i++) buttons.push({ type:'page', number:i, key:'p'+i })
-        return buttons
-      }
-      let start = Math.max(1, current - Math.floor(windowSize/2))
-      let end = start + windowSize - 1
-      if(end > total){ end = total; start = end - windowSize + 1 }
-      if(start > 1){
-        buttons.push({ type:'page', number:1, key:'p1' })
-        if(start > 2) buttons.push({ type:'ellipsis', key:'e-start' })
-      }
-      for(let i=start;i<=end;i++){
-        buttons.push({ type:'page', number:i, key:'p'+i })
-      }
-      if(end < total){
-        if(end < total - 1) buttons.push({ type:'ellipsis', key:'e-end' })
-        buttons.push({ type:'page', number: total, key:'p'+total })
-      }
-      return buttons
-    },
   },
   watch: {
     categoryFilter() { this.topicFilter = '' },
@@ -376,6 +342,8 @@ export default {
     isEnrolled(id) { return this.myCourseIds.has(id) },
     formatPrice(p,c) { try { return (!p||p===0)? 'Free' : new Intl.NumberFormat('en-US',{style:'currency',currency: c||'USD'}).format(p) } catch { return p } },
     truncate(t,max) { if(!t) return ''; return t.length>max? t.slice(0,max-1)+'…':t },
+    
+    // Enroll Flow
     async enroll(course) {
       if (!course?.id || this.isEnrolled(course.id)) return
       this.enrollingIds.add(course.id)
@@ -383,15 +351,12 @@ export default {
         const res = await axios.post(`${API_BASE}/student/register`, { courseId: course.id }, { headers: this.authHeaders() })
         if (res.data?.success) {
           this.myCourseIds.add(course.id)
-          // Close payment modal if open
           this.closeModal()
         }
       } catch (e) {
         const status = e?.response?.status
         if (status === 401) {
-          // Graceful handling: prompt and redirect to login
           alert('Please log in to enroll in courses.')
-          this.$router.push({ name: 'Login' }).catch(()=>{})
         } else {
           console.error('Enroll failed', e)
           alert('Enroll failed')
@@ -401,6 +366,7 @@ export default {
       }
     },
     openCourse(c) { if (!c?.id) return; this.$router.push({ name: 'StudentCourseLesson', params: { courseId: c.id } }).catch(()=>{}) },
+    
     // Payment flow (VietQR)
     async openPayment(course) {
       const session = getStoredSession()
@@ -474,7 +440,6 @@ export default {
       if (this.paymentInterval) { clearInterval(this.paymentInterval); this.paymentInterval = null }
     },
     ensureModal() {
-      // bootstrap assumed global (included in index.html)
       let modal = window.bootstrap?.Modal.getInstance(this.$refs.paymentModal)
       if (!modal && window.bootstrap) modal = new window.bootstrap.Modal(this.$refs.paymentModal)
       return modal
@@ -484,9 +449,9 @@ export default {
       if (modal) modal.hide()
       this.resetPayment()
     },
-    // Remove open/close panel methods (not used), keep no-op for safety
-    openFilterPanel() { this.showFilterPanel = true },
-    closeFilterPanel() { this.showFilterPanel = false },
+
+    // Filter Logic
+    closeFilterPanel() { /* No-op, kept for compat */ },
     resetFilters() {
       this.levelFilter = ''
       this.categoryFilter = ''
@@ -499,9 +464,13 @@ export default {
       if (this.categoryFilter) params.category = this.categoryFilter
       if (this.topicFilter) params.topic = this.topicFilter
       await this.loadAll(params)
-      this.closeFilterPanel()
     },
-    // ---------- Chat persistence ----------
+    setPage(p){
+      if(!p || p<1 || p>this.totalPages) return
+      this.currentPage = p
+    },
+
+    // ---------- AI Chat Logic (UPDATED) ----------
     storageKey(){ return 'ai_reco_chat_v1' },
     saveRecoState(){
       try{
@@ -531,17 +500,14 @@ export default {
       }catch{ return false }
     },
     onCloseReco(){
-      // Do not reset; persist current chat
       this.saveRecoState()
     },
     ensureRecoModal(){
-      // Create / get Bootstrap modal instance for AI recommendation
       let modal = window.bootstrap?.Modal.getInstance(this.$refs.recoModal)
       if(!modal && window.bootstrap){ modal = new window.bootstrap.Modal(this.$refs.recoModal) }
       return modal
     },
     openRecoModal(){
-      // Try restore existing chat; if none, start fresh
       const restored = this.loadRecoState()
       if(!restored){
         this.resetReco()
@@ -557,27 +523,25 @@ export default {
       this.recoCompleted = false
       this.chatSessionId = null
       this.followUp = null
-      // Do not clear localStorage here intentionally
     },
+    
     async initRecoChat(){
       try{
-        const res = await axios.post('http://localhost:5000/api/student/recommend/chat/init', {}, { headers: this.authHeaders() })
+        const res = await axios.post(`${API_BASE}/student/recommend/chat/init`, {}, { headers: this.authHeaders() })
         if(res.data?.success){
           this.chatSessionId = res.data.sessionId
           if(!this.recoMessages.length){
             this.recoMessages.push({ role:'system', text: res.data.message })
-            // Optional guidance (not enforced)
-            this.recoMessages.push({
-              role:'system',
-              text:'Bạn có thể (tùy chọn) cung cấp level (beginner/intermediate/advanced), category (vd: web, game dev) và topic (vd: react, c#, solidity) để gợi ý chính xác hơn; hoặc cứ hỏi tự do.'
-            })
           }
           this.saveRecoState()
         } else {
-          this.recoMessages.push({ role:'assistant', text:'Failed to start AI session.' })
+          console.error('Failed to init session')
         }
       }catch(e){
-        this.recoMessages.push({ role:'assistant', text:'AI service unavailable.' })
+        console.error('AI unavailable', e)
+        if(!this.recoMessages.length) {
+            this.recoMessages.push({ role:'assistant', text:'AI service unavailable.' })
+        }
       }
     },
     async sendRecoInput(){
@@ -588,66 +552,87 @@ export default {
       await this.sendChatMessage(val)
       this.$nextTick(()=>{ this.scrollChatBottom() })
     },
+    
+    // Updated sendChatMessage to handle retries on invalid session (400/404)
     async sendChatMessage(message){
       if(!this.chatSessionId){ await this.initRecoChat() }
+      
       this.recoLoading = true
-      try{
-        if(message.startsWith('/semantic ')){
-          const query = message.replace('/semantic ','').trim()
-          await this.fetchSemantic(query)
-          this.recoMessages.push({ role:'assistant', text:`Semantic suggestions for: ${query}` })
-          this.saveRecoState()
-          return
-        }
-        // Backend expects JSON only; avoid form payloads to prevent 415
-        const headers = { ...this.authHeaders(), 'Content-Type': 'application/json' }
-        const payload = { session_id: this.chatSessionId, text: message }
-        let res = await axios.post('http://localhost:5000/api/student/recommend/chat/message', payload, { headers })
-        // If API uses camelCase, retry once
-        if(!res.data?.success){
-          res = await axios.post('http://localhost:5000/api/student/recommend/chat/message', { sessionId: this.chatSessionId, message }, { headers })
-        }
-        if(!res.data?.success){
-          const msg = res.data?.message || res.data?.error || 'Chat failed.'
-          this.recoMessages.push({ role:'assistant', text: msg })
-          this.saveRecoState();
-          return
-        }
-        const rawReply = res.data.reply || ''
-        const cleaned = this.stripJsonBlock(rawReply)
-        this.recoMessages.push({ role:'assistant', text: cleaned })
-        this.followUp = res.data.followUp || null
-        const items = res.data.coursesWithReasons || []
-        this.recoCourses = items.map(it => ({
-          id: it.course.id,
-          title: it.course.title,
-          description: it.course.description,
-          level: it.course.level,
-          price: it.course.price,
-          currency: it.course.currency,
-          categories: Array.isArray(it.course.categories)? it.course.categories : [],
-          topics: Array.isArray(it.course.topics)? it.course.topics : [],
-          reason: it.reason
-        }))
-        if(this.recoCourses.length) this.recoCompleted = true
+      
+      if(message.startsWith('/semantic ')){
+        const query = message.replace('/semantic ','').trim()
+        await this.fetchSemantic(query)
+        this.recoMessages.push({ role:'assistant', text:`Semantic suggestions for: ${query}` })
         this.saveRecoState()
-      }catch(e){
+        this.recoLoading = false
+        return
+      }
+
+      const headers = { ...this.authHeaders(), 'Content-Type': 'application/json' }
+      // FIXED PAYLOAD KEYS
+      const payload = { sessionId: this.chatSessionId, message: message }
+      
+      try {
+        const res = await axios.post(`${API_BASE}/student/recommend/chat/message`, payload, { headers })
+        this.handleChatSuccess(res.data)
+      } catch(e){
         const status = e?.response?.status
-        if(status === 401){
+        
+        // AUTO RECOVERY LOGIC
+        if (status === 400 || status === 404) {
+            console.log('Session expired or invalid. Creating new session and retrying...');
+            this.chatSessionId = null;
+            await this.initRecoChat();
+            
+            if (this.chatSessionId) {
+                // Retry sending message with new ID
+                try {
+                    const retryPayload = { sessionId: this.chatSessionId, message: message };
+                    const retryRes = await axios.post(`${API_BASE}/student/recommend/chat/message`, retryPayload, { headers });
+                    this.handleChatSuccess(retryRes.data);
+                    return; // Exit on success
+                } catch (retryError) {
+                    console.error('Retry failed', retryError);
+                }
+            }
+            this.recoMessages.push({ role:'assistant', text:'Phiên chat đã hết hạn. Vui lòng thử lại.' });
+        } else if(status === 401){
           this.recoMessages.push({ role:'assistant', text:'Please log in to use AI recommendations.' })
-        }else if(status === 415){
-          this.recoMessages.push({ role:'assistant', text:'Unsupported media type. Using JSON payload.' })
-        }else if(status === 400){
-          this.recoMessages.push({ role:'assistant', text:'Bad request. Please try again.' })
-        }else{
+        } else {
           this.recoMessages.push({ role:'assistant', text:'Chat error occurred.' })
         }
         this.saveRecoState()
-      }finally{
+      } finally {
         this.recoLoading = false
         this.$nextTick(()=>this.scrollChatBottom())
       }
     },
+
+    handleChatSuccess(data) {
+        if(!data.success){
+          this.recoMessages.push({ role:'assistant', text: data.error || 'Chat failed.' })
+        } else {
+            const rawReply = data.reply || ''
+            const cleaned = this.stripJsonBlock(rawReply)
+            this.recoMessages.push({ role:'assistant', text: cleaned })
+            this.followUp = data.followUp || null
+            const items = data.coursesWithReasons || []
+            this.recoCourses = items.map(it => ({
+                id: it.course.id,
+                title: it.course.title,
+                description: it.course.description,
+                level: it.course.level,
+                price: it.course.price,
+                currency: it.course.currency,
+                categories: Array.isArray(it.course.categories)? it.course.categories : [],
+                topics: Array.isArray(it.course.topics)? it.course.topics : [],
+                reason: it.reason
+            }))
+            if(this.recoCourses.length) this.recoCompleted = true
+        }
+        this.saveRecoState()
+    },
+
     scrollChatBottom(){
       try{
         const el = this.$refs.chatWindow
@@ -660,23 +645,18 @@ export default {
       try{ return text.replace(/<JSON>[\s\S]*?<\/JSON>/,'').trim() }catch{ return text }
     },
     formatMessage(text){
-      // Basic formatting: preserve line breaks
       return (text||'').replace(/\n/g,'<br/>')
     },
     async fetchSemantic(query){
       try{
         this.recoLoading = true
-        const res = await axios.post('http://localhost:5000/api/student/recommend/semantic', { query, limit: 6 })
+        const res = await axios.post(`${API_BASE}/student/recommend/semantic`, { query, limit: 6 })
         const list = res.data?.recommendations || []
         this.recoCourses = list.map(c => ({ ...c, reason: 'Semantic match' }))
         this.recoCompleted = true
       }catch(e){
         this.recoMessages.push({ role:'assistant', text:'Semantic recommendation failed.' })
       }finally{ this.recoLoading=false }
-    },
-    setPage(p){
-      if(!p || p<1 || p>this.totalPages) return
-      this.currentPage = p
     },
   }
 }
@@ -747,7 +727,6 @@ export default {
 .reset-btn { padding:10px 16px; background:#fff; color:#1f2937; border:1px solid #d1d5db; border-radius:8px; font-size:14px; cursor:pointer; }
 .reset-btn:hover { background:#f1f5f9; }
 .store-content { min-width:0; }
-/* Remove floating panel styles */
 .filter-panel { display:none; }
 .filter-btn { display:none; }
 @media (max-width: 900px){ .store-layout { grid-template-columns: 1fr; } .filters-sidebar { position:relative; } }

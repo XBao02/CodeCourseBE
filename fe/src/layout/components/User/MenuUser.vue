@@ -43,7 +43,7 @@
               Sign In
             </router-link>
             <router-link to="/register" class="btn btn-primary px-4">
-              Enroll
+            Register
             </router-link>
           </div>
         </div>

@@ -652,81 +652,82 @@ def get_test_for_student(test_id):
 
 
 # Submit test and get results
+# Submit test and get results
 @student_bp.route('/tests/<int:test_id>/submit', methods=['POST'])
 @jwt_required()
 def submit_test(test_id):
     """
-    Student nộp bài test và nhận kết quả ngay lập tức
+    Student nộp bài test và nhận kết quả (Quy đổi sang thang điểm 10)
     """
     try:
         print(f"\n{'='*80}")
-        print(f"📥 POST /api/student/tests/{test_id}/submit")
+        print(f"📥 POST /api/student/tests/{test_id}/submit (Scale 10)")
         print(f"{'='*80}")
         
         from app.models.model import Test, Question, Choice, TestAttempt
         
         # Get student from JWT
         ident = get_jwt_identity()
-        print(f"🔐 JWT Identity: {ident}")
-        
         user_id = _resolve_user_id_from_identity(ident)
         if not user_id:
             return jsonify({'message': 'Invalid token'}), 401
         
         user = User.query.get(user_id)
-        if not user:
-            return jsonify({'message': 'User not found'}), 404
-        
         student = Student.query.filter_by(user_id=user.id).first()
+        
         if not student:
             return jsonify({'message': 'Student not found'}), 404
-        
-        print(f"✅ Student verified: id={student.id}")
         
         # Get test
         test = Test.query.get(test_id)
         if not test:
             return jsonify({'message': 'Test not found'}), 404
         
-        print(f"✅ Test found: {getattr(test, 'title', '')}")
-        
         # Get submitted answers
         data = request.get_json() or {}
-        answers = data.get('answers', [])  # [{ questionId, choiceId }, ...]
-        print(f"📝 Received {len(answers)} answers")
+        answers = data.get('answers', []) 
         answers_by_qid = {a.get('questionId'): a.get('choiceId') for a in answers}
         
-        # Calculate score
-        score = 0
-        total_score = 0
+        # --- LOGIC TÍNH ĐIỂM MỚI (THANG 10) ---
+        raw_score = 0           # Điểm thô đạt được (ví dụ: làm đúng 15 câu 1 điểm = 15)
+        total_raw_possible = 0  # Tổng điểm thô tối đa (ví dụ: 20 câu 1 điểm = 20)
         correct_count = 0
         
         questions = Question.query.filter_by(test_id=test_id).all()
-        print(f"📊 Processing {len(questions)} questions")
         
         for question in questions:
             q_points = getattr(question, 'points', 1) or 1
-            total_score += q_points
+            total_raw_possible += q_points # Cộng dồn tổng điểm tối đa
+            
             chosen_id = answers_by_qid.get(question.id)
             if chosen_id is None:
                 continue
-            # check correctness
+                
+            # Check correctness
             correct_choice = Choice.query.filter_by(question_id=question.id, is_correct=True).first()
             if correct_choice and correct_choice.id == chosen_id:
-                score += q_points
+                raw_score += q_points # Cộng điểm nếu đúng
                 correct_count += 1
         
-        # Calculate percentage
-        percentage = (score / total_score * 100) if total_score > 0 else 0
-        passed = percentage >= 60  # 60% to pass
+        # Quy đổi sang thang điểm 10
+        final_score_10 = 0
+        percentage = 0
+        if total_raw_possible > 0:
+            # Công thức: (Điểm đạt / Tổng điểm tối đa) * 10
+            final_score_10 = (raw_score / total_raw_possible) * 10
+            percentage = (raw_score / total_raw_possible) * 100
         
-        print(f"📊 Final Score: {score}/{total_score} ({percentage:.2f}%)")
-        print(f"📊 Status: {'PASSED ✅' if passed else 'FAILED ❌'}")
+        # Làm tròn điểm số (ví dụ: 7.5, 8.25)
+        final_score_10 = round(final_score_10, 2)
         
-        # Save test attempt to database (map to existing columns)
+        passed = percentage >= 50 # Đậu nếu >= 5.0 điểm (tương đương 50%)
+        
+        print(f"📊 Raw Score: {raw_score}/{total_raw_possible}")
+        print(f"📊 Final Score (Scale 10): {final_score_10}")
+        
+        # Save test attempt to database
         try:
             attempt_number = 1
-            # determine next attempt number for this student/test
             prev_attempt = (
                 TestAttempt.query
                 .filter_by(student_id=student.id, test_id=test.id)
@@ -743,7 +744,7 @@ def submit_test(test_id):
                 attempt_number=attempt_number,
                 start_time=now_dt,
                 submit_time=now_dt,
-                total_score=score,
+                total_score=final_score_10, # Lưu điểm hệ 10 vào database
             )
             db.session.add(attempt)
             db.session.commit()
@@ -753,37 +754,28 @@ def submit_test(test_id):
         
         result = {
             "success": True,
-            "score": score,
-            "totalScore": total_score,
-            "total_score": total_score,
+            "score": final_score_10,        # Trả về điểm hệ 10
+            "rawScore": raw_score,          # Trả về điểm thô (số câu đúng)
+            "totalRawScore": total_raw_possible,
             "correctCount": correct_count,
-            "correct_count": correct_count,
+            "totalQuestions": len(questions),
             "percentage": round(percentage, 2),
             "passed": passed
         }
         
-        print(f"✅ Returning test results successfully")
-        print(f"{'='*80}\n")
         return jsonify(result), 200
         
     except Exception as e:
         print(f"❌ Error submitting test: {e}")
         print(f"❌ Traceback: {traceback.format_exc()}")
-        print(f"{'='*80}\n")
         db.session.rollback()
         return jsonify({'message': 'Server error', 'success': False}), 500
-
-
 # ==================== TEST METRICS (for dashboard) ====================
 @student_bp.route('/test-metrics', methods=['GET'])
 @jwt_required()
 def get_test_metrics():
-    """Return basic test statistics for the current student.
-    - testsTaken: number of attempts
-    - averagePercentage: average of (attempt score / test total points) * 100
-    """
     try:
-        from app.models.model import TestAttempt, Test, Question
+        from app.models.model import TestAttempt
 
         ident = get_jwt_identity()
         user_id = _resolve_user_id_from_identity(ident)
@@ -800,40 +792,37 @@ def get_test_metrics():
 
         attempts = TestAttempt.query.filter_by(student_id=student.id).all()
         tests_taken = len(attempts)
+        
         if tests_taken == 0:
             return jsonify({
                 'testsTaken': 0,
-                'averagePercentage': 0.0
+                'averagePercentage': 0.0,
+                'averageScore10': 0.0
             }), 200
 
-        # Pre-compute total points per test id
-        test_ids = {a.test_id for a in attempts}
-        totals_by_test = {}
-        for t_id in test_ids:
-            qs = Question.query.filter_by(test_id=t_id).all()
-            totals_by_test[t_id] = sum((q.points or 1) for q in qs) if qs else 0
-
-        percentages = []
+        # Tính trung bình dựa trên thang điểm 10 đã lưu
+        total_score_sum = 0
         for a in attempts:
-            total_possible = totals_by_test.get(a.test_id, 0) or 0
             try:
-                raw = float(a.total_score) if a.total_score is not None else 0.0
+                # Giả định dữ liệu trong DB giờ là thang 10
+                score = float(a.total_score) if a.total_score is not None else 0.0
+                total_score_sum += score
             except Exception:
-                raw = 0.0
-            pct = (raw / total_possible * 100.0) if total_possible > 0 else 0.0
-            percentages.append(pct)
+                pass
 
-        avg_pct = sum(percentages) / len(percentages) if percentages else 0.0
+        avg_score_10 = total_score_sum / tests_taken
+        # Quy đổi ngược ra phần trăm: (Điểm 10 / 10) * 100
+        avg_pct = (avg_score_10 / 10.0) * 100.0
+
         return jsonify({
             'testsTaken': tests_taken,
-            'averagePercentage': round(avg_pct, 2)
+            'averagePercentage': round(avg_pct, 2),
+            'averageScore10': round(avg_score_10, 2)
         }), 200
     except Exception as e:
         print('❌ Error computing test metrics:', e)
-        print(f"❌ Traceback: {traceback.format_exc()}")
         return jsonify({'message': 'Server error'}), 500
-
-
+    
 @student_bp.route('/recommend/start', methods=['POST'])
 def start_recommend():
     """Start a recommendation session; returns first question."""

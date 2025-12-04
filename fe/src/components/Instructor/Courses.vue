@@ -30,7 +30,7 @@
             </div>
 
             <div v-else class="courses-grid">
-                <div v-for="course in filteredCourses" :key="course.id" class="course-card">
+                <div v-for="course in paginatedCourses" :key="course.id" class="course-card">
                     <div class="course-image">
                         <img :src="course.image_url || course.thumbnail || placeholderUrl"
                              :alt="course.title"
@@ -60,6 +60,33 @@
                         <button @click="goLessons(course.id)" class="btn-content">Content</button>
                     </div>
                 </div>
+            </div>
+
+            <!-- Pagination Controls -->
+            <div v-if="totalPages > 1" class="pagination-container">
+                <button 
+                    @click="prevPage" 
+                    :disabled="currentPage === 1"
+                    class="pagination-btn">
+                    ← Previous
+                </button>
+                
+                <div class="pagination-pages">
+                    <button
+                        v-for="page in totalPages"
+                        :key="page"
+                        @click="goToPage(page)"
+                        :class="['pagination-page', { active: currentPage === page }]">
+                        {{ page }}
+                    </button>
+                </div>
+                
+                <button 
+                    @click="nextPage" 
+                    :disabled="currentPage === totalPages"
+                    class="pagination-btn">
+                    Next →
+                </button>
             </div>
         </div>
 
@@ -159,11 +186,24 @@ export default {
                 status: 'draft'
             },
             uploadingThumb: false,
-            placeholderUrl: 'https://th.bing.com/th/id/R.3566b6dc407982faae0488c840a60a55?rik=5eM0TcgU0gC7MA&pid=ImgRaw&r=0'
+            placeholderUrl: 'https://th.bing.com/th/id/R.3566b6dc407982faae0488c840a60a55?rik=5eM0TcgU0gC7MA&pid=ImgRaw&r=0',
+            // Pagination
+            currentPage: 1,
+            itemsPerPage: 8
         }
     },
     mounted() {
         this.loadCourses()
+    },
+    computed: {
+        totalPages() {
+            return Math.ceil(this.filteredCourses.length / this.itemsPerPage)
+        },
+        paginatedCourses() {
+            const start = (this.currentPage - 1) * this.itemsPerPage
+            const end = start + this.itemsPerPage
+            return this.filteredCourses.slice(start, end)
+        }
     },
     methods: {
         getAuthHeaders() {
@@ -214,6 +254,8 @@ export default {
                     course.status === this.filterStatus
                 )
             }
+            // Reset về trang 1 khi filter
+            this.currentPage = 1
         },
 
         searchCourses() {
@@ -223,6 +265,29 @@ export default {
                 course.title.toLowerCase().includes(query) ||
                 course.description.toLowerCase().includes(query)
             )
+            // Reset về trang 1 khi search
+            this.currentPage = 1
+        },
+
+        goToPage(page) {
+            if (page >= 1 && page <= this.totalPages) {
+                this.currentPage = page
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+            }
+        },
+
+        nextPage() {
+            if (this.currentPage < this.totalPages) {
+                this.currentPage++
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+            }
+        },
+
+        prevPage() {
+            if (this.currentPage > 1) {
+                this.currentPage--
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+            }
         },
 
         getStatusText(status) {
@@ -777,6 +842,70 @@ export default {
 .uploaded-url{ display:block; color:#2563eb; margin-top:6px; max-width:100%; overflow-wrap:anywhere; word-break:break-word; white-space:normal; }
 .uploaded-url a{ color:#2563eb; text-decoration:underline; overflow-wrap:anywhere; word-break:break-word; }
 
+/* Pagination Styles */
+.pagination-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin-top: 40px;
+    padding: 20px 0;
+}
+
+.pagination-btn {
+    padding: 10px 20px;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    transition: all 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background: #f9fafb;
+    border-color: #9ca3af;
+}
+
+.pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination-pages {
+    display: flex;
+    gap: 6px;
+}
+
+.pagination-page {
+    width: 40px;
+    height: 40px;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pagination-page:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+}
+
+.pagination-page.active {
+    background: #1f2937;
+    color: white;
+    border-color: #1f2937;
+}
+
 @media (max-width: 768px) {
     .instructor-courses {
         padding: 20px;
@@ -807,6 +936,17 @@ export default {
     .modal-content {
         width: 95%;
         padding: 24px;
+    }
+    
+    .pagination-container {
+        flex-wrap: wrap;
+    }
+    
+    .pagination-pages {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+        margin-top: 12px;
     }
 }
 </style>

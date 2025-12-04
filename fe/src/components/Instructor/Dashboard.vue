@@ -59,7 +59,6 @@
             <div class="quick-actions">
                 <h2>Quick Actions</h2>
                 <div class="action-buttons">
-                    <button @click="createNewCourse" class="btn-primary">Create New Course</button>
                     <button @click="viewReports" class="btn-secondary">View Reports</button>
                     <button @click="goToChat" class="btn-secondary">Messages</button>
                     <button @click="goToCourses" class="btn-secondary">Manage Courses</button>
