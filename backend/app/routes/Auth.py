@@ -81,6 +81,11 @@ def register():
     if role not in ("student", "instructor", "admin"):
         return jsonify({"error": "Role không hợp lệ"}), 400
 
+    # ✅ Check email verification
+    from app.routes.EmailVerification import is_email_verified, clear_otp
+    if not is_email_verified(email):
+        return jsonify({"error": "Email chưa được xác thực. Vui lòng xác thực email trước khi đăng ký."}), 403
+
     try:
         # Check duplicate
         if User.query.filter_by(email=email).first():
@@ -122,6 +127,10 @@ def register():
         print(f"   Identity (user_id): {user.id}")
         print(f"   Role (claim): {role}")
         print(f"{'='*80}\n")
+        
+        # ✅ Clear OTP after successful registration
+        from app.routes.EmailVerification import clear_otp
+        clear_otp(email)
         
         return jsonify({
             "access_token": access_token,

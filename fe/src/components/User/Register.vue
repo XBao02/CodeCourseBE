@@ -10,13 +10,17 @@
         <section class="card-form">
           <header>
             <p class="eyebrow subtle">Create account</p>
-            <h2>Unlock your next chapter</h2>
+            <h2>{{ step === 1 ? 'Unlock your next chapter' : 'Verify your email' }}</h2>
             <p class="subtitle">
-              Join the student space and sync progress across every device.
+              {{ step === 1 
+                ? 'Join the student space and sync progress across every device.' 
+                : `We've sent a verification code to ${email}` 
+              }}
             </p>
           </header>
 
-          <form @submit.prevent="handleRegister">
+          <!-- Step 1: Registration Form -->
+          <form v-if="step === 1" @submit.prevent="handleSendOTP">
             <label class="field">
               <span>Full name</span>
               <input
@@ -66,8 +70,47 @@
             </p>
 
             <button type="submit" :disabled="isSubmitting">
-              {{ isSubmitting ? "Creating account..." : "REGISTER" }}
+              {{ isSubmitting ? "Sending..." : "SEND VERIFICATION CODE" }}
             </button>
+          </form>
+
+          <!-- Step 2: OTP Verification Form -->
+          <form v-else @submit.prevent="handleVerifyAndRegister">
+            <label class="field">
+              <span>Verification Code</span>
+              <input
+                v-model="otpCode"
+                type="text"
+                placeholder="Enter 6-digit code"
+                maxlength="6"
+                pattern="[0-9]{6}"
+                required
+                autofocus
+              />
+              <span class="field-hint">Check your email inbox (and spam folder)</span>
+            </label>
+
+            <p v-if="errorMessage" class="banner error" role="alert">
+              {{ errorMessage }}
+            </p>
+            <p v-if="successMessage" class="banner success" role="status">
+              {{ successMessage }}
+            </p>
+
+            <div class="button-row">
+              <button type="button" class="btn-secondary" @click="goBackToStep1" :disabled="isSubmitting">
+                ← Back
+              </button>
+              <button type="submit" :disabled="isSubmitting">
+                {{ isSubmitting ? "Verifying..." : "VERIFY & REGISTER" }}
+              </button>
+            </div>
+
+            <div class="resend-section">
+              <button type="button" class="btn-link" @click="handleResendOTP" :disabled="resendCooldown > 0">
+                {{ resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : 'Resend verification code' }}
+              </button>
+            </div>
           </form>
 
           <footer>
@@ -86,32 +129,42 @@ import {
   persistSession,
   getRoleLandingPath,
 } from "../../services/authService";
+import axios from 'axios';
+
+const API_BASE = 'http://localhost:5000/api/auth';
 
 export default {
   name: "Register",
   data() {
     return {
+      step: 1, // 1 = Registration form, 2 = OTP verification
       username: "",
       email: "",
       password: "",
       confirmPassword: "",
-      agreedToTerms: false,
+      otpCode: "",
       isSubmitting: false,
       errorMessage: "",
       successMessage: "",
+      resendCooldown: 0,
+      resendTimer: null,
     };
   },
   methods: {
-    async handleRegister() {
+    async handleSendOTP() {
       this.errorMessage = "";
       this.successMessage = "";
 
       const trimmedName = this.username.trim();
       const trimmedEmail = this.email.trim().toLowerCase();
-      const defaultRole = "student";
 
       if (!trimmedName) {
         this.errorMessage = "Please provide your full name.";
+        return;
+      }
+
+      if (!trimmedEmail) {
+        this.errorMessage = "Please provide your email.";
         return;
       }
 
@@ -120,29 +173,146 @@ export default {
         return;
       }
 
+      if (this.password.length < 6) {
+        this.errorMessage = "Password must be at least 6 characters.";
+        return;
+      }
+
       this.isSubmitting = true;
       try {
+        const response = await axios.post(`${API_BASE}/send-otp`, {
+          email: trimmedEmail
+        });
+
+        if (response.data.success) {
+          this.successMessage = "Verification code sent! Check your email.";
+          setTimeout(() => {
+            this.step = 2;
+            this.successMessage = "";
+            this.startResendCooldown(60); // 60 seconds cooldown
+          }, 1500);
+        }
+      } catch (error) {
+        this.errorMessage = error?.response?.data?.error || "Failed to send verification code. Please try again.";
+      } finally {
+        this.isSubmitting = false;
+      }
+    },
+
+    async handleVerifyAndRegister() {
+      this.errorMessage = "";
+      this.successMessage = "";
+
+      if (!this.otpCode || this.otpCode.length !== 6) {
+        this.errorMessage = "Please enter the 6-digit verification code.";
+        return;
+      }
+
+      this.isSubmitting = true;
+      const trimmedEmail = this.email.trim().toLowerCase();
+      const trimmedName = this.username.trim();
+      const defaultRole = "student";
+
+      try {
+        // Step 1: Verify OTP
+        const verifyResponse = await axios.post(`${API_BASE}/verify-otp`, {
+          email: trimmedEmail,
+          code: this.otpCode
+        });
+
+        if (!verifyResponse.data.success) {
+          throw new Error(verifyResponse.data.error || "Verification failed");
+        }
+
+        this.successMessage = "Email verified! Creating your account...";
+
+        // Step 2: Register user
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
         const payload = await registerUser({
           email: trimmedEmail,
           password: this.password,
           full_name: trimmedName,
           role: defaultRole,
         });
+
         persistSession(payload, true);
-        this.successMessage = "Account created successfully. Redirecting...";
+        this.successMessage = "Account created successfully! Redirecting...";
+        
         const next = payload.nextRoute || getRoleLandingPath(payload.user?.role || defaultRole);
         setTimeout(() => {
           this.$router.push(next || "/");
-        }, 800);
+        }, 1000);
+
       } catch (error) {
-        this.errorMessage =
-          error?.response?.data?.error ||
-          "Unable to register. Please try again.";
+        const errorMsg = error?.response?.data?.error || error.message || "Verification failed. Please try again.";
+        this.errorMessage = errorMsg;
+        
+        // If verification failed, allow user to try again or go back
+        if (errorMsg.includes("expired") || errorMsg.includes("attempts")) {
+          setTimeout(() => {
+            this.goBackToStep1();
+          }, 3000);
+        }
       } finally {
         this.isSubmitting = false;
       }
     },
+
+    async handleResendOTP() {
+      if (this.resendCooldown > 0) return;
+
+      this.errorMessage = "";
+      this.successMessage = "";
+
+      try {
+        const response = await axios.post(`${API_BASE}/resend-otp`, {
+          email: this.email.trim().toLowerCase()
+        });
+
+        if (response.data.success) {
+          this.successMessage = "New code sent! Check your email.";
+          this.startResendCooldown(60);
+          setTimeout(() => {
+            this.successMessage = "";
+          }, 3000);
+        }
+      } catch (error) {
+        this.errorMessage = error?.response?.data?.error || "Failed to resend code.";
+      }
+    },
+
+    goBackToStep1() {
+      this.step = 1;
+      this.otpCode = "";
+      this.errorMessage = "";
+      this.successMessage = "";
+      this.clearResendTimer();
+    },
+
+    startResendCooldown(seconds) {
+      this.resendCooldown = seconds;
+      this.clearResendTimer();
+      
+      this.resendTimer = setInterval(() => {
+        this.resendCooldown--;
+        if (this.resendCooldown <= 0) {
+          this.clearResendTimer();
+        }
+      }, 1000);
+    },
+
+    clearResendTimer() {
+      if (this.resendTimer) {
+        clearInterval(this.resendTimer);
+        this.resendTimer = null;
+      }
+    }
   },
+
+  beforeUnmount() {
+    this.clearResendTimer();
+  }
 };
 </script>
 
@@ -258,6 +428,12 @@ export default {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
+.field-hint {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.25rem;
+}
+
 .field-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -349,6 +525,61 @@ button[type="submit"]:disabled {
 
 .inline-link:hover {
   text-decoration: underline;
+}
+
+.button-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.btn-secondary {
+  background: #f1f5f9;
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.9rem 1.2rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.resend-section {
+  text-align: center;
+  margin-top: 12px;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 8px;
+}
+
+.btn-link:hover:not(:disabled) {
+  color: #2563eb;
+}
+
+.btn-link:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+  text-decoration: none;
 }
 
 @media (max-width: 960px) {

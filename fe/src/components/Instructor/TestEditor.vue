@@ -219,6 +219,7 @@ export default {
           timeLimitMinutes: data.timeLimitMinutes || 0,
           attemptsAllowed: data.attemptsAllowed || 1,
           isPlacement: !!data.isPlacement,
+          lessonTitle: data.lessonTitle || data.title || 'Lesson Quiz', // Use lesson title from API
         }
         // map questions
         this.questions = (data.questions || []).map(q => ({
@@ -322,7 +323,7 @@ export default {
       this.aiGenerating = true
       try {
         const payload = {
-          lesson_title: this.meta.title || 'Lesson Quiz',
+          lesson_title: this.meta.lessonTitle || 'Lesson Quiz',
           num_questions: this.aiConfig.num_questions,
           difficulty: this.aiConfig.difficulty,
         }

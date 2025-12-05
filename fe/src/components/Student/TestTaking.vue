@@ -322,9 +322,28 @@ export default {
         
         this.result = {
           score: data.score || 0,
-          totalScore: data.totalScore || data.total_score || this.calculateTotalPoints(),
+          totalScore: data.totalScore || data.total_score || 10, // Backend returns score out of 10
           correctCount: data.correctCount || data.correct_count || 0,
           passed: data.passed || false,
+          questionResults: data.questionResults || []
+        }
+        
+        // Update questions with correct answer information from backend
+        if (data.questionResults && data.questionResults.length > 0) {
+          this.questions = this.questions.map(q => {
+            const result = data.questionResults.find(r => r.questionId === q.id)
+            if (result) {
+              // Update choices with correct answer info
+              q.choices = q.choices.map(c => ({
+                ...c,
+                isCorrect: result.choices.find(rc => rc.id === c.id)?.isCorrect || false
+              }))
+              q.correctChoiceId = result.correctChoiceId
+              q.userChoiceId = result.userChoiceId
+              q.isCorrect = result.isCorrect
+            }
+            return q
+          })
         }
         
         this.submitted = true

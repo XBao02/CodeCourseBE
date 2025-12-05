@@ -181,58 +181,20 @@
                     <i :class="lesson.testsExpanded ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
                     {{ lesson.testsExpanded ? 'Collapse' : 'Expand' }}
                   </button>
-                  <button class="btn small" v-if="lesson.testsExpanded && ((testsByLesson[lesson.id] || []).length === 0)" @click="toggleAddTest(lesson)">Add Test</button>
+                  <button class="btn small" v-if="lesson.testsExpanded && ((testsByLesson[lesson.id] || []).length === 0)" @click="createTestDirectly(lesson)">Add Test</button>
                 </div>
               </div>
 
               <div v-if="lesson.testsExpanded">
-                <div v-if="lesson.addingTest" class="add-card test">
-                  <div class="form-row">
-                    <div class="form-group">
-                      <label>Test Title</label>
-                      <input v-model.trim="lesson.newTest.title" type="text" placeholder="e.g., Chapter 1 Quiz" />
-                    </div>
-                    <div class="form-group">
-                      <label>Time Limit (minutes)</label>
-                      <input v-model.number="lesson.newTest.timeLimitMinutes" type="number" min="0" />
-                    </div>
-                  </div>
-                  <div class="form-row">
-                    <div class="form-group">
-                      <label>Attempts Allowed</label>
-                      <input v-model.number="lesson.newTest.attemptsAllowed" type="number" min="1" />
-                    </div>
-                    <div class="form-group align-end">
-                      <label class="checkbox"><input type="checkbox" v-model="lesson.newTest.isPlacement" /> Placement test</label>
-                    </div>
-                  </div>
-                  <div class="form-actions">
-                    <button class="btn" @click="cancelAddTest(lesson)">Cancel</button>
-                    <button class="btn primary" :disabled="!lesson.newTest.title" @click="saveNewTest(lesson)">Save Test</button>
-                  </div>
-                </div>
-
                 <div v-if="(testsByLesson[lesson.id] || []).length === 0" class="empty tiny">No tests yet</div>
                 <div v-for="t in testsByLesson[lesson.id] || []" :key="t.id" class="test-item">
                   <div class="test-row">
                     <div class="field" style="flex:1">
                       <div class="mini-label">Test Title</div>
-                      <input v-model="t.editTitle" class="test-title-input" />
-                    </div>
-                    <div class="field small">
-                      <div class="mini-label">Minutes</div>
-                      <input v-model.number="t.editTime" class="test-number-input" type="number" min="0" title="Minutes" />
-                    </div>
-                    <div class="field small">
-                      <div class="mini-label">Attempts</div>
-                      <input v-model.number="t.editAttempts" class="test-number-input" type="number" min="1" title="Attempts allowed" />
-                    </div>
-                    <div class="field">
-                      <div class="mini-label">Placement</div>
-                      <label class="checkbox"><input type="checkbox" v-model="t.editPlacement" /> Placement</label>
+                      <input v-model="t.editTitle" class="test-title-input" placeholder="Enter test title" />
                     </div>
                     <div class="field qcount">
-                      <div class="mini-label">Questions</div>
+                      <div class="mini-label">Number of Questions</div>
                       <div class="pill">{{ t.questionCount || 0 }}</div>
                     </div>
                     <button class="btn" @click="saveTest(t)">Save</button>
@@ -356,13 +318,6 @@ export default {
             editVideoUrl: l.videoUrl || '',
             expanded: false,
             testsExpanded: false,
-            addingTest: false,
-            newTest: {
-              title: "",
-              timeLimitMinutes: 0,
-              attemptsAllowed: 1,
-              isPlacement: false,
-            },
           }));
           map[s.id] = lessons;
         });
@@ -399,10 +354,7 @@ export default {
           ...this.testsByLesson,
           [lessonId]: (data || []).map((t) => ({
             ...t,
-            editTitle: t.title,
-            editTime: t.timeLimitMinutes || 0,
-            editAttempts: t.attemptsAllowed || 1,
-            editPlacement: !!t.isPlacement,
+            editTitle: t.title
           })),
         };
       } catch (e) {
@@ -561,21 +513,34 @@ export default {
           `http://localhost:5000/api/lessons/${lesson.id}`,
           { method: "DELETE", headers }
         );
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || "Không thể xóa bài học");
+        
+        if (res.status === 401) {
+          alert('❌ Session expired. Please login again.');
+          this.$router.push('/login');
+          return;
+        }
+        
+        const data = await res.json().catch(() => ({ message: 'Unknown error' }));
+        
+        if (!res.ok) {
+          throw new Error(data.message || `Failed to delete lesson (${res.status})`);
+        }
+        
+        alert('✅ Lesson deleted successfully!');
         await this.fetchCurriculum();
       } catch (e) {
-        alert(e.message);
+        console.error('Delete lesson error:', e);
+        alert(`❌ Error: ${e.message}`);
       }
     },
-    async saveNewTest(lesson) {
+    async createTestDirectly(lesson) {
       try {
         const headers = this.getAuthHeaders()
         const payload = {
-          title: lesson.newTest.title,
-          timeLimitMinutes: lesson.newTest.timeLimitMinutes || 0,
-          attemptsAllowed: lesson.newTest.attemptsAllowed || 1,
-          isPlacement: !!lesson.newTest.isPlacement,
+          title: "Test",
+          timeLimitMinutes: 0,
+          attemptsAllowed: 1,
+          isPlacement: false,
         };
         const res = await fetch(
           `http://localhost:5000/api/lessons/${lesson.id}/tests`,
@@ -586,35 +551,22 @@ export default {
           }
         );
         const data = await res.json();
+        if (res.status === 401) {
+          alert("Session expired. Please login again.");
+          this.$router.push('/login');
+          return;
+        }
         if (!res.ok) throw new Error(data.message || "Không thể tạo test");
-        lesson.addingTest = false;
         await this.loadTestsForLesson(lesson.id);
       } catch (e) {
         alert(e.message);
       }
     },
-    toggleAddTest(lesson) {
-      lesson.addingTest = !lesson.addingTest;
-      if (lesson.addingTest) {
-        lesson.newTest = {
-          title: "",
-          timeLimitMinutes: 0,
-          attemptsAllowed: 1,
-          isPlacement: false,
-        };
-      }
-    },
-    cancelAddTest(lesson) {
-      lesson.addingTest = false;
-    },
     async saveTest(t) {
       try {
         const headers = this.getAuthHeaders()
         const payload = {
-          title: t.editTitle,
-          timeLimitMinutes: t.editTime,
-          attemptsAllowed: t.editAttempts,
-          isPlacement: !!t.editPlacement,
+          title: t.editTitle
         };
         const res = await fetch(`http://localhost:5000/api/tests/${t.id}`, {
           method: "PUT",

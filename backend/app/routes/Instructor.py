@@ -530,19 +530,60 @@ def update_lesson(lesson_id):
         return jsonify({"message": f"Lỗi khi cập nhật lesson: {str(e)}"}), 500
 
 
+@instructor_bp.route("/api/lessons/<int:lesson_id>", methods=['DELETE'])
 @instructor_bp.route("/lessons/<int:lesson_id>", methods=['DELETE'])
 @jwt_required()
 def delete_lesson(lesson_id):
     try:
+        # Verify instructor authorization
+        instructor_id = get_current_instructor_id()
+        if not instructor_id:
+            return jsonify({"message": "Unauthorized: Not an instructor"}), 401
+        
         lesson = Lesson.query.filter_by(id=lesson_id).first()
         if not lesson:
             return jsonify({"message": "Bài học không tồn tại"}), 404
+        
+        # Verify lesson belongs to instructor's course
+        section = CourseSection.query.filter_by(id=lesson.section_id).first()
+        if section:
+            course = Course.query.filter_by(id=section.course_id, instructor_id=instructor_id).first()
+            if not course:
+                return jsonify({"message": "Unauthorized: Lesson does not belong to you"}), 403
+        
+        # Import models cần thiết
+        from ..models.model import LessonProgress, TestAttempt
+        
+        # Delete all related data first to avoid foreign key constraint errors
+        
+        # 1. Delete all test attempts related to tests in this lesson
+        tests = Test.query.filter_by(lesson_id=lesson_id).all()
+        for test in tests:
+            # Delete test attempts
+            TestAttempt.query.filter_by(test_id=test.id).delete()
+            # Delete choices for all questions in this test
+            questions = Question.query.filter_by(test_id=test.id).all()
+            for question in questions:
+                Choice.query.filter_by(question_id=question.id).delete()
+            # Delete all questions
+            Question.query.filter_by(test_id=test.id).delete()
+        
+        # 2. Delete all tests in this lesson
+        Test.query.filter_by(lesson_id=lesson_id).delete()
+        
+        # 3. Delete all lesson progress records
+        LessonProgress.query.filter_by(lesson_id=lesson_id).delete()
+        
+        # 4. Finally delete the lesson itself
         db.session.delete(lesson)
         db.session.commit()
+        
         return jsonify({"message": "Đã xóa bài học"}), 200
     except Exception as e:
         db.session.rollback()
         print(f"Lỗi khi xóa lesson: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"message": f"Lỗi khi xóa lesson: {str(e)}"}), 500
 
 
@@ -562,6 +603,9 @@ def _serialize_test(t, include_counters=False):
         "createdAt": t.created_at.isoformat() if t.created_at else None,
         "updatedAt": t.updated_at.isoformat() if t.updated_at else None,
     }
+    # Include lesson title if available
+    if t.lesson:
+        data["lessonTitle"] = t.lesson.title
     if include_counters:
         data["questionCount"] = len(t.questions or [])
     return data
@@ -609,9 +653,22 @@ def list_tests(lesson_id):
 @jwt_required()
 def create_test(lesson_id):
     try:
+        # Get current instructor
+        instructor_id = get_current_instructor_id()
+        if not instructor_id:
+            return jsonify({"message": "Unauthorized or invalid instructor"}), 401
+        
         lesson = Lesson.query.filter_by(id=lesson_id).first()
         if not lesson:
             return jsonify({"message": "Bài học không tồn tại"}), 404
+        
+        # Verify that the lesson belongs to this instructor
+        section = CourseSection.query.filter_by(id=lesson.section_id).first()
+        if section:
+            course = Course.query.filter_by(id=section.course_id, instructor_id=instructor_id).first()
+            if not course:
+                return jsonify({"message": "Unauthorized: Lesson does not belong to you"}), 403
+        
         data = request.get_json() or {}
         title = (data.get('title') or '').strip()
         if not title:
@@ -619,9 +676,9 @@ def create_test(lesson_id):
         test = Test(
             lesson_id=lesson_id,
             title=title,
-            is_placement=bool(data.get('is_placement') or data.get('isPlacement') or False),
-            time_limit_minutes=data.get('time_limit_minutes') or data.get('timeLimitMinutes') or 0,
-            attempts_allowed=data.get('attempts_allowed') or data.get('attemptsAllowed') or 1,
+            is_placement=False,  # Default: not a placement test
+            time_limit_minutes=0,  # Default: no time limit
+            attempts_allowed=999,  # Default: unlimited attempts
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
         )
@@ -677,14 +734,39 @@ def update_test(test_id):
 @jwt_required()
 def delete_test(test_id):
     try:
+        # Get current instructor
+        instructor_id = get_current_instructor_id()
+        if not instructor_id:
+            return jsonify({"message": "Unauthorized or invalid instructor"}), 401
+        
         t = Test.query.filter_by(id=test_id).first()
         if not t:
             return jsonify({"message": "Bài test không tồn tại"}), 404
-        # xóa choices và questions trước
+        
+        # Verify that the test belongs to this instructor
+        lesson = Lesson.query.filter_by(id=t.lesson_id).first()
+        if lesson:
+            section = CourseSection.query.filter_by(id=lesson.section_id).first()
+            if section:
+                course = Course.query.filter_by(id=section.course_id, instructor_id=instructor_id).first()
+                if not course:
+                    return jsonify({"message": "Unauthorized: Test does not belong to you"}), 403
+        
+        # Import TestAttempt if not already imported
+        from ..models.model import TestAttempt
+        
+        # Delete all related data first to avoid foreign key constraint errors
+        
+        # 1. Delete all test attempts for this test
+        TestAttempt.query.filter_by(test_id=t.id).delete()
+        
+        # 2. Delete choices and questions
         questions = Question.query.filter_by(test_id=t.id).all()
         for q in questions:
             Choice.query.filter_by(question_id=q.id).delete()
         Question.query.filter_by(test_id=t.id).delete()
+        
+        # 3. Finally delete the test itself
         db.session.delete(t)
         db.session.commit()
         return jsonify({"message": "Đã xóa bài test"}), 200
@@ -833,9 +915,15 @@ def get_test(test_id):
         if not test:
             return jsonify({'message': 'Test not found'}), 404
 
+        # Get lesson title for AI generation
+        lesson_title = None
+        if test.lesson:
+            lesson_title = test.lesson.title
+
         res = {
             'id': test.id,
             'title': test.title,
+            'lessonTitle': lesson_title,  # Add lesson title for AI generation
             'timeLimitMinutes': test.time_limit_minutes or 0,
             'attemptsAllowed': test.attempts_allowed or 1,
             'isPlacement': bool(test.is_placement)

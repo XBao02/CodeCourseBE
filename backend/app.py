@@ -55,6 +55,7 @@ def create_app():
         from app.routes.Student import student_bp
         from app.routes.AIQuiz import ai_quiz_bp
         from app.routes.Payment import payment_bp
+        from app.routes.EmailVerification import email_verification_bp
         
         app.register_blueprint(ai_bp)
         app.register_blueprint(auth_bp)
@@ -63,6 +64,7 @@ def create_app():
         app.register_blueprint(student_bp)
         app.register_blueprint(ai_quiz_bp)
         app.register_blueprint(payment_bp)
+        app.register_blueprint(email_verification_bp)
 
     except Exception as e:
         app.logger.error(f"Failed to register blueprints: {e}")

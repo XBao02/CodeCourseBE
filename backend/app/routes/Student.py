@@ -695,19 +695,41 @@ def submit_test(test_id):
         
         questions = Question.query.filter_by(test_id=test_id).all()
         
+        # Build detailed question results for review
+        question_results = []
+        
         for question in questions:
             q_points = getattr(question, 'points', 1) or 1
             total_raw_possible += q_points # Cộng dồn tổng điểm tối đa
             
             chosen_id = answers_by_qid.get(question.id)
-            if chosen_id is None:
-                continue
-                
+            
+            # Get all choices for this question
+            choices = Choice.query.filter_by(question_id=question.id).order_by(Choice.sort_order).all()
+            
             # Check correctness
             correct_choice = Choice.query.filter_by(question_id=question.id, is_correct=True).first()
+            is_correct = False
             if correct_choice and correct_choice.id == chosen_id:
                 raw_score += q_points # Cộng điểm nếu đúng
                 correct_count += 1
+                is_correct = True
+            
+            # Build question result with all choices and correct answer info
+            question_results.append({
+                'questionId': question.id,
+                'content': getattr(question, 'content', ''),
+                'points': q_points,
+                'difficulty': getattr(question, 'difficulty', 'medium'),
+                'userChoiceId': chosen_id,
+                'correctChoiceId': correct_choice.id if correct_choice else None,
+                'isCorrect': is_correct,
+                'choices': [{
+                    'id': c.id,
+                    'text': getattr(c, 'text', '') or getattr(c, 'content', ''),
+                    'isCorrect': getattr(c, 'is_correct', False)
+                } for c in choices]
+            })
         
         # Quy đổi sang thang điểm 10
         final_score_10 = 0
@@ -760,7 +782,8 @@ def submit_test(test_id):
             "correctCount": correct_count,
             "totalQuestions": len(questions),
             "percentage": round(percentage, 2),
-            "passed": passed
+            "passed": passed,
+            "questionResults": question_results  # Chi tiết từng câu hỏi và đáp án đúng
         }
         
         return jsonify(result), 200
