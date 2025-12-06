@@ -512,3 +512,4 @@ class AIChatMessage(db.Model):
     tokens_used = db.Column('TokensUsed', db.Integer, default=0)
     sent_at = db.Column('SentAt', db.DateTime(timezone=True), default=datetime.utcnow)
     created_at = db.Column('CreatedAt', db.DateTime(timezone=True), default=datetime.utcnow)
+

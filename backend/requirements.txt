@@ -6,6 +6,7 @@ charset-normalizer==3.4.3
 click==8.2.1
 colorama==0.4.6
 Flask==3.1.2
+cryptography>=46.0.3
 flask-cors==6.0.1
 Flask-SQLAlchemy==3.1.1
 Flask-JWT-Extended==4.7.1
@@ -65,3 +66,4 @@ google-auth==2.37.0
 google-auth-httplib2==0.2.0
 google-auth-oauthlib==1.2.1
 cloudinary==1.41.0
+PyMySQL==1.1.2

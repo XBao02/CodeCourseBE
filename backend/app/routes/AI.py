@@ -5,12 +5,14 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 from pathlib import Path
+from datetime import datetime
 
 from dotenv import load_dotenv
 from flask import Blueprint, current_app, jsonify, request, send_from_directory
+from flask_jwt_extended import jwt_required, verify_jwt_in_request, get_jwt_identity
 from werkzeug.utils import secure_filename
 from sqlalchemy import or_
-from app.models.model import Course
+from app.models.model import Course, AIChatSession, AIChatMessage, db
 import mimetypes
 import base64
 
@@ -99,6 +101,93 @@ COURSE_LIBRARY = [
         "tags": ["design", "ui", "ux"],
     },
 ]
+
+
+def _identity_to_user_id(identity):
+    if isinstance(identity, int):
+        return identity
+    if isinstance(identity, str) and identity.isdigit():
+        return int(identity)
+    if isinstance(identity, dict):
+        candidate = identity.get("user_id") or identity.get("sub") or identity.get("id")
+        if candidate and str(candidate).isdigit():
+            return int(candidate)
+    return None
+
+
+def _resolve_optional_user_id():
+    try:
+        verify_jwt_in_request(optional=True)
+        identity = get_jwt_identity()
+        return _identity_to_user_id(identity)
+    except Exception:
+        return None
+
+
+def _get_or_create_general_session(user_id: int) -> AIChatSession | None:
+    if not user_id:
+        return None
+    session = (
+        AIChatSession.query.filter_by(user_id=user_id, session_type="gemini-general")
+        .order_by(AIChatSession.updated_at.desc())
+        .first()
+    )
+    if session:
+        return session
+    session = AIChatSession(
+        user_id=user_id,
+        session_type="gemini-general",
+        description="Gemini general chat",
+    )
+    db.session.add(session)
+    db.session.flush()
+    return session
+
+
+@ai_bp.get("/chat/history")
+@jwt_required()
+def chat_history():
+    identity = get_jwt_identity()
+    user_id = _identity_to_user_id(identity)
+    if not user_id:
+        return jsonify({"messages": []})
+
+    session = (
+        AIChatSession.query.filter_by(user_id=user_id, session_type="gemini-general")
+        .order_by(AIChatSession.updated_at.desc())
+        .first()
+    )
+    if not session:
+        return jsonify({"messages": []})
+
+    messages = (
+        AIChatMessage.query.filter_by(session_id=session.id)
+        .order_by(AIChatMessage.sent_at.asc())
+        .all()
+    )
+    payload = []
+    for msg in messages:
+        payload.append({
+            "id": msg.id,
+            "role": "assistant" if msg.sent_by == "ai" else "user",
+            "text": msg.content,
+            "timestamp": msg.sent_at.isoformat() if msg.sent_at else None,
+        })
+    return jsonify({"messages": payload})
+
+
+def _log_ai_chat_message(session: AIChatSession, user_id: int, text: str, role: str):
+    if not session or not text:
+        return
+    msg = AIChatMessage(
+        session_id=session.id,
+        sent_by=role,
+        user_id=user_id if role == "user" else None,
+        content=text[:6000],
+        message_type="text",
+    )
+    db.session.add(msg)
+    session.message_count = (session.message_count or 0) + 1
 
 
 def _missing_dependency() -> RuntimeError:
@@ -314,10 +403,18 @@ def get_models():
     return jsonify({"models": models, "count": len(models)})
 
 
+_SHORT_CHAT_INSTRUCTION = (
+    "Bạn là trợ lý thân thiện, trả lời ngắn gọn và đúng trọng tâm theo yêu cầu "
+    "người dùng. Tránh lan man, không cần nhắc lại chính sách hay đề cập đến code "
+    "nếu không được yêu cầu."
+)
+
+
 @ai_bp.post("/chat")
 def chat():
     payload = request.get_json(silent=True) or {}
     prompt = (payload.get("prompt") or "").strip()
+    raw_prompt = (payload.get("raw_prompt") or "").strip() or prompt
     model = (payload.get("model") or "").strip() or None
     attachments = payload.get("attachments") or []
     keyword = payload.get("q") or None
@@ -329,7 +426,7 @@ def chat():
     reply = fallback_text
     model_used = model or "gemini-2.5-flash"
 
-    # Grounding with real course data from DB
+    instruction = _SHORT_CHAT_INSTRUCTION
     course_context = _build_course_context(keyword, limit=10)
     if course_context:
         prompt = (
@@ -338,6 +435,20 @@ def chat():
             f"Yeu cau nguoi dung: {prompt}\n"
             "Chi duoc dua vao cac khoa hoc tren khi goi y/gioi thieu."
         )
+
+    prompt = f"{instruction}\n\n{prompt}"
+
+    user_id = _resolve_optional_user_id()
+    session = _get_or_create_general_session(user_id)
+    warning = None
+
+    if session:
+        try:
+            _log_ai_chat_message(session, user_id, raw_prompt, "user")
+            db.session.commit()
+        except Exception as log_exc:
+            current_app.logger.error("Unable to log user prompt: %s", log_exc)
+            db.session.rollback()
 
     try:
         if attachments:
@@ -349,16 +460,16 @@ def chat():
             reply = ai_answer
     except Exception as exc:  # pragma: no cover - external API
         current_app.logger.error("Gemini chat failed: %s", exc)
-        # keep fallback reply but still surface error info to client via metadata
-        return jsonify(
-            {
-                "reply": reply,
-                "suggestions": suggestions,
-                "recommendations": course_ids,
-                "model": model_used,
-                "warning": str(exc),
-            }
-        ), 200
+        warning = str(exc)
+
+    if session:
+        try:
+            _log_ai_chat_message(session, user_id, reply, "ai")
+            session.updated_at = datetime.utcnow()
+            db.session.commit()
+        except Exception as log_exc:
+            current_app.logger.error("Unable to log assistant reply: %s", log_exc)
+            db.session.rollback()
 
     return jsonify(
         {
@@ -366,6 +477,7 @@ def chat():
             "suggestions": suggestions,
             "recommendations": course_ids,
             "model": model_used,
+            "warning": warning,
         }
     )
 

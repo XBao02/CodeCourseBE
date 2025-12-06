@@ -56,41 +56,33 @@ def _serialize_courses(limit=40):
 
 def _build_system_instruction():
     return (
-        "You are an adaptive bilingual (English + Vietnamese) course recommendation chatbot.\n"
-        "You can answer ANY user question (technical, learning path, pricing) concisely, then optionally suggest relevant courses.\n"
-        "You have access to a course dataset. When you decide to recommend, pick 1-6 most relevant courses.\n"
-        "For each recommended course give a short reason referencing user goals, level, interests, or previous messages.\n"
-        "If user asks general questions (e.g. career advice) you may answer without recommending; recommend only when helpful.\n"
-        "Maintain conversation context; ask clarification when goals are unclear.\n"
-        "FINAL PART: include a JSON block enclosed in <JSON>...</JSON> with structure: {\n"
-        "  \"courses\": [ { \"id\": <number>, \"reason\": \"string\" } ],\n"
-        "  \"follow_up_question\": \"string or null\"\n"
-        "}\n"
-        "If you do NOT wish to recommend in this turn, output an empty array for courses.\n"
-        "Keep answers under 180 words outside the JSON. Use Vietnamese if user uses Vietnamese."
+        "You are Genie, a bilingual conversational assistant in Vietnamese and English.\n"
+        "Answer any question the user asks, including general knowledge, life advice, or entertainment.\n"
+        "Feel free to ask clarifying questions when details are missing, and always keep the tone respectful.\n"
+        "If the user writes Vietnamese, respond in Vietnamese; otherwise match their language."
     )
 
-def _ai_generate_reply(history, course_context):
+def _ai_generate_reply(history):
     ready = _configure_client()
     if not ready:
-        return { 'text': 'AI is unavailable, using fallback heuristic. Provide level, category, topic.', 'courses': [] }
+        return { 'text': 'AI is unavailable, please try again later.' }
     try:
-        # Build a single prompt string (more compatible across API versions)
         sys = _build_system_instruction()
-        convo = "\n".join([
-            ("User: " + m['text']) if m['role']=='user' else ("Assistant: " + m['text'])
+        convo = "\n".join(
+            ("User: " + m['text']) if m['role'] == 'user' else ("Assistant: " + m['text'])
             for m in history
-        ])
-        dataset = json.dumps(course_context, ensure_ascii=False)
+        )
         prompt = (
             f"{sys}\n\n"
             f"Conversation so far:\n{convo}\n\n"
-            f"Course dataset (JSON):\n{dataset}\n\n"
-            f"Respond to the last user message with advice and optional recommendations."
+            "Respond to the latest user message with a helpful, unrestricted answer."
         )
+        msgs = [{ 'role': 'system', 'parts': [prompt] }]
+        for m in history:
+            role = 'user' if m['role'] == 'user' else 'model'
+            msgs.append({ 'role': role, 'parts': [m['text']] })
         model = genai.GenerativeModel(_GEMINI_MODEL_NAME)
-        resp = model.generate_content(prompt)
-        # Robust text extraction (like AIQuiz)
+        resp = model.generate_content(msgs)
         text = getattr(resp, 'text', None)
         if not text:
             parts = []
@@ -100,24 +92,10 @@ def _ai_generate_reply(history, course_context):
                     if hasattr(part, 'text') and part.text:
                         parts.append(part.text)
             text = " ".join(parts)
-        text = (text or '').strip()
-        # Extract JSON block
-        import re
-        courses = []
-        follow_up = None
-        m = re.search(r'<JSON>(.*?)</JSON>', text, re.DOTALL)
-        if m:
-            raw = m.group(1).strip()
-            try:
-                parsed = json.loads(raw)
-                courses = parsed.get('courses') or []
-                follow_up = parsed.get('follow_up_question')
-            except Exception:
-                pass
-        return { 'text': text, 'courses': courses, 'follow_up': follow_up }
+        return { 'text': (text or '').strip() }
     except Exception as e:
         print('Gemini error:', e)
-        return { 'text': 'AI error occurred; please provide level, category, topic to continue.', 'courses': [] }
+        return { 'text': 'AI error occurred; please provide more detail.' }
 
 student_bp = Blueprint('student', __name__, url_prefix='/api/student')
 

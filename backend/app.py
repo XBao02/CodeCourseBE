@@ -6,6 +6,7 @@ import os
 
 # Quan trọng: CHỈ import db – KHÔNG import create_app
 from app.models import db
+from app.utils.seed import seed_default_instructor
 from config import MYSQL_CONN
 
 
@@ -56,7 +57,7 @@ def create_app():
         from app.routes.AIQuiz import ai_quiz_bp
         from app.routes.Payment import payment_bp
         from app.routes.EmailVerification import email_verification_bp
-        
+
         app.register_blueprint(ai_bp)
         app.register_blueprint(auth_bp)
         app.register_blueprint(admin_bp)
@@ -78,7 +79,17 @@ def create_app():
 
 
 # Application entry
+def _ensure_default_data(flask_app: Flask):
+    with flask_app.app_context():
+        try:
+            db.create_all()
+        except Exception as exc:  # pragma: no cover - best effort schema sync
+            flask_app.logger.warning("Failed to create missing tables: %s", exc)
+        seed_default_instructor()
+
+
 app = create_app()
+_ensure_default_data(app)
 
 if __name__ == "__main__":
     host = os.getenv("HOST", "0.0.0.0")

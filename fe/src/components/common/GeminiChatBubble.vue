@@ -41,7 +41,7 @@
         </div>
 
         <div class="messages-container" ref="messagesContainer">
-          <div class="welcome-message" v-if="messages.length === 1">
+          <div class="welcome-message" v-if="messages.length === 0">
             <div class="welcome-content">
               <h4>Xin chao! Toi la CodeBot</h4>
               <p>Toi co the giup ban voi:</p>
@@ -174,24 +174,15 @@
 </template>
 
 <script>
-import { sendChatMessage, uploadAttachment } from "../../services/aiService";
+import { fetchChatHistory, sendChatMessage, uploadAttachment } from "../../services/aiService";
 import MarkdownIt from "markdown-it";
 
 const SYSTEM_PROMPT = [
-  "Ban la CodeBot – tro ly chuyen ve lap trinh va thuat toan.",
-  "Chi tra loi cac cau hoi lien quan:",
-  "- Thuat toan, cau truc du lieu",
-  "- Viet code, sua code, toi uu code",
-  "- Giai thich loi chuong trinh",
-  "Moi cau tra loi co gang co:",
-  "1) Giai thich y tuong / tu duy thuat toan",
-  "2) Dua code hoan chinh trong ngon ngu nguoi dung yeu cau (mac dinh Python neu khong chi dinh)",
-  "3) Neu do phuc tap (Big-O) neu phu hop",
-  "Quy tac bo sung:",
-  "- Code dat trong ```python / ```cpp / ```javascript ... de de copy; indent 4 spaces, snake_case, PEP8 cho Python, docstring ngan.",
-  "- Neu co anh kem code/sodo: trich noi dung tu anh, hien code trong code block, giai thich ngam gon, khong suy doan ngoai anh.",
-  "- Neu thieu thong tin, hoi lai dung trong tam, khong suy doan dai dong.",
-  "- Lich su tu choi noi dung khong lien quan lap trinh (yeu duong, boi toan,...).",
+  "Bạn là CodeBot, trợ lý AI thân thiện và sẵn sàng trả lời bất kỳ câu hỏi nào.",
+  "Đáp lại bằng tiếng Việt rõ ràng, chính xác, có thể kèm ví dụ hoặc gợi ý chi tiết nếu cần.",
+  "Nếu câu hỏi liên quan đến lập trình thì cung cấp giải thích/đoạn code phù hợp; nếu là các chủ đề khác như tin tức, học tập, đời sống thì đưa ra đáp án sát ý nhất.",
+  "Bạn được phép trao đổi đa dạng chủ đề và không chỉ giới hạn trong khoá học hay đề tài kỹ thuật.",
+  "Khi chưa có đủ dữ liệu thì đề nghị người dùng cung cấp thêm thay vì đoán mò."
 ].join("\\n");
 
 export default {
@@ -211,14 +202,9 @@ export default {
         linkify: true,
         breaks: true,
       }),
-      messages: [
-        {
-          id: this.generateId(),
-          role: "assistant",
-          text: "Xin chao! Toi la CodeBot, tro ly lap trinh cua ban. Toi co the giup gi cho ban?",
-          timestamp: new Date(),
-        },
-      ],
+      messages: [],
+      historyLoaded: false,
+      loadingHistory: false,
       quickActions: [
         { icon: "fas fa-code", text: "Giai thich doan code nay" },
         { icon: "fas fa-bug", text: "Sua loi trong code" },
@@ -243,6 +229,9 @@ export default {
       this.isOpen = !this.isOpen;
       this.hasUnread = false;
       this.unreadCount = 0;
+      if (this.isOpen) {
+        this.ensureHistoryLoaded();
+      }
       this.$nextTick(() => {
         this.scrollToBottom();
         if (this.isOpen) {
@@ -254,16 +243,37 @@ export default {
       this.isDark = !this.isDark;
     },
     resetThread() {
-      this.messages = [
-        {
-          id: this.generateId(),
-          role: "assistant",
-          text: "Cuoc tro chuyen da duoc lam moi. Ban can ho tro gi?",
-          timestamp: new Date(),
-        },
-      ];
+      this.messages = [];
+      this.historyLoaded = false;
+      this.loadingHistory = false;
       this.userInput = "";
+      this.attachments = [];
       this.scrollToBottom();
+    },
+    async ensureHistoryLoaded() {
+      if (this.loadingHistory || this.historyLoaded) {
+        return;
+      }
+      this.loadingHistory = true;
+      try {
+        const history = await fetchChatHistory();
+        if (Array.isArray(history) && history.length) {
+          this.messages = history.map((item) => ({
+            id: item.id || this.generateId(),
+            role: item.role === "assistant" ? "assistant" : "user",
+            text: item.text || "",
+            timestamp: item.timestamp || new Date().toISOString(),
+          }));
+        } else {
+          this.messages = [];
+        }
+        this.historyLoaded = true;
+      } catch (error) {
+        console.error("Không thể tải lịch sử chat:", error);
+      } finally {
+        this.loadingHistory = false;
+        this.scrollToBottom();
+      }
     },
     formatMessage(text) {
       const safeText = String(text ?? "");
@@ -334,6 +344,7 @@ export default {
         }\n\nTro ly:`;
         const response = await sendChatMessage({
           prompt,
+          raw_prompt: content,
           attachments: this.attachments,
         });
         const reply =
@@ -432,8 +443,9 @@ export default {
     },
   },
   mounted() {
+    this.ensureHistoryLoaded();
     setTimeout(() => {
-      if (!this.isOpen) {
+      if (!this.isOpen && this.messages.length === 0) {
         this.hasUnread = true;
         this.unreadCount = 1;
       }

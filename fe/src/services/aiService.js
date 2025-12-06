@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getStoredSession } from "./authService";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
@@ -10,6 +11,15 @@ const client = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+});
+
+client.interceptors.request.use((config) => {
+  const session = getStoredSession();
+  const token = session?.access_token;
+  if (token && !config.headers.Authorization) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 export const fetchAiCourses = async () => {
@@ -49,9 +59,15 @@ export const fetchAiModels = async () => {
   return data?.models ?? [];
 };
 
+export const fetchChatHistory = async () => {
+  const { data } = await client.get("/ai/chat/history");
+  return data?.messages ?? [];
+};
+
 export default {
   fetchAiCourses,
   sendChatMessage,
   fetchAiModels,
   uploadAttachment,
+  fetchChatHistory,
 };
