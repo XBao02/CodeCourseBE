@@ -1,4 +1,4 @@
-<template>
+sao<template>
   <div class="course-store-wrapper">
     <div class="store-header">
       <h1>Course Store</h1>
@@ -46,7 +46,14 @@
       <section class="store-content">
         <div v-if="loading" class="loading"><span>Loading courses...</span></div>
         <div v-else class="courses-grid">
-          <div v-for="c in paginatedCourses" :key="c.id" class="course-card">
+          <div
+            v-for="c in paginatedCourses"
+            :key="c.id"
+            :class="[
+              'course-card',
+              { 'course-card--highlight': highlightedCourseId && String(c.id) === highlightedCourseId },
+            ]"
+          >
             <h3 class="title">{{ c.title }}</h3>
             <p class="instructor" v-if="c.instructorName">By {{ c.instructorName }}</p>
             <p class="desc" v-if="c.description">{{ truncate(c.description,140) }}</p>
@@ -78,7 +85,12 @@
                   {{ enrollingIds.has(c.id)? 'Processing...' : 'Buy' }}
                 </button>
               </template>
-              <button v-else class="btn-enroll" disabled>Enrolled</button>
+              <div v-else class="course-complete-wrap">
+                <button class="btn-enroll" @click="markCourseCompleteAndGo(c)">
+                  Đi đến khóa học
+                </button>
+                <span v-if="completedCourseIds.has(c.id)" class="done-indicator">✓ Đã xong</span>
+              </div>
             </div>
           </div>
           <div v-if="!filteredCourses.length" class="empty">No courses found.</div>
@@ -199,18 +211,24 @@
 <script>
 import axios from 'axios'
 import { getStoredSession } from '../../services/authService'
+import {
+  addCompletedCourseId,
+  getCompletedCourseIds,
+  listenCompletedCoursesChange,
+} from '@/utils/completedCoursesStorage'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
 const VIETQR_FALLBACK = import.meta.env.VITE_VIETQR_IMAGE_URL || ''
 
 export default {
   name: 'StudentCourseStore',
-  data() {
-    return {
-      loading: true,
-      courses: [],
-      myCourseIds: new Set(),
+    data() {
+      return {
+        loading: true,
+        courses: [],
+        myCourseIds: new Set(),
       enrollingIds: new Set(),
+      completedCourseIds: getCompletedCourseIds(),
       search: '',
       levelFilter: '',
       // payment state
@@ -238,12 +256,13 @@ export default {
       // pagination
       currentPage: 1,
       pageSize: 6,
+      completedCoursesListener: null,
     }
   },
-  computed: {
-    filteredCourses() {
-      const term = this.search.trim().toLowerCase()
-      return this.courses.filter(c => {
+    computed: {
+      filteredCourses() {
+        const term = this.search.trim().toLowerCase()
+        return this.courses.filter(c => {
         if (term && !(c.title||'').toLowerCase().includes(term) && !(c.description||'').toLowerCase().includes(term)) return false
         return true
       })
@@ -295,18 +314,43 @@ export default {
       pages.push({ type:'page', num: total, key:'p'+total })
       return pages
     },
+    highlightedCourseId(){
+      const courseId = this.$route?.query?.courseId
+      return courseId ? String(courseId) : null
+    },
   },
   watch: {
-    categoryFilter() { this.topicFilter = '' },
-    search(){ this.currentPage = 1 },
-    levelFilter(){ this.currentPage = 1 },
-    categoryFilter(){ this.currentPage = 1 },
-    topicFilter(){ this.currentPage = 1 },
+    categoryFilter() {
+      this.topicFilter = ''
+      this.currentPage = 1
+    },
+    search() {
+      this.currentPage = 1
+    },
+    levelFilter() {
+      this.currentPage = 1
+    },
+    topicFilter() {
+      this.currentPage = 1
+    },
+    filteredCourses() {
+      this.adjustPageForHighlight()
+    },
+    highlightedCourseId() {
+      this.$nextTick(() => this.adjustPageForHighlight())
+    },
   },
   async mounted() {
+    this.completedCoursesListener = listenCompletedCoursesChange(this.syncCompletedCourses)
     await this.loadAll()
   },
-  methods: {
+  beforeUnmount() {
+    if (this.completedCoursesListener) {
+      this.completedCoursesListener()
+      this.completedCoursesListener = null
+    }
+  },
+    methods: {
     authHeaders() {
       const s = getStoredSession();
       return s?.access_token ? { Authorization: `Bearer ${s.access_token}` } : {}
@@ -337,7 +381,12 @@ export default {
           const mine = mineRes.data?.courses || []
           this.myCourseIds = new Set(mine.map(m => m.id))
         } catch { this.myCourseIds = new Set() }
-      } catch (e) { console.error('Failed loading courses', e) } finally { this.loading = false }
+        this.$nextTick(() => { this.adjustPageForHighlight() })
+      } catch (e) {
+        console.error('Failed loading courses', e)
+      } finally {
+        this.loading = false
+      }
     },
     isEnrolled(id) { return this.myCourseIds.has(id) },
     formatPrice(p,c) { try { return (!p||p===0)? 'Free' : new Intl.NumberFormat('en-US',{style:'currency',currency: c||'USD'}).format(p) } catch { return p } },
@@ -364,6 +413,12 @@ export default {
       } finally {
         this.enrollingIds.delete(course.id)
       }
+    },
+    markCourseCompleteAndGo(course) {
+      if (!course?.id) return
+      addCompletedCourseId(course.id)
+      this.completedCourseIds = getCompletedCourseIds()
+      this.openCourse(course)
     },
     openCourse(c) { if (!c?.id) return; this.$router.push({ name: 'StudentCourseLesson', params: { courseId: c.id } }).catch(()=>{}) },
     
@@ -468,6 +523,20 @@ export default {
     setPage(p){
       if(!p || p<1 || p>this.totalPages) return
       this.currentPage = p
+    },
+
+    adjustPageForHighlight() {
+      if (!this.highlightedCourseId) return
+      const index = this.filteredCourses.findIndex(c => String(c.id) === this.highlightedCourseId)
+      if (index >= 0) {
+        const targetPage = Math.floor(index / this.pageSize) + 1
+        if (this.currentPage !== targetPage) {
+          this.currentPage = targetPage
+        }
+      }
+    },
+    syncCompletedCourses() {
+      this.completedCourseIds = getCompletedCourseIds()
     },
 
     // ---------- AI Chat Logic (UPDATED) ----------
@@ -673,6 +742,7 @@ export default {
 .courses-grid { display:grid; gap:var(--gap); grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); align-items:stretch; }
 .course-card { background:var(--card-bg); border:1px solid var(--border); border-radius:var(--radius); padding:20px 20px 16px; display:flex; flex-direction:column; position:relative; min-height:265px; box-shadow:0 1px 2px rgba(0,0,0,.04); transition:.2s; }
 .course-card:hover { border-color:#d1d5db; box-shadow:0 4px 12px rgba(0,0,0,.06); transform:translateY(-2px); }
+.course-card--highlight { border-color:#2563eb; box-shadow:0 0 0 2px rgba(37,99,235,0.25); }
 .title { font-size:18px; font-weight:600; margin:0 0 4px; color:var(--text); line-height:1.3; }
 .instructor{ font-size:12px; color:#555; margin:0 0 6px; }
 .desc { font-size:13px; color:var(--muted); margin:0 0 12px; line-height:1.45; display:-webkit-box; -webkit-line-clamp:3; line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
@@ -686,6 +756,30 @@ export default {
 .price-row { font-size:15px; font-weight:600; margin:4px 0 12px; }
 .price.free { color:#059669; }
 .actions { margin-top:auto; }
+.course-complete-wrap { display:inline-flex; align-items:center; gap:10px; margin-top:6px; }
+.done-indicator {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background:#16a34a;
+  color:#fff;
+  font-weight:700;
+  text-indent:-999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 0 0 2px rgba(22,163,74,0.35);
+}
+.done-indicator::after {
+  content:'✓';
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  font-size:14px;
+  line-height:1;
+}
 .btn-enroll, .btn-buy { width:100%; padding:12px 16px; font-size:14px; font-weight:500; border-radius:10px; border:1px solid #93c5fd; background:var(--brand-light); color:#1e3a8a; cursor:pointer; transition:.18s; display:inline-flex; align-items:center; justify-content:center; }
 .btn-enroll:hover:not(:disabled), .btn-buy:hover:not(:disabled) { background:var(--brand); color:#fff; border-color:#1d4ed8; }
 .btn-enroll:disabled, .btn-buy:disabled { opacity:.6; cursor:not-allowed; }

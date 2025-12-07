@@ -12,12 +12,20 @@ from .model import (
     CodeSubmission, Answer, AIAbilityAnalysis, StudyPlan,
     PlanItem, Message, Invoice, AIChatSession, AIChatMessage
 )
+from .placement_test import PlacementTest
+from .skill_profile import SkillProfile
+from .learning_path import LearningPath
+from .learning_path_item import LearningPathItem
+from .placement_question import PlacementQuestion
+from .placement_question_bank import PlacementQuestionBank
 
 __all__ = [
     'db', 'User', 'Student', 'Instructor', 'Admin', 'Course',
     'CourseSection', 'Lesson', 'Enrollment', 'LessonProgress',
     'Test', 'Question', 'Choice', 'QuestionTestCase', 'TestAttempt',
     'CodeSubmission', 'Answer', 'AIAbilityAnalysis', 'StudyPlan',
-    'PlanItem', 'Message', 'Invoice', 'AIChatSession', 'AIChatMessage'
+    'PlanItem', 'Message', 'Invoice', 'AIChatSession', 'AIChatMessage',
+    'PlacementTest', 'SkillProfile', 'LearningPath', 'LearningPathItem',
+    'PlacementQuestion', 'PlacementQuestionBank',
 ]
 

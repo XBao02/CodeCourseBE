@@ -111,9 +111,9 @@
                         <div v-else class="text-center text-muted py-5">No lesson selected.</div>
                     </div>
 
-                                        <div class="card-footer d-flex justify-content-between align-items-center">
+                    <div class="card-footer d-flex justify-content-between align-items-center">
                         <div class="small text-muted">Sections: {{ sectionsWithLessons.length }}</div>
-                        <div class="d-flex align-items-center gap-2">
+                        <div>
                             <button 
                                 v-if="isEnrolled && activeLesson && !activeLesson.completed" 
                                 class="btn btn-primary btn-sm" 
@@ -125,12 +125,6 @@
                                 class="badge bg-success px-3 py-2">
                                 ✓ Completed
                             </span>
-                            <button 
-                                class="btn btn-outline-secondary btn-sm"
-                                :class="{ 'complete-btn--done': courseCompleted }"
-                                @click="toggleCourseComplete">
-                                {{ courseCompleted ? "Đã hoàn thành" : "Đánh dấu đã hoàn thành" }}
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -142,11 +136,6 @@
 <script>
 import axios from 'axios';
 import { getStoredSession } from '../../services/authService'
-import {
-  addCompletedCourseId,
-  getCompletedCourseIds,
-  removeCompletedCourseId,
-} from '@/utils/completedCoursesStorage'
 
 export default {
     name: 'CourseSectionLesson',
@@ -156,8 +145,7 @@ export default {
             sections: [],
             enrollment: null,
             openSections: new Set(),
-            activeLesson: null,
-            courseCompleted: false
+            activeLesson: null
         };
     },
     mounted() { this.bootstrapData(); },
@@ -179,7 +167,6 @@ export default {
                 const payload = res.data || {}; this.course = payload.course || this.course; this.sections = Array.isArray(payload.sections) ? payload.sections : [];
                 const opened = new Set(); for (const s of this.sections) opened.add(s.id); this.openSections = opened;
                 this.enrollment = { id: 0, studentId: 0, courseId, status: 'active', progressPercent: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-                this.syncCourseCompletion();
             } catch (e) { console.error('Failed loading sections-lessons:', e); }
         },
         goHome() { this.$router.push('/student/courses').catch(() => {}); },
@@ -257,19 +244,6 @@ export default {
                     btn.textContent = originalText;
                 }
             }
-        },
-        toggleCourseComplete() {
-            this.courseCompleted = !this.courseCompleted;
-            if (!this.course?.id) return;
-            if (this.courseCompleted) {
-                addCompletedCourseId(this.course.id);
-            } else {
-                removeCompletedCourseId(this.course.id);
-            }
-        },
-        syncCourseCompletion() {
-            if (!this.course?.id) return;
-            this.courseCompleted = getCompletedCourseIds().has(this.course.id);
         },
         computeEmbedUrl(url) {
             if (!url) return '';
@@ -361,10 +335,5 @@ export default {
 
 .ratio {
     --bs-aspect-ratio: 56.25%;
-}
-.complete-btn--done {
-    background: #94a3b8 !important;
-    border-color: #94a3b8 !important;
-    color: #fff !important;
 }
 </style>

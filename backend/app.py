@@ -5,8 +5,10 @@ from dotenv import load_dotenv
 import os
 
 # Quan trọng: CHỈ import db – KHÔNG import create_app
+from sqlalchemy import text
+
 from app.models import db
-from app.utils.seed import seed_default_instructor
+from app.utils.seed import seed_default_instructor, seed_question_bank
 from config import MYSQL_CONN
 
 
@@ -57,6 +59,8 @@ def create_app():
         from app.routes.AIQuiz import ai_quiz_bp
         from app.routes.Payment import payment_bp
         from app.routes.EmailVerification import email_verification_bp
+        from app.routes.PlacementTest import placement_bp
+        from app.routes.LearningPath import learning_path_bp
 
         app.register_blueprint(ai_bp)
         app.register_blueprint(auth_bp)
@@ -66,6 +70,8 @@ def create_app():
         app.register_blueprint(ai_quiz_bp)
         app.register_blueprint(payment_bp)
         app.register_blueprint(email_verification_bp)
+        app.register_blueprint(placement_bp)
+        app.register_blueprint(learning_path_bp)
 
     except Exception as e:
         app.logger.error(f"Failed to register blueprints: {e}")
@@ -79,6 +85,36 @@ def create_app():
 
 
 # Application entry
+def _ensure_columns(flask_app: Flask):
+    with flask_app.app_context():
+        engine = db.session.get_bind()
+        with engine.connect() as connection:
+            for table, column, definition in [
+                ("skill_profiles", "RecommendedCourseIds", "JSON"),
+                ("learning_paths", "RecommendedCourseIds", "JSON"),
+                ("learning_path_items", "CourseIds", "JSON"),
+                ("placement_questions", "BatchId", "VARCHAR(64)"),
+                ("placement_questions", "Difficulty", "VARCHAR(64)"),
+                ("placement_question_bank", "Difficulty", "VARCHAR(64)"),
+                ("placement_question_bank", "Language", "VARCHAR(64) DEFAULT 'general' NOT NULL"),
+                ("skill_profiles", "Language", "VARCHAR(64) DEFAULT 'general' NOT NULL"),
+                ("placement_tests", "Language", "VARCHAR(64) DEFAULT 'general' NOT NULL"),
+                ("placement_questions", "Language", "VARCHAR(64) DEFAULT 'general' NOT NULL"),
+                ("Courses", "Language", "VARCHAR(64) DEFAULT 'general' NOT NULL"),
+            ]:
+                try:
+                    exists = connection.execute(
+                        text(f"SHOW COLUMNS FROM {table} LIKE :column"),
+                        {"column": column},
+                    ).first()
+                    if not exists:
+                        connection.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {definition}"))
+                except Exception as exc:
+                    flask_app.logger.warning(
+                        "Failed to ensure column %s.%s (%s)", table, column, exc
+                    )
+
+
 def _ensure_default_data(flask_app: Flask):
     with flask_app.app_context():
         try:
@@ -86,6 +122,8 @@ def _ensure_default_data(flask_app: Flask):
         except Exception as exc:  # pragma: no cover - best effort schema sync
             flask_app.logger.warning("Failed to create missing tables: %s", exc)
         seed_default_instructor()
+        seed_question_bank()
+        _ensure_columns(flask_app)
 
 
 app = create_app()

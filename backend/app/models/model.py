@@ -150,6 +150,7 @@ class Course(db.Model):
     image_url = db.Column('ImageUrl', db.String(500), nullable=True)
     description = db.Column('Description', db.Text)
     level = db.Column('Level', db.String(50), nullable=False, default='beginner')
+    language = db.Column('Language', db.String(64), nullable=False, default='general')
     price = db.Column('Price', db.Numeric(12, 2), nullable=False, default=0.00)
     currency = db.Column('Currency', db.String(3), nullable=False, default='VND')
     is_public = db.Column('IsPublic', db.Boolean, nullable=False, default=False)

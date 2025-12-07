@@ -119,6 +119,21 @@ const routes = [
         name: "StudentProfile",
         component: () => import("../components/Student/Profile.vue"),
       },
+      {
+        path: "placement/start",
+        name: "StudentPlacementStart",
+        component: () => import("../components/Student/PlacementTestStart.vue"),
+      },
+      {
+        path: "placement/select-language",
+        name: "PlacementLanguagePicker",
+        component: () => import("../components/Student/PlacementLanguagePicker.vue"),
+      },
+      {
+        path: "placement/test",
+        name: "StudentPlacementDo",
+        component: () => import("../components/Student/PlacementTest.vue"),
+      },
     ],
   },
 

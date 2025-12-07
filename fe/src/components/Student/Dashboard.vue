@@ -6,6 +6,14 @@
       <p>Track your learning progress and achievements</p>
     </div>
 
+    <div class="placement-cta">
+      <button class="outline-btn" :disabled="!loggedUserId" @click="goToPlacementLanguagePicker">
+        Làm lại bài test đầu vào
+      </button>
+    </div>
+
+    <PlacementTestStart />
+
     <!-- Stats Grid -->
     <div v-if="loading" class="content-card"><p>Loading...</p></div>
     <div v-else>
@@ -29,16 +37,8 @@
         </div>
       </div>
 
-      <!-- Learning Path -->
       <div class="content-card">
-        <h5>Learning Path</h5>
-        <div class="learning-path-list">
-          <div v-for="item in learningPath" :key="item.id" class="path-item">
-            <span class="path-name">{{ item.courseTitle }}</span>
-            <span class="path-status" :class="statusClass(item.status)">{{ item.status }}</span>
-          </div>
-          <div v-if="!learningPath.length" class="path-item">No items</div>
-        </div>
+        <LearningPathAI />
       </div>
 
       <!-- Enrolled Courses -->
@@ -48,7 +48,10 @@
           <div v-for="c in courses" :key="c.id" class="course-card">
             <h6>{{ c.title }}</h6>
             <p class="course-meta">Level: {{ c.level || '-' }} · {{ c.isPublic ? 'Public' : 'Private' }}</p>
-            <button class="open-btn" @click="openCourse(c)">Open Course</button>
+            <div class="course-actions">
+              <button class="open-btn" @click="openCourse(c)">Open Course</button>
+              <span v-if="isCourseMarkedCompleted(c.id)" class="course-done-label">Đã xong</span>
+            </div>
           </div>
           <div v-if="!courses.length" class="course-card"><p>No courses</p></div>
         </div>
@@ -60,6 +63,9 @@
 <script>
 import axios from 'axios'
 import { getStoredSession } from '../../services/authService'
+import PlacementTestStart from '@/components/Student/PlacementTestStart.vue'
+import LearningPathAI from '@/components/Student/LearningPathAI.vue'
+import { getCompletedCourseIds, listenCompletedCoursesChange } from '@/utils/completedCoursesStorage'
 
 export default {
   name: 'StudentDashboard',
@@ -70,10 +76,24 @@ export default {
       learningPath: [],
       stats: { enrolled: 0, completed: 0, pending: 0, testsTaken: 0, avgScore: 0 },
       studentId: null,
+      completedCourseIds: getCompletedCourseIds(),
+      completedCoursesListener: null,
     }
   },
   async mounted() {
+    this.completedCoursesListener = listenCompletedCoursesChange(this.syncCompletedCourses)
     await this.loadData()
+  },
+  beforeUnmount() {
+    if (this.completedCoursesListener) {
+      this.completedCoursesListener()
+      this.completedCoursesListener = null
+    }
+  },
+  computed: {
+    loggedUserId() {
+      return getStoredSession()?.user?.id || null
+    },
   },
   methods: {
     authHeaders() {
@@ -134,8 +154,27 @@ export default {
     openCourse(course) {
       if (!course?.id) return
       this.$router.push({ name: 'StudentCourseLesson', params: { courseId: course.id } }).catch(()=>{})
-    }
-  }
+    },
+    goToPlacementLanguagePicker() {
+      if (!this.loggedUserId) return
+      this.$router
+        .push({
+          path: '/student/placement/select-language',
+          query: { userId: this.loggedUserId },
+        })
+        .catch(() => {})
+    },
+    isCourseMarkedCompleted(courseId) {
+      return this.completedCourseIds.has(courseId)
+    },
+    syncCompletedCourses() {
+      this.completedCourseIds = getCompletedCourseIds()
+    },
+  },
+  components: {
+    PlacementTestStart,
+    LearningPathAI,
+  },
 }
 </script>
 
@@ -158,7 +197,13 @@ export default {
 .course-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px; }
 .open-btn { align-self:flex-start; background:#2563eb; color:#fff; border:none; padding:8px 14px; border-radius:6px; font-size:14px; cursor:pointer; font-weight:500; }
 .open-btn:hover { background:#1d4ed8; }
+.course-actions { display:flex; align-items:center; gap:10px; margin-top:auto; }
+.course-done-label { font-size:12px; font-weight:600; color:#047857; background:#dcfce7; padding:4px 10px; border-radius:999px; line-height:1; }
 .progress-bar-wrapper { width:100%; height:8px; background:#eef2f7; border-radius:8px; overflow:hidden; }
 .progress-bar-wrapper.large { height:12px; }
 .progress-bar-fill { height:100%; background:#3b82f6; }
+.placement-cta { margin: 16px 0; display: flex; justify-content: flex-end; }
+.outline-btn { border: 1px solid #2563eb; border-radius: 10px; padding: 10px 16px; background: transparent; color: #2563eb; font-weight: 600; cursor: pointer; transition: background 0.2s ease; }
+.outline-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.outline-btn:not(:disabled):hover { background: rgba(37, 99, 235, 0.08); }
 </style>

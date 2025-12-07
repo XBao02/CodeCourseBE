@@ -1,0 +1,468 @@
+
+import axios from 'axios'
+import { getStoredSession } from '../../services/authService'
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
+const VIETQR_FALLBACK = import.meta.env.VITE_VIETQR_IMAGE_URL || ''
+
+export default {
+  name: 'StudentCourseStore',
+  data() {
+    return {
+      loading: true,
+      courses: [],
+      myCourseIds: new Set(),
+      enrollingIds: new Set(),
+      search: '',
+      levelFilter: '',
+      // payment state
+      selectedCourse: null,
+      paymentStep: 'qr',
+      isChecking: false,
+      qrUrl: '',
+      paymentDetails: null,
+      paymentStatusText: '',
+      confirming: false,
+      paymentInterval: null,
+      // filter state
+      categoryFilter: '',
+      topicFilter: '',
+      availableCategories: [],
+      availableTopics: [],
+      // AI recommendation state
+      recoMessages: [],
+      recoInput: '',
+      recoLoading: false,
+      recoCourses: [],
+      recoCompleted: false,
+      chatSessionId: null,
+      followUp: null,
+      // pagination
+      currentPage: 1,
+      pageSize: 6,
+    }
+  },
+  computed: {
+    filteredCourses() {
+      const term = this.search.trim().toLowerCase()
+      return this.courses.filter(c => {
+        if (term && !(c.title||'').toLowerCase().includes(term) && !(c.description||'').toLowerCase().includes(term)) return false
+        return true
+      })
+    },
+    filteredAvailableTopics() {
+      if (!this.categoryFilter) return this.availableTopics
+      const categoryLC = this.categoryFilter.toLowerCase()
+      const topicSet = new Set()
+      this.courses.forEach(c => {
+        const catArr = (Array.isArray(c.categoriesArr) ? c.categoriesArr : (c.category ? [c.category] : []))
+          .map(x => (x || '').toLowerCase())
+        if (catArr.includes(categoryLC)) {
+          const tops = Array.isArray(c.topicsArr) ? c.topicsArr : (c.topic ? [c.topic] : [])
+          tops.forEach(t => { if (t) topicSet.add(t) })
+        }
+      })
+      const result = Array.from(topicSet).sort()
+      return result.length ? result : this.availableTopics
+    },
+    recoPlaceholder(){
+      return 'Nhập câu hỏi hoặc level/category/topic (tùy chọn)'
+    },
+    paginatedCourses(){
+      const start = (this.currentPage - 1) * this.pageSize
+      return this.filteredCourses.slice(start, start + this.pageSize)
+    },
+    totalPages(){
+      const total = this.filteredCourses.length
+      return total ? Math.ceil(total / this.pageSize) : 1
+    },
+    displayedPages(){
+      const pages = []
+      const total = this.totalPages
+      const current = this.currentPage
+      if(total <= 10){
+        for(let i=1;i<=total;i++) pages.push({ type:'page', num:i, key:'p'+i })
+        return pages
+      }
+      const windowSize = 2 // pages before/after current
+      const start = Math.max(2, current - windowSize)
+      const end = Math.min(total - 1, current + windowSize)
+      // Always show first page
+      pages.push({ type:'page', num:1, key:'p1' })
+      if(start > 2){ pages.push({ type:'ellipsis', key:'e-start' }) }
+      for(let i=start;i<=end;i++){
+        pages.push({ type:'page', num:i, key:'p'+i })
+      }
+      if(end < total - 1){ pages.push({ type:'ellipsis', key:'e-end' }) }
+      pages.push({ type:'page', num: total, key:'p'+total })
+      return pages
+    },
+    highlightedCourseId(){
+      const courseId = this.$route?.query?.courseId
+      return courseId ? String(courseId) : null
+    },
+  },
+  watch: {
+    categoryFilter() { this.topicFilter = '' },
+    search(){ this.currentPage = 1 },
+    levelFilter(){ this.currentPage = 1 },
+    categoryFilter(){ this.currentPage = 1 },
+    topicFilter(){ this.currentPage = 1 },
+  },
+  async mounted() {
+    await this.loadAll()
+  },
+  methods: {
+    authHeaders() {
+      const s = getStoredSession();
+      return s?.access_token ? { Authorization: `Bearer ${s.access_token}` } : {}
+    },
+    async loadAll(params = {}) {
+      this.loading = true
+      try {
+        const allRes = await axios.get(`${API_BASE}/student/courses`, { params })
+        const list = Array.isArray(allRes.data?.courses) ? allRes.data.courses : []
+        this.courses = list.map(c => ({
+          ...c,
+          instructorName: c.instructorName || c.instructor_name || null,
+          category: Array.isArray(c.categories) && c.categories.length ? c.categories[0] : c.category || null,
+          topic: Array.isArray(c.topics) && c.topics.length ? c.topics[0] : c.topic || null,
+          categoriesArr: Array.isArray(c.categories) ? c.categories : [],
+          topicsArr: Array.isArray(c.topics) ? c.topics : [],
+        }))
+        const catSet = new Set()
+        const topicSet = new Set()
+        this.courses.forEach(c => {
+          c.categoriesArr.forEach(cat => catSet.add(cat))
+          c.topicsArr.forEach(t => topicSet.add(t))
+        })
+        this.availableCategories = Array.from(catSet).sort()
+        this.availableTopics = Array.from(topicSet).sort()
+        try {
+          const mineRes = await axios.get(`${API_BASE}/student/my-courses`, { headers: this.authHeaders() })
+          const mine = mineRes.data?.courses || []
+          this.myCourseIds = new Set(mine.map(m => m.id))
+        } catch { this.myCourseIds = new Set() }
+      } catch (e) { console.error('Failed loading courses', e) } finally { this.loading = false }
+    },
+    isEnrolled(id) { return this.myCourseIds.has(id) },
+    formatPrice(p,c) { try { return (!p||p===0)? 'Free' : new Intl.NumberFormat('en-US',{style:'currency',currency: c||'USD'}).format(p) } catch { return p } },
+    truncate(t,max) { if(!t) return ''; return t.length>max? t.slice(0,max-1)+'…':t },
+    
+    // Enroll Flow
+    async enroll(course) {
+      if (!course?.id || this.isEnrolled(course.id)) return
+      this.enrollingIds.add(course.id)
+      try {
+        const res = await axios.post(`${API_BASE}/student/register`, { courseId: course.id }, { headers: this.authHeaders() })
+        if (res.data?.success) {
+          this.myCourseIds.add(course.id)
+          this.closeModal()
+        }
+      } catch (e) {
+        const status = e?.response?.status
+        if (status === 401) {
+          alert('Please log in to enroll in courses.')
+        } else {
+          console.error('Enroll failed', e)
+          alert('Enroll failed')
+        }
+      } finally {
+        this.enrollingIds.delete(course.id)
+      }
+    },
+    openCourse(c) { if (!c?.id) return; this.$router.push({ name: 'StudentCourseLesson', params: { courseId: c.id } }).catch(()=>{}) },
+    
+    // Payment flow (VietQR)
+    async openPayment(course) {
+      const session = getStoredSession()
+      const studentId = session?.user?.studentId
+      if (!session?.access_token || !studentId) {
+        alert('Vui lòng đăng nhập để thanh toán.')
+        this.$router.push({ name: 'Login' }).catch(()=>{})
+        return
+      }
+      this.selectedCourse = course
+      this.paymentStep = 'qr'
+      this.paymentStatusText = ''
+      try {
+        const { data } = await axios.post(
+          `${API_BASE}/payments/vietqr/checkout`,
+          { student_id: studentId, course_id: course.id },
+          { headers: this.authHeaders() }
+        )
+        this.paymentDetails = data
+        this.qrUrl = data.qr_with_amount_url || data.qr_image_url || VIETQR_FALLBACK
+        this.paymentStatusText = `Trang thai: ${data.payment_status || 'pending'}`
+        const modal = this.ensureModal()
+        modal.show()
+      } catch (e) {
+        console.error('Checkout VietQR thất bại', e)
+        alert('Không tạo được thanh toán VietQR.')
+      }
+    },
+    async confirmPaid() {
+      if (!this.paymentDetails?.invoice_number) return
+      this.confirming = true
+      try {
+        const { data } = await axios.post(
+          `${API_BASE}/payments/vietqr/confirm`,
+          { invoice_number: this.paymentDetails.invoice_number, transfer_reference: this.paymentDetails.transfer_note },
+          { headers: this.authHeaders() }
+        )
+        this.paymentDetails = { ...this.paymentDetails, ...data }
+        this.paymentStatusText = `Da gui xac nhan. Trang thai: ${data.payment_status || 'pending'}. Cho admin duyet.`
+      } catch (e) {
+        console.error('Confirm payment failed', e)
+        alert('Không gửi được xác nhận thanh toán.')
+      } finally {
+        this.confirming = false
+      }
+    },
+    async refreshInvoice() {
+      if (!this.paymentDetails?.invoice_number) return
+      this.isChecking = true
+      try {
+        const { data } = await axios.get(
+          `${API_BASE}/payments/vietqr/${this.paymentDetails.invoice_number}`,
+          { headers: this.authHeaders() }
+        )
+        this.paymentDetails = data
+        this.paymentStatusText = `Trang thai: ${data.payment_status}`
+      } catch (e) {
+        console.error('Refresh invoice failed', e)
+        alert('Không tải được trạng thái hoá đơn.')
+      } finally {
+        this.isChecking = false
+      }
+    },
+    resetPayment() {
+      this.paymentStep = 'qr'
+      this.isChecking = false
+      this.qrUrl = ''
+      this.paymentDetails = null
+      this.paymentStatusText = ''
+      this.selectedCourse = null
+      if (this.paymentInterval) { clearInterval(this.paymentInterval); this.paymentInterval = null }
+    },
+    ensureModal() {
+      let modal = window.bootstrap?.Modal.getInstance(this.$refs.paymentModal)
+      if (!modal && window.bootstrap) modal = new window.bootstrap.Modal(this.$refs.paymentModal)
+      return modal
+    },
+    closeModal() {
+      const modal = window.bootstrap?.Modal.getInstance(this.$refs.paymentModal)
+      if (modal) modal.hide()
+      this.resetPayment()
+    },
+
+    // Filter Logic
+    closeFilterPanel() { /* No-op, kept for compat */ },
+    resetFilters() {
+      this.levelFilter = ''
+      this.categoryFilter = ''
+      this.topicFilter = ''
+      this.applyFilters()
+    },
+    async applyFilters() {
+      const params = {}
+      if (this.levelFilter) params.level = this.levelFilter
+      if (this.categoryFilter) params.category = this.categoryFilter
+      if (this.topicFilter) params.topic = this.topicFilter
+      await this.loadAll(params)
+    },
+    setPage(p){
+      if(!p || p<1 || p>this.totalPages) return
+      this.currentPage = p
+    },
+
+    // ---------- AI Chat Logic (UPDATED) ----------
+    storageKey(){ return 'ai_reco_chat_v1' },
+    saveRecoState(){
+      try{
+        const payload = {
+          chatSessionId: this.chatSessionId,
+          recoMessages: this.recoMessages,
+          recoCourses: this.recoCourses,
+          recoCompleted: this.recoCompleted,
+          followUp: this.followUp,
+          savedAt: Date.now()
+        }
+        localStorage.setItem(this.storageKey(), JSON.stringify(payload))
+      }catch{}
+    },
+    loadRecoState(){
+      try{
+        const raw = localStorage.getItem(this.storageKey())
+        if(!raw) return false
+        const s = JSON.parse(raw)
+        this.chatSessionId = s.chatSessionId || null
+        this.recoMessages = Array.isArray(s.recoMessages)? s.recoMessages : []
+        this.recoCourses = Array.isArray(s.recoCourses)? s.recoCourses : []
+        this.recoCompleted = !!s.recoCompleted
+        this.followUp = s.followUp || null
+        this.$nextTick(()=>this.scrollChatBottom())
+        return true
+      }catch{ return false }
+    },
+    onCloseReco(){
+      this.saveRecoState()
+    },
+    ensureRecoModal(){
+      let modal = window.bootstrap?.Modal.getInstance(this.$refs.recoModal)
+      if(!modal && window.bootstrap){ modal = new window.bootstrap.Modal(this.$refs.recoModal) }
+      return modal
+    },
+    openRecoModal(){
+      const restored = this.loadRecoState()
+      if(!restored){
+        this.resetReco()
+        this.initRecoChat()
+      }
+      const m = this.ensureRecoModal(); m && m.show()
+    },
+    resetReco(){
+      this.recoMessages = []
+      this.recoInput = ''
+      this.recoLoading = false
+      this.recoCourses = []
+      this.recoCompleted = false
+      this.chatSessionId = null
+      this.followUp = null
+    },
+    
+    async initRecoChat(){
+      try{
+        const res = await axios.post(`${API_BASE}/student/recommend/chat/init`, {}, { headers: this.authHeaders() })
+        if(res.data?.success){
+          this.chatSessionId = res.data.sessionId
+          if(!this.recoMessages.length){
+            this.recoMessages.push({ role:'system', text: res.data.message })
+          }
+          this.saveRecoState()
+        } else {
+          console.error('Failed to init session')
+        }
+      }catch(e){
+        console.error('AI unavailable', e)
+        if(!this.recoMessages.length) {
+            this.recoMessages.push({ role:'assistant', text:'AI service unavailable.' })
+        }
+      }
+    },
+    async sendRecoInput(){
+      const val = this.recoInput.trim(); if(!val) return
+      this.recoMessages.push({ role:'user', text: val })
+      this.recoInput=''
+      this.saveRecoState()
+      await this.sendChatMessage(val)
+      this.$nextTick(()=>{ this.scrollChatBottom() })
+    },
+    
+    // Updated sendChatMessage to handle retries on invalid session (400/404)
+    async sendChatMessage(message){
+      if(!this.chatSessionId){ await this.initRecoChat() }
+      
+      this.recoLoading = true
+      
+      if(message.startsWith('/semantic ')){
+        const query = message.replace('/semantic ','').trim()
+        await this.fetchSemantic(query)
+        this.recoMessages.push({ role:'assistant', text:`Semantic suggestions for: ${query}` })
+        this.saveRecoState()
+        this.recoLoading = false
+        return
+      }
+
+      const headers = { ...this.authHeaders(), 'Content-Type': 'application/json' }
+      // FIXED PAYLOAD KEYS
+      const payload = { sessionId: this.chatSessionId, message: message }
+      
+      try {
+        const res = await axios.post(`${API_BASE}/student/recommend/chat/message`, payload, { headers })
+        this.handleChatSuccess(res.data)
+      } catch(e){
+        const status = e?.response?.status
+        
+        // AUTO RECOVERY LOGIC
+        if (status === 400 || status === 404) {
+            console.log('Session expired or invalid. Creating new session and retrying...');
+            this.chatSessionId = null;
+            await this.initRecoChat();
+            
+            if (this.chatSessionId) {
+                // Retry sending message with new ID
+                try {
+                    const retryPayload = { sessionId: this.chatSessionId, message: message };
+                    const retryRes = await axios.post(`${API_BASE}/student/recommend/chat/message`, retryPayload, { headers });
+                    this.handleChatSuccess(retryRes.data);
+                    return; // Exit on success
+                } catch (retryError) {
+                    console.error('Retry failed', retryError);
+                }
+            }
+            this.recoMessages.push({ role:'assistant', text:'Phiên chat đã hết hạn. Vui lòng thử lại.' });
+        } else if(status === 401){
+          this.recoMessages.push({ role:'assistant', text:'Please log in to use AI recommendations.' })
+        } else {
+          this.recoMessages.push({ role:'assistant', text:'Chat error occurred.' })
+        }
+        this.saveRecoState()
+      } finally {
+        this.recoLoading = false
+        this.$nextTick(()=>this.scrollChatBottom())
+      }
+    },
+
+    handleChatSuccess(data) {
+        if(!data.success){
+          this.recoMessages.push({ role:'assistant', text: data.error || 'Chat failed.' })
+        } else {
+            const rawReply = data.reply || ''
+            const cleaned = this.stripJsonBlock(rawReply)
+            this.recoMessages.push({ role:'assistant', text: cleaned })
+            this.followUp = data.followUp || null
+            const items = data.coursesWithReasons || []
+            this.recoCourses = items.map(it => ({
+                id: it.course.id,
+                title: it.course.title,
+                description: it.course.description,
+                level: it.course.level,
+                price: it.course.price,
+                currency: it.course.currency,
+                categories: Array.isArray(it.course.categories)? it.course.categories : [],
+                topics: Array.isArray(it.course.topics)? it.course.topics : [],
+                reason: it.reason
+            }))
+            if(this.recoCourses.length) this.recoCompleted = true
+        }
+        this.saveRecoState()
+    },
+
+    scrollChatBottom(){
+      try{
+        const el = this.$refs.chatWindow
+        if(el){ el.scrollTop = el.scrollHeight }
+      }catch{}
+    },
+    quickRefine(text){ this.recoInput = text; this.sendRecoInput() },
+    acceptFollowUp(){ if(this.followUp){ this.quickRefine(this.followUp) } },
+    stripJsonBlock(text){
+      try{ return text.replace(/<JSON>[\s\S]*?<\/JSON>/,'').trim() }catch{ return text }
+    },
+    formatMessage(text){
+      return (text||'').replace(/\n/g,'<br/>')
+    },
+    async fetchSemantic(query){
+      try{
+        this.recoLoading = true
+        const res = await axios.post(`${API_BASE}/student/recommend/semantic`, { query, limit: 6 })
+        const list = res.data?.recommendations || []
+        this.recoCourses = list.map(c => ({ ...c, reason: 'Semantic match' }))
+        this.recoCompleted = true
+      }catch(e){
+        this.recoMessages.push({ role:'assistant', text:'Semantic recommendation failed.' })
+      }finally{ this.recoLoading=false }
+    },
+  }
+}
