@@ -10,11 +10,11 @@
             <!-- Profile Card -->
             <div class="profile-card">
                 <!-- Avatar -->
-                <div class="avatar-section">
+                <!-- <div class="avatar-section">
                     <img :src="student.photo" alt="Profile Picture" class="profile-avatar" @click="triggerFileInput" />
                     <input type="file" ref="fileInput" accept="image/*" class="d-none" @change="onFileChange" />
                     <small class="avatar-hint">Click avatar to change photo</small>
-                </div>
+                </div> -->
 
                 <!-- Name -->
                 <h2>{{ student.name }}</h2>
@@ -45,7 +45,7 @@
                 </div>
 
                 <!-- Courses -->
-                <div class="courses-section">
+                <!-- <div class="courses-section">
                     <h5>Enrolled Courses</h5>
                     <div class="courses-list">
                         <div class="course-progress-item" v-for="course in student.courses" :key="course.id">
@@ -58,7 +58,7 @@
                             </div>
                         </div>
                     </div>
-                </div>
+                </div> -->
 
                 <!-- Actions -->
                 <div class="profile-actions">
@@ -144,24 +144,41 @@ export default {
       this.loading = true
       try{
         const headers = this.authHeaders()
-        if(!headers.Authorization){ console.warn('No JWT token found; redirecting to login'); this.loading=false; this.$router.push({ name:'Login' }).catch(()=>{}); return }
+        if(!headers.Authorization){ 
+          console.warn('No JWT token found; redirecting to login'); 
+          this.loading=false; 
+          this.$router.push({ name:'Login' }).catch(()=>{}); 
+          return 
+        }
+        
+        console.log('📡 Loading profile...')
         const res = await axios.get('http://localhost:5000/api/student/profile', { headers })
+        console.log('📋 Profile response:', res.data)
+        
         const st = res.data?.student || {}
         this.student = {
-          name: st.name || '',
+          name: st.name || 'Unknown User',
           dob: st.dob || '',
           phone: st.phone || '',
           email: st.email || '',
           address: st.address || '',
-          photo: st.photo || this.student.photo || '',
-          courses: Array.isArray(st.courses)? st.courses : (this.student.courses||[])
+          photo: st.photo || 'https://via.placeholder.com/120x120?text=No+Photo',
+          courses: Array.isArray(st.courses)? st.courses : []
         }
         this.editStudent = { ...this.student }
+        
+        console.log('✅ Profile loaded:', this.student)
       }catch(e){
         console.error('Load profile failed', e)
         const status = e?.response?.status
-        if(status === 401){ this.$router.push({ name:'Login' }).catch(()=>{}) }
-      }finally{ this.loading = false }
+        if(status === 401){ 
+          this.$router.push({ name:'Login' }).catch(()=>{}) 
+        } else {
+          alert('❌ Failed to load profile: ' + (e?.response?.data?.error || e?.message))
+        }
+      }finally{ 
+        this.loading = false 
+      }
     },
     triggerFileInput(){ this.$refs.fileInput.click() },
     async onFileChange(evt){
@@ -183,19 +200,66 @@ export default {
       this.saving = true
       try{
         const headers = this.authHeaders();
-        if(!headers.Authorization){ this.saving=false; this.$router.push({ name:'Login' }).catch(()=>{}); return }
-        const payload = { ...this.editStudent, photo: this.student.photo }
-        const res = await axios.put('http://localhost:5000/api/student/profile', payload, { headers })
-        if(res.data?.success){
-          await this.loadProfile() // fetch again from server to ensure latest data
+        if(!headers.Authorization){ 
+          this.saving=false; 
+          this.$router.push({ name:'Login' }).catch(()=>{}); 
+          return 
         }
-        const modalEl = document.getElementById('editProfileModal')
-        const modal = window.bootstrap?.Modal.getInstance(modalEl) || (window.bootstrap? new window.bootstrap.Modal(modalEl): null)
-        modal && modal.hide()
+        
+        // Prepare payload with consistent field names
+        const payload = {
+          name: this.editStudent.name || '',
+          dob: this.editStudent.dob || '',
+          phone: this.editStudent.phone || '',
+          email: this.editStudent.email || '',
+          address: this.editStudent.address || '',
+          photo: this.student.photo || ''
+        }
+        
+        console.log('Sending update payload:', payload)
+        
+        const res = await axios.put('http://localhost:5000/api/student/profile', payload, { 
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        console.log('Update response:', res.data)
+        
+        if(res.data?.success){
+          // Update local data immediately
+          this.student = { ...this.student, ...payload }
+          
+          // Show success message
+          alert('✅ Profile updated successfully!')
+          
+          // Hide modal
+          const modalEl = document.getElementById('editProfileModal')
+          const modal = window.bootstrap?.Modal.getInstance(modalEl) || (window.bootstrap? new window.bootstrap.Modal(modalEl): null)
+          modal && modal.hide()
+          
+          // Reload from server to ensure consistency
+          await this.loadProfile()
+          
+          // Emit event to update navbar
+          window.dispatchEvent(new CustomEvent('profileUpdated', { 
+            detail: { name: payload.name } 
+          }))
+        } else {
+          alert('❌ Failed to update profile: ' + (res.data?.error || 'Unknown error'))
+        }
       }catch(e){
         console.error('Update profile failed', e)
-        if(e?.response?.status===401){ this.$router.push({ name:'Login' }).catch(()=>{}) }
-      } finally { this.saving = false }
+        const errorMsg = e?.response?.data?.error || e?.response?.data?.message || e?.message || 'Unknown error'
+        alert(`❌ Error updating profile: ${errorMsg}`)
+        
+        if(e?.response?.status===401){ 
+          this.$router.push({ name:'Login' }).catch(()=>{}) 
+        }
+      } finally { 
+        this.saving = false 
+      }
     }
   },
   async mounted(){

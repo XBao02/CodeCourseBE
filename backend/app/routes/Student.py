@@ -938,112 +938,176 @@ def _get_current_user():
 def _get_student_for_user(user: User):
     if not user:
         return None
-    # Prefer ORM; fall back to raw query if mapping is used in schema
+    # Use ORM to get the actual Student object
     try:
-        user_id = getattr(user, 'Id', None) or getattr(user, 'id', None)
-        return db.session.query(Student).filter_by(UserId=user_id).first()
-    except Exception:
-        m = db.session.execute(_sa_text('SELECT * FROM Students WHERE UserId=:uid'), {'uid': user_id}).mappings().first()
-        return m
+        user_id = getattr(user, 'id', None) or getattr(user, 'Id', None)
+        if not user_id:
+            return None
+        return db.session.query(Student).filter_by(user_id=user_id).first()
+    except Exception as e:
+        print(f'❌ Error getting student for user {user_id}: {e}')
+        return None
 
 
 def _pick(*names, src=None, default=None):
     for n in names:
         try:
+            # support dict mappings
             if isinstance(src, dict) and n in src:
                 return src[n]
-            v = getattr(src, n)
-            return v
+            # support object attributes
+            if hasattr(src, n):
+                return getattr(src, n)
+            # also try case variations
+            low = n.lower()
+            for attr in dir(src):
+                if attr.lower() == low:
+                    return getattr(src, attr)
         except Exception:
             continue
     return default
 
 
 def _serialize_student(st, user: User):
+    # Convert date to string if needed
+    birth_date = None
+    if st and hasattr(st, 'birth_date') and st.birth_date:
+        birth_date = st.birth_date.strftime('%Y-%m-%d') if hasattr(st.birth_date, 'strftime') else str(st.birth_date)
+    
     return {
-        'id': _pick('Id', 'id', src=st),
-        'name': _pick('FullName', 'name', src=user) or _pick('Name', 'name', src=st),
-        'email': _pick('Email', 'email', src=user) or _pick('Email', 'email', src=st),
-        'phone': _pick('Phone', 'phone', src=user) or _pick('Phone', 'phone', src=st),
-        'photo': _pick('AvatarUrl', 'avatar_url', 'photo', src=user) or _pick('AvatarUrl', 'avatar_url', 'photo', src=st),
-        'dob': _pick('Dob', 'DOB', 'DateOfBirth', 'BirthDate', 'dob', src=user) or _pick('Dob', 'DOB', 'DateOfBirth', 'BirthDate', 'dob', src=st),
-        'address': _pick('Address', 'address', src=user) or _pick('Address', 'address', src=st),
-        'createdAt': _pick('CreatedAt', 'created_at', src=user) or _pick('CreatedAt', 'created_at', src=st),
-        'updatedAt': _pick('UpdatedAt', 'updated_at', src=user) or _pick('UpdatedAt', 'updated_at', src=st),
-        'courses': [],  # can be populated later
+        'id': st.id if st else None,
+        'name': user.full_name if user else '',
+        'email': user.email if user else '',
+        'phone': st.phone if st else '',
+        'photo': user.avatar_url if user else '',
+        'dob': birth_date or '',
+        'address': st.address if st else '',
+        'createdAt': user.created_at.isoformat() if user and user.created_at else '',
+        'updatedAt': user.updated_at.isoformat() if user and user.updated_at else '',
+        'courses': [],
     }
 
 
 @student_bp.get('/profile')
 @jwt_required()
 def get_profile():
-    user = _get_current_user()
-    if not user:
-        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-    st = _get_student_for_user(user)
-    if not st:
-        return jsonify({'success': False, 'error': 'Student not found'}), 404
-    return jsonify({'success': True, 'student': _serialize_student(st, user)})
+    try:
+        user = _get_current_user()
+        if not user:
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+            
+        print(f'📋 Getting profile for user {user.id} ({user.email})')
+        st = _get_student_for_user(user)
+        
+        if not st:
+            print(f'⚠️ No student record found for user {user.id}, creating one...')
+            # Create a student record if it doesn't exist
+            st = Student(
+                user_id=user.id,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            db.session.add(st)
+            db.session.commit()
+            
+        print(f'✅ Student record found/created: {st.id}')
+        result = _serialize_student(st, user)
+        print(f'📤 Returning profile data: {result}')
+        
+        return jsonify({'success': True, 'student': result})
+    except Exception as e:
+        print(f'❌ Get profile error: {str(e)}')
+        print(f'❌ Traceback: {traceback.format_exc()}')
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @student_bp.put('/profile')
 @jwt_required()
 def update_profile():
-    user = _get_current_user()
-    if not user:
-        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-    data = request.get_json(silent=True) or {}
-    name = data.get('name') or data.get('fullName')
-    phone = data.get('phone')
-    email = data.get('email')
-    dob = data.get('dob') or data.get('dateOfBirth')
-    address = data.get('address')
-    photo = data.get('photo')
     try:
+        user = _get_current_user()
+        if not user:
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+        
+        data = request.get_json(silent=True) or {}
+        print(f'📝 Profile update request for user {user.id}: {data}')
+        
+        name = data.get('name') or data.get('fullName')
+        phone = data.get('phone')
+        email = data.get('email')
+        dob = data.get('dob') or data.get('dateOfBirth')
+        address = data.get('address')
+        photo = data.get('photo')
+        
         # --- Update User ---
+        print(f'🔄 Updating user fields...')
+        updated_fields = []
+        
         if name is not None:
-            if hasattr(user, 'FullName'): user.FullName = name
-            elif hasattr(user, 'name'): user.name = name
-        if phone is not None and hasattr(user, 'Phone'): user.Phone = phone
+            user.full_name = name
+            updated_fields.append(f'full_name: {name}')
+                
         if email is not None:
-            if hasattr(user, 'Email'): user.Email = email
-            elif hasattr(user, 'email'): user.email = email
-        if dob is not None:
-            for attr in ['Dob','DOB','DateOfBirth','BirthDate','dob']:
-                if hasattr(user, attr): setattr(user, attr, dob); break
-        if address is not None:
-            for attr in ['Address','address']:
-                if hasattr(user, attr): setattr(user, attr, address); break
+            user.email = email
+            updated_fields.append(f'email: {email}')
+                
         if photo is not None:
-            for attr in ['AvatarUrl','avatar_url','photo']:
-                if hasattr(user, attr): setattr(user, attr, photo); break
-        if hasattr(user, 'UpdatedAt'):
-            user.UpdatedAt = datetime.utcnow()
+            user.avatar_url = photo
+            updated_fields.append(f'avatar_url: {photo}')
+                    
+        user.updated_at = datetime.utcnow()
+        updated_fields.append('updated_at: now')
 
         # --- Update Student row as well ---
         st = _get_student_for_user(user)
-        if st is not None and not isinstance(st, dict):
-            if name is not None:
-                for attr in ['FullName','Name','name']:
-                    if hasattr(st, attr): setattr(st, attr, name); break
+        if st is not None:
+            print(f'🎓 Updating student record (ID: {st.id})...')
+                        
             if phone is not None:
-                for attr in ['Phone','phone']:
-                    if hasattr(st, attr): setattr(st, attr, phone); break
+                st.phone = phone
+                updated_fields.append(f'student.phone: {phone}')
+                        
             if dob is not None:
-                for attr in ['Dob','DOB','DateOfBirth','BirthDate','dob']:
-                    if hasattr(st, attr): setattr(st, attr, dob); break
+                # Convert string to date if needed
+                if isinstance(dob, str):
+                    try:
+                        from datetime import datetime as dt
+                        st.birth_date = dt.strptime(dob, '%Y-%m-%d').date()
+                    except ValueError:
+                        print(f'⚠️ Invalid date format: {dob}')
+                else:
+                    st.birth_date = dob
+                updated_fields.append(f'student.birth_date: {dob}')
+                        
             if address is not None:
-                for attr in ['Address','address']:
-                    if hasattr(st, attr): setattr(st, attr, address); break
-            if photo is not None:
-                for attr in ['AvatarUrl','avatar_url','photo']:
-                    if hasattr(st, attr): setattr(st, attr, photo); break
-            if hasattr(st, 'UpdatedAt'):
-                st.UpdatedAt = datetime.utcnow()
+                st.address = address
+                updated_fields.append(f'student.address: {address}')
+                        
+            st.updated_at = datetime.utcnow()
+            updated_fields.append('student.updated_at: now')
+        else:
+            print('⚠️ Student record not found, creating one...')
+            # Create a new student record if it doesn't exist
+            st = Student(
+                user_id=user.id,
+                phone=phone or '',
+                address=address or '',
+                birth_date=dob if dob else None,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            db.session.add(st)
+            updated_fields.append('Created new student record')
 
+        print(f'✅ Updated fields: {updated_fields}')
         db.session.commit()
-        return jsonify({'success': True})
+        print('💾 Database committed successfully')
+        
+        return jsonify({'success': True, 'message': 'Profile updated successfully'})
+        
     except Exception as e:
+        print(f'❌ Profile update error: {str(e)}')
+        print(f'❌ Traceback: {traceback.format_exc()}')
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
 

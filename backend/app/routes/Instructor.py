@@ -23,6 +23,62 @@ def get_current_instructor_id():
         print(f"Error getting instructor ID: {e}")
         return None
 
+@instructor_bp.route("/api/instructor/profile", methods=['GET'])
+@instructor_bp.route("/profile", methods=['GET'])
+@jwt_required()
+def get_instructor_profile():
+    """
+    Get current instructor's profile information
+    """
+    try:
+        user_id = get_jwt_identity()
+        print(f"🔍 get_instructor_profile - user_id from JWT: {user_id}")
+        
+        user = User.query.get(user_id)
+        if not user:
+            print(f"❌ User not found for id: {user_id}")
+            return jsonify({"message": "User not found"}), 404
+        
+        print(f"✅ Found user: {user.email}, role: {user.role}")
+        
+        if user.role != 'instructor':
+            print(f"❌ User role is {user.role}, not instructor")
+            return jsonify({"message": "Unauthorized or invalid instructor"}), 401
+        
+        instructor = Instructor.query.filter_by(user_id=user_id).first()
+        if not instructor:
+            print(f"❌ Instructor record not found for user_id: {user_id}")
+            return jsonify({"message": "Instructor profile not found"}), 404
+        
+        print(f"✅ Found instructor: {instructor.id}")
+        
+        # Safely get attributes with fallbacks
+        full_name = getattr(user, 'full_name', None) or getattr(user, 'FullName', None)
+        if not full_name:
+            full_name = user.email.split('@')[0]
+        
+        result = {
+            "id": instructor.id,
+            "user_id": user.id,
+            "username": full_name,  # Use full_name as username since User model doesn't have username field
+            "email": user.email,
+            "full_name": full_name,
+            "biography": getattr(instructor, 'biography', None) or getattr(instructor, 'Biography', None),
+            "expertise": getattr(instructor, 'expertise', None) or getattr(instructor, 'Expertise', None),
+            "years_experience": getattr(instructor, 'years_experience', 0) or getattr(instructor, 'YearsExperience', 0),
+            "avatar_url": getattr(user, 'avatar_url', None) or getattr(user, 'AvatarUrl', None),
+            "created_at": user.created_at.isoformat() if user.created_at else None
+        }
+        
+        print(f"📤 Returning instructor profile: {result}")
+        return jsonify(result), 200
+        
+    except Exception as e:
+        print(f"❌ Error getting instructor profile: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"message": "Internal server error", "error": str(e)}), 500
+
 @instructor_bp.route("/api/courses", methods=['GET'])
 @instructor_bp.route("/courses", methods=['GET'])
 @jwt_required()
@@ -1231,6 +1287,109 @@ def get_instructor_reports():
         import traceback
         traceback.print_exc()
         return jsonify({'message': 'Internal server error', 'error': str(e)}), 500
+
+
+# =============================
+#      Instructor Report APIs
+# =============================
+
+@instructor_bp.route('/api/instructor/reports/revenue', methods=['GET', 'OPTIONS'])
+@jwt_required(optional=True)
+def instructor_reports_revenue():
+    """Return last 6 months revenue for the current instructor.
+    Handles CORS preflight via OPTIONS.
+    """
+    # CORS preflight support
+    if request.method == 'OPTIONS':
+        return jsonify({'success': True}), 200
+    try:
+        # Determine instructor_id: query param or JWT
+        instructor_id = request.args.get('instructor_id', type=int) or get_current_instructor_id()
+        if not instructor_id:
+            return jsonify({'message': 'Unauthorized'}), 401
+        # Gather instructor courses
+        courses = Course.query.filter_by(instructor_id=instructor_id).all()
+        course_ids = [c.id for c in courses]
+        # Collect enrollments that are completed (mock status field may vary)
+        # Fallback when no status field exists: count all enrollments
+        enrollments = []
+        if course_ids:
+            try:
+                enrollments = Enrollment.query.filter(Enrollment.course_id.in_(course_ids)).all()
+            except Exception:
+                enrollments = []
+        # Build revenue per month for last 6 months
+        from datetime import timedelta
+        now = datetime.utcnow()
+        months = []
+        for i in range(5, -1, -1):
+            dt = now - timedelta(days=30 * i)
+            months.append({'key': dt.strftime('%Y-%m'), 'label': dt.strftime('%b')})
+        revenue_map = {m['key']: 0.0 for m in months}
+        # Compute revenue: sum course.price for completed enrollments
+        price_map = {c.id: float(c.price or 0.0) for c in courses}
+        for e in enrollments:
+            # Derive a naive month; prefer updated_at/created_at if present else current
+            try:
+                dt = getattr(e, 'updated_at', None) or getattr(e, 'created_at', None) or now
+            except Exception:
+                dt = now
+            key = dt.strftime('%Y-%m')
+            # Only count if in last 6 months
+            if key in revenue_map:
+                status = getattr(e, 'status', 'completed')
+                if status == 'completed':
+                    revenue_map[key] += price_map.get(e.course_id, 0.0)
+        series = [{'month': m['label'], 'amount': round(revenue_map[m['key']], 2)} for m in months]
+        return jsonify({'success': True, 'series': series}), 200
+    except Exception as e:
+        print(f"Error building revenue report: {e}")
+        import traceback; traceback.print_exc()
+        return jsonify({'success': False, 'message': 'Internal server error'}), 500
+
+
+@instructor_bp.route('/api/instructor/reports/progress', methods=['GET', 'OPTIONS'])
+@jwt_required(optional=True)
+def instructor_reports_progress():
+    """Return student progress distribution (completed vs in-progress) for current instructor.
+    Handles CORS preflight via OPTIONS.
+    """
+    if request.method == 'OPTIONS':
+        return jsonify({'success': True}), 200
+    try:
+        instructor_id = request.args.get('instructor_id', type=int) or get_current_instructor_id()
+        if not instructor_id:
+            return jsonify({'message': 'Unauthorized'}), 401
+        courses = Course.query.filter_by(instructor_id=instructor_id).all()
+        course_ids = [c.id for c in courses]
+        completed = 0
+        in_progress = 0
+        dropped = 0
+        if course_ids:
+            try:
+                rows = Enrollment.query.filter(Enrollment.course_id.in_(course_ids)).all()
+            except Exception:
+                rows = []
+            for e in rows:
+                status = getattr(e, 'status', None) or 'enrolled'
+                if status == 'completed':
+                    completed += 1
+                elif status in ('active', 'enrolled', 'in_progress'):
+                    in_progress += 1
+                elif status == 'dropped':
+                    dropped += 1
+        return jsonify({
+            'success': True,
+            'distribution': {
+                'completed': completed,
+                'inProgress': in_progress,
+                'dropped': dropped
+            }
+        }), 200
+    except Exception as e:
+        print(f"Error building progress report: {e}")
+        import traceback; traceback.print_exc()
+        return jsonify({'success': False, 'message': 'Internal server error'}), 500
 
 
 @instructor_bp.route('/api/courses/<int:course_id>', methods=['GET'])

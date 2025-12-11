@@ -26,15 +26,6 @@
           <h6>COMPLETED COURSES</h6>
           <h3>{{ stats.completed }}</h3>
         </div>
-        <div class="stat-card">
-          <h6>PENDING COURSES</h6>
-          <h3>{{ stats.pending }}</h3>
-        </div>
-        <div class="stat-card">
-          <h6>AVERAGE TEST SCORE</h6>
-          <h3>{{ stats.avgScore }}%</h3>
-          <div class="small text-muted" v-if="stats.testsTaken > 0">based on {{ stats.testsTaken }} test{{ stats.testsTaken>1? 's':'' }}</div>
-        </div>
       </div>
 
       <div class="content-card">
@@ -45,15 +36,44 @@
       <div class="content-card">
         <h5>My Courses</h5>
         <div class="courses-grid">
-          <div v-for="c in courses" :key="c.id" class="course-card">
-            <h6>{{ c.title }}</h6>
+          <div v-for="c in courses" :key="c.id" class="course-card" :class="{ 'course-completed': isCourseMarkedCompleted(c.id) }">
+            <div class="course-header">
+              <h6>{{ c.title }}</h6>
+              <div class="course-status-badge" v-if="isCourseMarkedCompleted(c.id)">
+                <span class="completion-icon">✓</span>
+                <span>Completed</span>
+              </div>
+            </div>
             <p class="course-meta">Level: {{ c.level || '-' }} · {{ c.isPublic ? 'Public' : 'Private' }}</p>
             <div class="course-actions">
-              <button class="open-btn" @click="openCourse(c)">Open Course</button>
-              <span v-if="isCourseMarkedCompleted(c.id)" class="course-done-label">Đã xong</span>
+              <button class="open-btn" @click="openCourse(c)" :class="{ 'completed-btn': isCourseMarkedCompleted(c.id) }">
+                {{ isCourseMarkedCompleted(c.id) ? 'Review Course' : 'Continue Learning' }}
+              </button>
             </div>
           </div>
-          <div v-if="!courses.length" class="course-card"><p>No courses</p></div>
+          <div v-if="!courses.length" class="course-card empty-state">
+            <p>No courses enrolled yet</p>
+            <router-link to="/student/course-store" class="browse-btn">Browse Courses</router-link>
+          </div>
+        </div>
+      </div>
+
+      <!-- Completed Courses Section (if any) -->
+      <div class="content-card" v-if="completedCourses.length > 0">
+        <h5>Recently Completed Courses</h5>
+        <div class="completed-courses-list">
+          <div v-for="c in completedCourses" :key="'completed-' + c.id" class="completed-course-item">
+            <div class="completed-course-info">
+              <div class="completion-badge">
+                <span class="completion-icon">🎉</span>
+              </div>
+              <div class="course-details">
+                <h6>{{ c.title }}</h6>
+                <p class="completion-date">Completed recently</p>
+              </div>
+            </div>
+            <button class="review-btn" @click="openCourse(c)">Review</button>
+          </div>
         </div>
       </div>
     </div>
@@ -94,6 +114,10 @@ export default {
     loggedUserId() {
       return getStoredSession()?.user?.id || null
     },
+    completedCourses() {
+      const completedIds = getCompletedCourseIds()
+      return this.courses.filter(c => completedIds.has(c.id))
+    },
   },
   methods: {
     authHeaders() {
@@ -112,8 +136,11 @@ export default {
         this.courses = Array.isArray(mc.courses) ? mc.courses : []
         // Stats from courses list
         this.stats.enrolled = this.courses.length
-        this.stats.completed = this.courses.filter(c => (c.enrollmentStatus || '').toLowerCase() === 'completed').length
-        this.stats.pending = this.courses.filter(c => (c.enrollmentStatus || '').toLowerCase() !== 'completed').length
+        
+        // Count completed courses from localStorage (user marked as completed)
+        const completedIds = getCompletedCourseIds()
+        this.stats.completed = this.courses.filter(c => completedIds.has(c.id)).length
+        this.stats.pending = this.courses.length - this.stats.completed
 
         // Test metrics (average score and attempts)
         try {
@@ -169,6 +196,11 @@ export default {
     },
     syncCompletedCourses() {
       this.completedCourseIds = getCompletedCourseIds()
+      
+      // Recalculate stats when completed courses change
+      const completedIds = getCompletedCourseIds()
+      this.stats.completed = this.courses.filter(c => completedIds.has(c.id)).length
+      this.stats.pending = this.courses.length - this.stats.completed
     },
   },
   components: {
@@ -195,8 +227,14 @@ export default {
 .status-not-started { background:#e5e7eb; color:#374151; }
 .courses-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
 .course-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px; }
+.course-card.course-completed { border-color:#10b981; background:#f0fdf4; }
+.course-header { display:flex; justify-content:space-between; align-items:flex-start; }
+.course-status-badge { display:flex; align-items:center; gap:4px; background:#dcfce7; color:#047857; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:600; }
+.completion-icon { font-size:14px; }
 .open-btn { align-self:flex-start; background:#2563eb; color:#fff; border:none; padding:8px 14px; border-radius:6px; font-size:14px; cursor:pointer; font-weight:500; }
 .open-btn:hover { background:#1d4ed8; }
+.open-btn.completed-btn { background:#10b981; }
+.open-btn.completed-btn:hover { background:#059669; }
 .course-actions { display:flex; align-items:center; gap:10px; margin-top:auto; }
 .course-done-label { font-size:12px; font-weight:600; color:#047857; background:#dcfce7; padding:4px 10px; border-radius:999px; line-height:1; }
 .progress-bar-wrapper { width:100%; height:8px; background:#eef2f7; border-radius:8px; overflow:hidden; }
@@ -206,4 +244,17 @@ export default {
 .outline-btn { border: 1px solid #2563eb; border-radius: 10px; padding: 10px 16px; background: transparent; color: #2563eb; font-weight: 600; cursor: pointer; transition: background 0.2s ease; }
 .outline-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .outline-btn:not(:disabled):hover { background: rgba(37, 99, 235, 0.08); }
+
+/* Completed Courses Section */
+.completed-courses-list { display:flex; flex-direction:column; gap:12px; }
+.completed-course-item { display:flex; justify-content:space-between; align-items:center; padding:12px; background:#f8fafc; border-radius:8px; border-left:4px solid #10b981; }
+.completed-course-info { display:flex; align-items:center; gap:12px; }
+.completion-badge { width:40px; height:40px; background:#dcfce7; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+.course-details h6 { margin:0; font-size:16px; font-weight:600; }
+.completion-date { margin:0; font-size:12px; color:#6b7280; }
+.review-btn { background:#10b981; color:#fff; border:none; padding:8px 16px; border-radius:6px; font-size:14px; cursor:pointer; font-weight:500; }
+.review-btn:hover { background:#059669; }
+.empty-state { text-align:center; }
+.browse-btn { display:inline-block; margin-top:8px; background:#2563eb; color:#fff; text-decoration:none; padding:8px 16px; border-radius:6px; font-size:14px; font-weight:500; }
+.browse-btn:hover { background:#1d4ed8; }
 </style>

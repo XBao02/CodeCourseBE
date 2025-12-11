@@ -2,7 +2,6 @@
     <nav class="navbar">
         <div class="navbar-container">
 
-            <!-- Logo -->
             <a class="navbar-logo" href="/">
                 <div class="logo-box">CC</div>
                 <div class="logo-text">
@@ -11,7 +10,6 @@
                 </div>
             </a>
 
-            <!-- Menu items -->
             <ul class="navbar-menu">
                 <li class="nav-item">
                     <router-link to="/instructor" exact class="nav-link">Dashboard</router-link>
@@ -22,33 +20,19 @@
                 <li class="nav-item">
                     <router-link to="/instructor/chat" class="nav-link">Student Chat</router-link>
                 </li>
-                <li class="nav-item">
-                    <router-link to="/instructor/reports" class="nav-link">Reporting & Statistics</router-link>
-                </li>
             </ul>
 
-            <!-- Search and Right section -->
             <div class="navbar-right">
-                <div class="search-container">
-                    <input type="text" class="search-input" placeholder="Search course or instruction...">
-                </div>
-                <button class="notification-btn">
-                    Notifications
-                    <span class="notification-badge">3</span>
-                </button>
-
-                <!-- User dropdown -->
-                <div class="dropdown">
-                    <button class="user-btn" @click="toggleDropdown">
-                        <div class="user-avatar">A</div>
+                <div class="dropdown" ref="dropdownRef">
+                    <button class="user-btn" @click.stop="toggleDropdown">
+                        <div class="user-avatar">{{ userInitial }}</div>
                         <div class="user-info">
-                            <div class="user-name">Demo User</div>
-                            <small class="user-role">Instructor</small>
+                            <div class="user-name">{{ instructorName }}</div>
+                            <small class="user-role">{{ userRole }}</small>
                         </div>
                     </button>
-                    <ul v-if="showDropdown" class="dropdown-menu">
-                        <li><a href="#" @click.prevent="goToSettings">Settings</a></li>
-                        <li class="divider"></li>
+                    
+                    <ul v-show="showDropdown" class="dropdown-menu">
                         <li><a href="#" @click.prevent="logout" class="logout">Logout</a></li>
                     </ul>
                 </div>
@@ -59,34 +43,103 @@
 </template>
 
 <script>
+import { getStoredSession } from '../../../services/authService'
+
 export default {
     data() {
         return {
-            showDropdown: false
+            showDropdown: false,
+            instructorName: 'Instructor',
+            userRole: 'Instructor'
         }
     },
+    computed: {
+        userInitial() {
+            const name = this.instructorName || 'I'
+            return name.trim().charAt(0).toUpperCase()
+        }
+    },
+    async mounted() {
+        console.log('🚀 MenuInstructor mounted');
+        await this.loadUser();
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', this.handleClickOutside);
+        
+        console.log('✅ MenuInstructor initialized');
+    },
+    beforeDestroy() {
+        // Dọn dẹp event listener khi component bị hủy để tránh lỗi bộ nhớ
+        document.removeEventListener('click', this.handleClickOutside);
+    },
     methods: {
+        handleClickOutside(event) {
+            // Kiểm tra xem click có nằm trong dropdown không
+            const dropdownElement = this.$refs.dropdownRef;
+            if (dropdownElement && !dropdownElement.contains(event.target)) {
+                if (this.showDropdown) {
+                    console.log('🔽 Closing dropdown (clicked outside)');
+                    this.showDropdown = false;
+                }
+            }
+        },
         toggleDropdown() {
+            console.log('🔘 toggleDropdown clicked!');
             this.showDropdown = !this.showDropdown;
         },
         goToSettings() {
+            console.log('⚙️ goToSettings clicked');
             this.showDropdown = false;
             this.$router.push('/instructor/settings');
         },
         logout() {
+            console.log('🚪 Logging out instructor...');
             this.showDropdown = false;
+            
             localStorage.removeItem('token');
             localStorage.removeItem('userInfo');
-            this.$router.push('/');
-        }
-    },
-    mounted() {
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.dropdown')) {
-                this.showDropdown = false;
+            localStorage.removeItem('session');
+            sessionStorage.clear();
+            
+            this.$router.push('/login').catch(() => {
+                this.$router.push('/');
+            });
+        },
+        async fetchProfile() {
+            try {
+                const session = getStoredSession();
+                if (!session?.access_token) return;
+                
+                const axios = (await import('axios')).default;
+                const res = await axios.get('http://localhost:5000/api/instructor/profile', {
+                    headers: { Authorization: `Bearer ${session.access_token}` }
+                });
+                
+                const name = res.data?.full_name || res.data?.username || '';
+                if (name) {
+                    this.instructorName = name;
+                }
+                
+                const role = session?.user?.role || session?.role || 'instructor';
+                this.userRole = (role || '').charAt(0).toUpperCase() + (role || '').slice(1);
+            } catch (e) {
+                console.warn('Profile load failed:', e);
             }
-        });
+        },
+        async loadUser() {
+            const session = getStoredSession();
+            const u = session?.user || {};
+            const name = u.full_name || u.FullName || u.name || u.username;
+            
+            if (name) {
+                this.instructorName = name;
+            } else {
+                await this.fetchProfile();
+            }
+            
+            const role = u.role || session?.role || 'instructor';
+            this.userRole = (role || '').charAt(0).toUpperCase() + (role || '').slice(1);
+        }
     }
 };
 </script>
@@ -97,6 +150,9 @@ export default {
     border-bottom: 1px solid #e5e7eb;
     padding: 0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    /* --- SỬA LỖI TẠI ĐÂY --- */
+    position: relative;  /* Bắt buộc phải có để z-index hoạt động */
+    z-index: 1000;       /* Đảm bảo navbar nằm trên nội dung trang */
 }
 
 .navbar-container {
@@ -202,63 +258,10 @@ export default {
     flex-shrink: 0;
 }
 
-.search-container {
-    position: relative;
-}
-
-.search-input {
-    width: 300px;
-    padding: 10px 14px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 14px;
-    background: #f9fafb;
-    transition: all 0.2s ease;
-}
-
-.search-input::placeholder {
-    color: #9ca3af;
-}
-
-.search-input:focus {
-    outline: none;
-    border-color: #3b82f6;
-    background: white;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.notification-btn {
-    background: none;
-    border: 1px solid #d1d5db;
-    padding: 8px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 18px;
-    position: relative;
-    transition: all 0.2s ease;
-}
-
-.notification-btn:hover {
-    background: #f9fafb;
-    border-color: #9ca3af;
-}
-
-.notification-badge {
-    position: absolute;
-    top: -6px;
-    right: -6px;
-    background: #ef4444;
-    color: white;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 2px 6px;
-    border-radius: 50%;
-    min-width: 20px;
-    text-align: center;
-}
-
+/* Dropdown Styles */
 .dropdown {
     position: relative;
+    /* Loại bỏ overflow hidden nếu có ở các thẻ cha */
 }
 
 .user-btn {
@@ -271,6 +274,7 @@ export default {
     align-items: center;
     gap: 10px;
     transition: all 0.2s ease;
+    width: 100%; /* Đảm bảo nút nhận full click area */
 }
 
 .user-btn:hover {
@@ -289,12 +293,14 @@ export default {
     font-weight: 600;
     font-size: 14px;
     border-radius: 6px;
+    flex-shrink: 0;
 }
 
 .user-info {
     display: flex;
     flex-direction: column;
     line-height: 1.2;
+    text-align: left;
 }
 
 .user-name {
@@ -302,6 +308,7 @@ export default {
     font-weight: 600;
     color: #1a1a1a;
     margin: 0;
+    white-space: nowrap;
 }
 
 .user-role {
@@ -312,31 +319,31 @@ export default {
 
 .dropdown-menu {
     position: absolute;
-    top: 100%;
+    top: calc(100% + 8px); /* Cách nút một chút */
     right: 0;
     background: white;
     border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    margin-top: 8px;
-    padding: 6px 0;
+    border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    min-width: 180px;
     list-style: none;
-    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
-    min-width: 160px;
+    margin: 0;
+    padding: 6px 0;
+    z-index: 9999;
+    display: block;
 }
 
 .dropdown-menu li a {
     display: block;
     padding: 10px 16px;
-    color: #374151;
+    color: #1a1a1a;
     text-decoration: none;
     font-size: 14px;
-    transition: all 0.2s ease;
+    transition: background 0.2s ease;
 }
 
 .dropdown-menu li a:hover {
-    background: #f9fafb;
-    color: #1a1a1a;
+    background: #f3f4f6;
 }
 
 .dropdown-menu li a.logout {
@@ -354,13 +361,7 @@ export default {
 }
 
 @media (max-width: 1024px) {
-    .navbar-menu {
-        gap: 20px;
-    }
-
-    .search-input {
-        width: 200px;
-    }
+    .navbar-menu { gap: 20px; }
 }
 
 @media (max-width: 768px) {
@@ -369,22 +370,7 @@ export default {
         height: 60px;
         gap: 12px;
     }
-
-    .navbar-menu {
-        display: none;
-    }
-
-    .search-input {
-        width: 150px;
-        font-size: 13px;
-    }
-
-    .logo-title {
-        font-size: 13px;
-    }
-
-    .logo-subtitle {
-        display: none;
-    }
+    .navbar-menu { display: none; }
+    .logo-subtitle { display: none; }
 }
 </style>

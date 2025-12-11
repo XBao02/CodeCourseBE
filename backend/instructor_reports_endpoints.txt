@@ -1,0 +1,69 @@
+# Add these two endpoints to backend/app/routes/Instructor.py
+# Place them after the get_instructor_reports() function (around line 1100)
+
+@instructor_bp.route('/api/instructor/reports/revenue', methods=['GET', 'OPTIONS'])
+@jwt_required(optional=True)
+def instructor_reports_revenue():
+    """Revenue report for last 6 months"""
+    try:
+        from collections import defaultdict
+        points = defaultdict(int)
+        
+        try:
+            instructor_id = get_current_instructor_id()
+            if instructor_id:
+                course_ids = [c.id for c in Course.query.filter_by(instructor_id=instructor_id).all()]
+                if course_ids:
+                    enrolls = Enrollment.query.filter(Enrollment.course_id.in_(course_ids)).all()
+                    for e in enrolls:
+                        created = getattr(e, 'created_at', None) or datetime.utcnow()
+                        label = created.strftime('%Y-%m')
+                        price = getattr(getattr(e, 'course', None), 'price', 0) or 0
+                        points[label] += int(price)
+        except Exception:
+            pass
+        
+        # Build last 6 months labels
+        now = datetime.utcnow()
+        base = datetime(now.year, now.month, 1)
+        labels = []
+        for i in range(5, -1, -1):
+            m = base.month - i
+            y = base.year
+            while m <= 0:
+                m += 12
+                y -= 1
+            labels.append(f"{y:04d}-{m:02d}")
+        
+        result = [{'label': l, 'amount': int(points.get(l, 0))} for l in labels]
+        return jsonify({'points': result}), 200
+    except Exception as e:
+        return jsonify({'points': [], 'error': str(e)}), 200
+
+
+@instructor_bp.route('/api/instructor/reports/progress', methods=['GET', 'OPTIONS'])
+@jwt_required(optional=True)
+def instructor_reports_progress():
+    """Student progress report: completed vs in-progress"""
+    try:
+        completed = 0
+        in_progress = 0
+        
+        try:
+            instructor_id = get_current_instructor_id()
+            if instructor_id:
+                course_ids = [c.id for c in Course.query.filter_by(instructor_id=instructor_id).all()]
+                if course_ids:
+                    enrolls = Enrollment.query.filter(Enrollment.course_id.in_(course_ids)).all()
+                    for e in enrolls:
+                        status = (getattr(e, 'status', '') or '').lower()
+                        if status in ('completed', 'complete', 'done', 'finished'):
+                            completed += 1
+                        else:
+                            in_progress += 1
+        except Exception:
+            pass
+        
+        return jsonify({'completed': int(completed), 'inProgress': int(in_progress)}), 200
+    except Exception as e:
+        return jsonify({'completed': 0, 'inProgress': 0, 'error': str(e)}), 200

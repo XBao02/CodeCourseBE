@@ -11,7 +11,7 @@
         </button>
         
         <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav mx-auto">
+          <!-- <ul class="navbar-nav mx-auto">
             <li class="nav-item mx-2">
               <a class="nav-link fw-medium text-dark" href="#">Home</a>
             </li>
@@ -27,10 +27,10 @@
             <li class="nav-item mx-2">
               <a class="nav-link fw-medium text-dark" href="#contact">Contact</a>
             </li>
-          </ul>
+          </ul> -->
           
-          <div class="d-flex flex-wrap gap-2 align-items-center justify-content-lg-end justify-content-center">
-            <router-link to="/student" class="btn btn-outline-secondary px-3">
+          <div class="d-flex flex-wrap gap-2 align-items-center justify-content-lg-end justify-content-center ms-lg-auto">
+            <!-- <router-link to="/student" class="btn btn-outline-secondary px-3">
               Student Demo
             </router-link>
             <router-link to="/instructor" class="btn btn-outline-secondary px-3">
@@ -38,7 +38,7 @@
             </router-link>
             <router-link to="/admin" class="btn btn-outline-secondary px-3">
               Admin Demo
-            </router-link>
+            </router-link> -->
             <router-link to="/login" class="btn btn-outline-primary px-3">
               Sign In
             </router-link>
@@ -138,7 +138,7 @@
       </div>
     </section>
 
-    <section id="about" class="py-5 bg-light">
+    <!-- <section id="about" class="py-5 bg-light">
       <div class="container">
         <div class="text-center mb-5">
           <h2 class="fw-bold mb-3 section-title">Why choose CodeCourse?</h2>
@@ -229,9 +229,9 @@
           </router-link>
         </div>
       </div>
-    </section>
+    </section> -->
 
-    <section id="testimonials" class="py-5 bg-white">
+    <!-- <section id="testimonials" class="py-5 bg-white">
       <div class="container">
         <div class="text-center mb-5">
           <h2 class="fw-bold mb-3 section-title">What students say about us</h2>
@@ -339,7 +339,7 @@
           <p class="text-light mb-0 opacity-75">© 2025 CodeCourse. All rights reserved.</p>
         </div>
       </div>
-    </footer>
+    </footer> -->
   </div>
 </template>
 

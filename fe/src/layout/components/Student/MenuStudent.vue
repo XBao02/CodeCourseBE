@@ -33,16 +33,14 @@
 
                 <!-- User dropdown -->
                 <div class="dropdown">
-                    <button class="user-btn" @click="toggleDropdown">
-                        <div class="user-avatar">A</div>
+                    <button class="user-btn" @click.stop="toggleDropdown">
+                        <div class="user-avatar">{{ userInitial }}</div>
                         <div class="user-info">
-                            <div class="user-name">Demo User</div>
-                            <small class="user-role">Student</small>
+                            <div class="user-name">{{ userName }}</div>
+                            <small class="user-role">{{ userRole }}</small>
                         </div>
                     </button>
-                    <ul v-if="showDropdown" class="dropdown-menu">
-                        <li><a href="#" @click.prevent="goToSettings">Settings</a></li>
-                        <li class="divider"></li>
+                    <ul v-show="showDropdown" class="dropdown-menu">
                         <li><a href="#" @click.prevent="logout" class="logout">Logout</a></li>
                     </ul>
                 </div>
@@ -53,38 +51,120 @@
 </template>
 
 <script>
+import { getStoredSession } from '../../../services/authService'
 export default {
     data() {
         return {
-            showDropdown: false
+            showDropdown: false,
+            userName: 'Student',
+            userRole: 'Student',
         }
     },
-    methods: {
-        toggleDropdown() {
-            this.showDropdown = !this.showDropdown;
-        },
-        toggleNotifications() {
-            // Handle notifications
-            console.log('Show notifications');
-        },
-        goToSettings() {
-            this.showDropdown = false;
-            this.$router.push('/student/settings');
-        },
-        logout() {
-            this.showDropdown = false;
-            localStorage.removeItem('token');
-            localStorage.removeItem('userInfo');
-            this.$router.push('/');
+    watch: {
+        // Watch for route changes to refresh user data
+        '$route'() {
+            this.loadUser();
         }
     },
-    mounted() {
+    computed: {
+        userInitial() {
+            const name = this.userName || 'A'
+            return name.trim().charAt(0).toUpperCase()
+        }
+    },
+    async mounted() {
+        await this.loadUser();
+        
+        // Listen for profile updates
+        window.addEventListener('profileUpdated', this.handleProfileUpdate);
+        
         // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.dropdown')) {
                 this.showDropdown = false;
             }
         });
+    },
+    beforeUnmount() {
+        window.removeEventListener('profileUpdated', this.handleProfileUpdate);
+    },
+    methods: {
+        handleProfileUpdate(event) {
+            const profile = event.detail;
+            if (profile?.name) {
+                this.userName = profile.name;
+                console.log('🔄 MenuStudent updated userName from event:', profile.name);
+            }
+        },
+        toggleDropdown(event) {
+            event?.stopPropagation();
+            this.showDropdown = !this.showDropdown;
+        },
+        logout() {
+            console.log('Logging out...');
+            this.showDropdown = false;
+            
+            // Clear all stored data
+            localStorage.removeItem('token');
+            localStorage.removeItem('userInfo');
+            localStorage.removeItem('session');
+            sessionStorage.clear();
+            
+            // Redirect to login or home
+            this.$router.push('/login').catch(() => {
+                this.$router.push('/');
+            });
+        },
+        async fetchProfile() {
+            try {
+                const session = getStoredSession();
+                if (!session?.access_token) return;
+                
+                const axios = (await import('axios')).default;
+                const res = await axios.get('http://localhost:5000/api/student/profile', {
+                    headers: { Authorization: `Bearer ${session.access_token}` }
+                });
+                
+                console.log('📋 MenuStudent profile response:', res.data);
+                
+                const st = res.data?.student || {};
+                const name = st.name || st.full_name || st.FullName || '';
+                if (name) {
+                    this.userName = name;
+                    console.log('✅ Updated userName to:', name);
+                }
+                
+                // Role from session or default
+                const role = session?.user?.role || session?.role || 'student';
+                this.userRole = (role || '').charAt(0).toUpperCase() + (role || '').slice(1);
+            } catch (e) {
+                console.warn('Profile load failed in MenuStudent:', e);
+            }
+        },
+        async loadUser() {
+            const session = getStoredSession();
+            console.log('🔍 MenuStudent loading user from session:', session);
+            
+            const u = session?.user || {};
+            const name = u.full_name || u.FullName || u.name || u.username;
+            
+            if (name) {
+                this.userName = name;
+                console.log('✅ Got name from session:', name);
+            } else {
+                console.log('📡 No name in session, fetching from backend...');
+                // Fallback to backend profile
+                await this.fetchProfile();
+            }
+            
+            const role = u.role || session?.role || 'student';
+            this.userRole = (role || '').charAt(0).toUpperCase() + (role || '').slice(1);
+        },
+        
+        // Thêm method để refresh data từ bên ngoài
+        async refreshUserData() {
+            await this.fetchProfile();
+        }
     }
 };
 </script>
@@ -316,12 +396,13 @@ export default {
     background: white;
     border: 1px solid #e5e7eb;
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    min-width: 180px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 120px;
     list-style: none;
     margin: 0;
-    padding: 8px 0;
-    z-index: 1000;
+    padding: 4px 0;
+    z-index: 9999;
+    display: block;
 }
 
 .dropdown-menu li a {

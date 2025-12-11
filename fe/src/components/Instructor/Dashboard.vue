@@ -19,24 +19,10 @@
                     <h3>{{ totalStudents }}</h3>
                 </div>
             </div>
-
-            <div class="stat-card">
-                <div class="stat-content">
-                    <p class="stat-label">Average Rating</p>
-                    <h3>{{ averageRating }} / 5</h3>
-                </div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-content">
-                    <p class="stat-label">Revenue</p>
-                    <h3>{{ totalRevenue }}</h3>
-                </div>
-            </div>
         </div>
 
         <div class="dashboard-content">
-            <div class="recent-courses">
+            <div class="recent-courses full-width">
                 <h2>Recent Courses</h2>
                 <div v-if="recentCourses.length === 0" class="empty-state">
                     <p>No courses yet</p>
@@ -49,21 +35,21 @@
                             <span class="status" :class="course.status">{{ course.status === 'active' ? 'Active' : 'Draft' }}</span>
                         </div>
                         <div class="course-actions">
-                            <button @click="editCourse(course.id)" class="btn-edit">Edit</button>
+                            <!-- <button @click="editCourse(course.id)" class="btn-edit">Edit</button> -->
                             <button @click="viewCourse(course.id)" class="btn-view">Content</button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="quick-actions">
+            <!-- <div class="quick-actions">
                 <h2>Quick Actions</h2>
                 <div class="action-buttons">
                     <button @click="viewReports" class="btn-secondary">View Reports</button>
                     <button @click="goToChat" class="btn-secondary">Messages</button>
                     <button @click="goToCourses" class="btn-secondary">Manage Courses</button>
                 </div>
-            </div>
+            </div> -->
         </div>
     </div>
 </template>
@@ -252,8 +238,19 @@ export default {
 
 .dashboard-content {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: 1fr; /* Single column so content spans full width */
     gap: 30px;
+}
+
+/* Recent Courses takes full available width */
+.recent-courses.full-width {
+    grid-column: 1 / -1;
+    width: 100%;
+}
+
+/* Remove previous right column layout overrides */
+.recent-courses.right-full { /* legacy class no longer used */
+    grid-column: 1 / -1;
 }
 
 .recent-courses,
@@ -262,6 +259,11 @@ export default {
     padding: 28px;
     border-radius: 8px;
     border: 1px solid #e5e7eb;
+}
+
+/* Optional: if quick-actions is re-enabled, it will sit on the left column */
+.quick-actions {
+    grid-column: 1 / 2;
 }
 
 .recent-courses h2,
@@ -415,24 +417,11 @@ export default {
     }
 
     .dashboard-content {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr; /* stays single column on mobile */
     }
 
-    .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    .course-item {
-        flex-direction: column;
-    }
-
-    .course-actions {
-        width: 100%;
-    }
-
-    .btn-edit,
-    .btn-view {
-        flex: 1;
+    .recent-courses.full-width {
+        grid-column: 1 / -1;
     }
 }
 </style>
