@@ -12,6 +12,7 @@ from .model import (
     CodeSubmission, Answer, AIAbilityAnalysis, StudyPlan,
     PlanItem, Message, Invoice, AIChatSession, AIChatMessage
 )
+from .payment import Payment
 from .placement_test import PlacementTest
 from .skill_profile import SkillProfile
 from .learning_path import LearningPath
@@ -26,6 +27,5 @@ __all__ = [
     'CodeSubmission', 'Answer', 'AIAbilityAnalysis', 'StudyPlan',
     'PlanItem', 'Message', 'Invoice', 'AIChatSession', 'AIChatMessage',
     'PlacementTest', 'SkillProfile', 'LearningPath', 'LearningPathItem',
-    'PlacementQuestion', 'PlacementQuestionBank',
+    'PlacementQuestion', 'PlacementQuestionBank', 'Payment',
 ]
-

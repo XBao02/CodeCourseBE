@@ -457,6 +457,10 @@ class Message(db.Model):
     course_id = db.Column('CourseId', db.BigInteger, db.ForeignKey('Courses.Id'))
     lesson_id = db.Column('LessonId', db.BigInteger, db.ForeignKey('Lessons.Id'))
     content = db.Column('Content', db.Text, nullable=False)
+    attachment_url = db.Column('AttachmentUrl', db.String(500))
+    attachment_type = db.Column('AttachmentType', db.String(20))  # image | file
+    attachment_name = db.Column('AttachmentName', db.String(255))
+    message_type = db.Column('MessageType', db.String(20), default='text')  # text | image | file
     created_at = db.Column('CreatedAt', db.DateTime(timezone=True), default=datetime.utcnow)
     read_at = db.Column('ReadAt', db.DateTime(timezone=True))
 
@@ -513,4 +517,3 @@ class AIChatMessage(db.Model):
     tokens_used = db.Column('TokensUsed', db.Integer, default=0)
     sent_at = db.Column('SentAt', db.DateTime(timezone=True), default=datetime.utcnow)
     created_at = db.Column('CreatedAt', db.DateTime(timezone=True), default=datetime.utcnow)
-
