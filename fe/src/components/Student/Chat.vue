@@ -1,508 +1,612 @@
 <template>
-  <div class="chat-container">
-    <!-- Header -->
-    <div class="chat-head">
-      <div class="d-flex align-items-center">
-        <UserAvatar 
-          :name="instructorName" 
-          size="medium"
-        />
-        <div class="ms-3">
-          <h6 class="mb-0">Chat with Instructor</h6>
-          <small class="text-muted">{{ onlineStatus ? 'Active' : 'Offline' }}</small>
+  <div class="chat-shell">
+    <aside class="sidebar">
+      <div class="sidebar__header">
+        <div>
+          <p class="eyebrow">Đang học</p>
+          <h4 class="title">Trò chuyện</h4>
         </div>
-      </div>
-      <div>
-        <button class="btn-refresh" @click="refreshChat">
-          Refresh
+        <button class="ghost-btn" @click="loadThreads" :disabled="loadingThreads">
+          {{ loadingThreads ? "..." : "↻" }}
         </button>
       </div>
-    </div>
 
-    <!-- Chat Messages -->
-    <div class="chat-messages" ref="messagesContainer">
-      <div 
-        v-for="message in messages" 
-        :key="message.id"
-        :class="['message', message.senderId === currentStudentId ? 'message-sent' : 'message-received']"
-      >
-        <div class="message-content">
-          <div class="message-text">{{ message.text }}</div>
-          <div class="message-time">
-            {{ formatTime(message.timestamp) }}
-            <i 
-              v-if="message.senderId === currentStudentId" 
-              :class="['bx', message.status === 'read' ? 'bx-check-double text-primary' : 'bx-check']"
-            ></i>
+      <div class="search-box">
+        <i class="bx bx-search"></i>
+        <input v-model="query" placeholder="Tìm khóa hoặc giảng viên..." />
+      </div>
+
+      <div class="thread-list">
+        <button
+          v-for="thread in filteredThreads"
+          :key="threadKey(thread)"
+          class="thread"
+          :class="selectedThreadKey === threadKey(thread) ? 'is-active' : ''"
+          @click="selectThread(thread)"
+        >
+          <div class="thread__avatar">{{ (thread.instructorName || "GV")[0] }}</div>
+          <div class="thread__body">
+            <div class="thread__row">
+              <span class="thread__name">{{ thread.instructorName || "Giảng viên" }}</span>
+              <span class="thread__time">{{ thread.lastAt ? formatTime(thread.lastAt) : "" }}</span>
+            </div>
+            <div class="thread__course">{{ thread.courseTitle }}</div>
+            <div class="thread__preview">
+              {{ thread.lastMessage ? truncate(thread.lastMessage) : "Chưa có tin nhắn" }}
+            </div>
+          </div>
+          <span v-if="thread.unread" class="badge">{{ thread.unread }}</span>
+        </button>
+      </div>
+    </aside>
+
+    <section class="conversation" v-if="selectedThreadKey">
+      <header class="conversation__header">
+        <div class="head">
+          <div class="head__avatar">{{ (selectedThread?.instructorName || "GV")[0] }}</div>
+          <div>
+            <div class="head__name">{{ selectedThread?.instructorName }}</div>
+            <div class="head__meta">{{ selectedThread?.courseTitle }}</div>
+          </div>
+        </div>
+        <button class="ghost-btn" @click="refreshMessages" :disabled="loadingMessages">
+          {{ loadingMessages ? "..." : "Làm mới" }}
+        </button>
+      </header>
+
+      <div class="messages" ref="messagesContainer">
+        <div
+          v-for="msg in messages"
+          :key="msg.id"
+          class="msg-row"
+          :class="msg.fromUserId === currentUserId ? 'mine' : 'theirs'"
+        >
+          <div class="bubble">
+            <div v-if="isImage(msg)" class="attach-image">
+              <img :src="resolveUrl(msg.attachmentUrl || msg.content)" alt="attachment" />
+            </div>
+            <div v-else-if="isFile(msg)" class="attach-file">
+              <a :href="resolveUrl(msg.attachmentUrl || msg.content)" target="_blank" rel="noopener">
+                📎 {{ msg.attachmentName || msg.content || "Tệp đính kèm" }}
+              </a>
+            </div>
+            <div v-if="msg.content && !isImage(msg) && !isFile(msg)" class="text">
+              {{ msg.content }}
+            </div>
+            <div class="time">{{ formatTime(msg.createdAt) }}</div>
           </div>
         </div>
       </div>
-      
-      <!-- Typing indicator -->
-      <div v-if="isInstructorTyping" class="message message-received">
-        <div class="message-content typing-indicator">
-          <div class="typing-dots">
-            <span></span>
-            <span></span>
-            <span></span>
+
+      <footer class="composer">
+        <div class="composer__left">
+          <label class="attach-btn">
+            📎
+            <input type="file" class="hidden-input" @change="handleFile" />
+          </label>
+          <div v-if="attachmentName" class="attach-chip">
+            {{ attachmentName }}
+            <button @click="clearAttachment">×</button>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Message Input -->
-    <div class="chat-input">
-      <div class="input-group">
-        <input 
-          v-model="newMessage" 
-          @keyup.enter="sendMessage"
-          @input="handleTyping"
-          type="text" 
-          class="form-control" 
-          placeholder="Type your message..."
-          :disabled="sending"
-        >
-        <button 
-          class="btn-send" 
-          @click="sendMessage"
-          :disabled="!newMessage.trim() || sending"
-        >
-          {{ sending ? 'Sending...' : 'Send' }}
+        <textarea
+          v-model="draft"
+          @keyup.enter.exact.prevent="send"
+          class="composer__input"
+          rows="1"
+          placeholder="Nhập tin nhắn..."
+          :disabled="sending || !selectedThreadKey"
+        ></textarea>
+        <button class="send-btn" @click="send" :disabled="sending || (!draft.trim() && !attachmentFile)">
+          {{ sending ? "Đang gửi..." : "Gửi" }}
         </button>
-      </div>
-    </div>
+      </footer>
+    </section>
+
+    <section v-else class="empty">
+      <p>Chọn khóa học để bắt đầu trò chuyện.</p>
+    </section>
   </div>
 </template>
 
 <script>
-import chatService from '../../services/chatService.js';
-import UserAvatar from '../common/UserAvatar.vue';
+import { onMounted, onBeforeUnmount, ref, computed } from "vue";
+import { getStoredSession } from "../../services/authService";
+import chatService from "../../services/chatService";
 
 export default {
-  name: 'StudentChat',
-  components: {
-    UserAvatar
-  },
-  data() {
-    return {
-      messages: [],
-      newMessage: '',
-      currentStudentId: 'student_1', // This should come from authentication
-      instructorId: 'instructor_1',
-      instructorName: 'GV. Nguyễn Văn Thầy',
-      onlineStatus: false,
-      sending: false,
-      isInstructorTyping: false,
-      typingTimer: null,
-      chatInterval: null
-    }
-  },
-  async mounted() {
-    // Connect to chat service
-    await chatService.connect(this.currentStudentId, 'student');
-    
-    // Load existing conversation
-    this.loadConversation();
-    
-    // Set up event listeners
-    this.setupEventListeners();
-    
-    // Check instructor online status
-    this.onlineStatus = chatService.isUserOnline(this.instructorId);
-    
-    this.scrollToBottom();
-  },
-  beforeUnmount() {
-    // Clean up
-    this.removeEventListeners();
-    chatService.disconnect();
-    
-    if (this.typingTimer) {
-      clearTimeout(this.typingTimer);
-    }
-  },
-  methods: {
-    loadConversation() {
-      this.messages = chatService.getConversation(this.currentStudentId, this.instructorId);
-    },
-    
-    setupEventListeners() {
-      // Listen for new messages
-      chatService.on('message-received', this.handleMessageReceived);
-      chatService.on('message-delivered', this.handleMessageDelivered);
-      chatService.on('message-read', this.handleMessageRead);
-      chatService.on('typing-status', this.handleTypingStatus);
-      chatService.on('user-connected', this.handleUserConnected);
-      chatService.on('user-disconnected', this.handleUserDisconnected);
-    },
-    
-    removeEventListeners() {
-      chatService.off('message-received', this.handleMessageReceived);
-      chatService.off('message-delivered', this.handleMessageDelivered);
-      chatService.off('message-read', this.handleMessageRead);
-      chatService.off('typing-status', this.handleTypingStatus);
-      chatService.off('user-connected', this.handleUserConnected);
-      chatService.off('user-disconnected', this.handleUserDisconnected);
-    },
-    
-    handleMessageReceived({ message }) {
-      if (message.senderId === this.instructorId) {
-        this.loadConversation();
-        this.scrollToBottom();
-        
-        // Mark as read after a short delay
-        setTimeout(() => {
-          const conversationId = chatService.getConversationId(this.currentStudentId, this.instructorId);
-          chatService.markAsRead(conversationId, this.currentStudentId);
-        }, 1000);
-      }
-    },
-    
-    handleMessageDelivered({ messageId }) {
-      this.loadConversation();
-    },
-    
-    handleMessageRead({ messageId }) {
-      this.loadConversation();
-    },
-    
-    handleTypingStatus({ userId, isTyping }) {
-      if (userId === this.instructorId) {
-        this.isInstructorTyping = isTyping;
-        if (isTyping) {
-          this.scrollToBottom();
-        }
-      }
-    },
-    
-    handleUserConnected({ userId }) {
-      if (userId === this.instructorId) {
-        this.onlineStatus = true;
-      }
-    },
-    
-    handleUserDisconnected({ userId }) {
-      if (userId === this.instructorId) {
-        this.onlineStatus = false;
-      }
-    },
-    
-    async sendMessage() {
-      if (!this.newMessage.trim() || this.sending) return;
-      
-      this.sending = true;
-      
+  name: "StudentChat",
+  setup() {
+    const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+    const apiOrigin = (() => {
       try {
-        await chatService.sendMessage(this.instructorId, this.newMessage);
-        this.loadConversation();
-        this.newMessage = '';
-        this.scrollToBottom();
-      } catch (error) {
-        console.error('Failed to send message:', error);
-        alert('Không thể gửi tin nhắn. Vui lòng thử lại.');
+        return new URL(apiBase).origin;
+      } catch (e) {
+        return "";
+      }
+    })();
+
+    const threads = ref([]);
+    const query = ref("");
+    const selectedThread = ref(null);
+    const selectedThreadKey = ref(null);
+    const messages = ref([]);
+    const draft = ref("");
+    const sending = ref(false);
+    const loadingThreads = ref(false);
+    const loadingMessages = ref(false);
+    const pollTimer = ref(null);
+    const currentUserId = ref(null);
+    const messagesContainer = ref(null);
+    const lastTimestamp = ref(null);
+    const attachmentFile = ref(null);
+    const attachmentName = ref("");
+
+    const threadKey = (t) => `${t.courseId}-${t.instructorId}`;
+
+    const filteredThreads = computed(() => {
+      const q = query.value.trim().toLowerCase();
+      if (!q) return threads.value;
+      return threads.value.filter(
+        (t) =>
+          (t.courseTitle || "").toLowerCase().includes(q) ||
+          (t.instructorName || "").toLowerCase().includes(q)
+      );
+    });
+
+    const loadThreads = async () => {
+      loadingThreads.value = true;
+      try {
+        const data = await chatService.fetchThreads();
+        threads.value = data;
+        if (!selectedThreadKey.value && data.length) {
+          selectThread(data[0]);
+        }
+      } catch (err) {
+        console.error("Load threads failed", err);
       } finally {
-        this.sending = false;
+        loadingThreads.value = false;
       }
-    },
-    
-    handleTyping() {
-      // Send typing indicator to instructor
-      chatService.setTyping(this.instructorId, true);
-      
-      if (this.typingTimer) {
-        clearTimeout(this.typingTimer);
+    };
+
+    const refreshMessages = async () => {
+      if (!selectedThread.value) return;
+      loadingMessages.value = true;
+      try {
+        const msgs = await chatService.fetchMessages({
+          courseId: selectedThread.value.courseId,
+          since: lastTimestamp.value,
+        });
+        if (lastTimestamp.value && msgs.length) {
+          messages.value.push(...msgs);
+        } else if (!lastTimestamp.value) {
+          messages.value = msgs;
+        }
+        if (msgs.length) {
+          lastTimestamp.value = msgs[msgs.length - 1].createdAt;
+          scrollBottom();
+        }
+      } catch (err) {
+        console.error("Load messages failed", err);
+      } finally {
+        loadingMessages.value = false;
       }
-      
-      this.typingTimer = setTimeout(() => {
-        chatService.setTyping(this.instructorId, false);
-      }, 1000);
-    },
-    
-    refreshChat() {
-      this.loadConversation();
-      this.onlineStatus = chatService.isUserOnline(this.instructorId);
-    },
-    
-    scrollToBottom() {
-      this.$nextTick(() => {
-        const container = this.$refs.messagesContainer;
-        if (container) {
-          container.scrollTop = container.scrollHeight;
+    };
+
+    const selectThread = async (thread) => {
+      selectedThread.value = thread;
+      selectedThreadKey.value = threadKey(thread);
+      messages.value = [];
+      lastTimestamp.value = null;
+      await refreshMessages();
+      startPolling();
+    };
+
+    const send = async () => {
+      if ((!draft.value.trim() && !attachmentFile.value) || !selectedThread.value || sending.value)
+        return;
+      sending.value = true;
+      try {
+        let uploaded = null;
+        if (attachmentFile.value) {
+          uploaded = await chatService.uploadAttachment(attachmentFile.value);
+        }
+        const sent = await chatService.sendMessage({
+          courseId: selectedThread.value.courseId,
+          content: uploaded?.message_type === "image" ? "" : draft.value.trim(),
+          attachment_url: uploaded?.content,
+          attachment_type: uploaded?.message_type,
+          attachment_name: uploaded?.original_filename,
+          message_type: uploaded?.message_type || "text",
+        });
+        messages.value.push(sent);
+        draft.value = "";
+        lastTimestamp.value = sent.createdAt;
+        attachmentFile.value = null;
+        attachmentName.value = "";
+        scrollBottom();
+      } catch (err) {
+        console.error("Send message failed", err);
+      } finally {
+        sending.value = false;
+      }
+    };
+
+    const handleFile = (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const allowed = ["jpg", "jpeg", "png", "webp", "pdf", "docx", "zip", "txt"];
+      const ext = file.name.split(".").pop().toLowerCase();
+      if (!allowed.includes(ext)) {
+        alert("Định dạng không hỗ trợ");
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        alert("Kích thước tối đa 10MB");
+        return;
+      }
+      attachmentFile.value = file;
+      attachmentName.value = file.name;
+    };
+
+    const clearAttachment = () => {
+      attachmentFile.value = null;
+      attachmentName.value = "";
+    };
+
+    const startPolling = () => {
+      if (pollTimer.value) clearInterval(pollTimer.value);
+      pollTimer.value = setInterval(refreshMessages, 5000);
+    };
+
+    const stopPolling = () => {
+      if (pollTimer.value) clearInterval(pollTimer.value);
+    };
+
+    const truncate = (text = "", len = 40) =>
+      text.length > len ? `${text.slice(0, len)}...` : text;
+
+    const formatTime = (iso) => {
+      if (!iso) return "";
+      const d = new Date(iso);
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    };
+
+    const scrollBottom = () => {
+      requestAnimationFrame(() => {
+        if (messagesContainer.value) {
+          messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
         }
       });
-    },
-    
-    formatTime(timestamp) {
-      const date = new Date(timestamp);
-      const now = new Date();
-      const diffMs = now - date;
-      const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
-      const diffMins = Math.floor(diffMs / (1000 * 60));
-      
-      if (diffMins < 1) return 'Vừa xong';
-      if (diffMins < 60) return `${diffMins} phút trước`;
-      if (diffHrs < 24) return `${diffHrs} giờ trước`;
-      
-      return date.toLocaleDateString('vi-VN', {
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    }
-  }
-}
+    };
+
+    const isImage = (msg) => {
+      const mt = (msg.messageType || msg.attachmentType || "").toLowerCase();
+      if (mt === "image") return !!(msg.attachmentUrl || msg.content);
+      const src = (msg.attachmentUrl || msg.content || "").toLowerCase();
+      return [".jpg", ".jpeg", ".png", ".webp"].some((ext) => src.endsWith(ext));
+    };
+
+    const isFile = (msg) => {
+      const mt = (msg.messageType || msg.attachmentType || "").toLowerCase();
+      if (mt === "file") return !!(msg.attachmentUrl || msg.content);
+      const src = (msg.attachmentUrl || msg.content || "").toLowerCase();
+      return [".pdf", ".docx", ".zip", ".txt"].some((ext) => src.endsWith(ext));
+    };
+
+    const resolveUrl = (path) => {
+      if (!path) return "";
+      if (path.startsWith("http://") || path.startsWith("https://")) return path;
+      if (apiOrigin && path.startsWith("/")) return apiOrigin + path;
+      return path;
+    };
+
+    onMounted(() => {
+      const session = getStoredSession();
+      currentUserId.value = session?.user?.id || null;
+      loadThreads();
+    });
+
+    onBeforeUnmount(() => {
+      stopPolling();
+    });
+
+    return {
+      threads,
+      query,
+      filteredThreads,
+      selectedThread,
+      selectedThreadKey,
+      messages,
+      draft,
+      sending,
+      loadingThreads,
+      loadingMessages,
+      attachmentName,
+      messagesContainer,
+      loadThreads,
+      refreshMessages,
+      selectThread,
+      send,
+      handleFile,
+      clearAttachment,
+      truncate,
+      formatTime,
+      isImage,
+      isFile,
+      resolveUrl,
+      threadKey,
+      currentUserId,
+    };
+  },
+};
 </script>
 
 <style scoped>
-.chat-container {
-  height: calc(100vh - 100px);
+.chat-shell {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 16px;
+  height: calc(100vh - 120px);
+  padding: 16px;
+  background: #f5f7fb;
+}
+.sidebar {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(20, 30, 80, 0.08);
   display: flex;
   flex-direction: column;
-  background: #fff;
-  margin: 1rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
-
-.chat-head {
-  padding: 1rem 1.5rem;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: white;
+.sidebar__header {
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  color: #6b7280;
+  margin: 0;
+}
+.title {
+  margin: 2px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+.ghost-btn {
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  color: #111827;
+}
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px 12px;
+}
+.search-box input {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.thread-list {
+  overflow-y: auto;
+  flex: 1;
+}
+.thread {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+}
+.thread.is-active {
+  background: #eef2ff;
+}
+.thread__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+}
+.thread__body {
+  text-align: left;
+}
+.thread__row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  flex-shrink: 0;
+  font-weight: 700;
+  color: #111827;
 }
-
-.btn-refresh {
-  padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s ease;
+.thread__course {
+  font-size: 13px;
+  color: #6b7280;
 }
-
-.btn-refresh:hover {
-  background: rgba(255, 255, 255, 0.3);
-} 
-
-.chat-header .status-indicator {
-  position: absolute;
-  bottom: 2px;
-  right: 2px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid white;
+.thread__preview {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 2px;
 }
-
-.chat-messages {
-  flex: 1;
-  padding: 1rem;
-  overflow-y: auto;
-  min-height: 0;
-  background: #f8f9fa;
+.thread__time {
+  font-size: 12px;
+  color: #9ca3af;
 }
-
-.message {
-  margin-bottom: 1rem;
+.badge {
+  background: #ef4444;
+  color: #fff;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 12px;
+}
+.conversation,
+.empty {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(20, 30, 80, 0.08);
   display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
-
-.message-sent {
+.conversation__header {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f1f1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.head__avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #16a34a;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+}
+.head__name {
+  font-weight: 700;
+  font-size: 16px;
+}
+.head__meta {
+  font-size: 12px;
+  color: #6b7280;
+}
+.messages {
+  flex: 1;
+  padding: 18px;
+  overflow-y: auto;
+  background: linear-gradient(180deg, #f7f9fc, #eef2f7);
+}
+.msg-row {
+  display: flex;
+  margin-bottom: 12px;
+}
+.msg-row.mine {
   justify-content: flex-end;
 }
-
-.message-received {
+.msg-row.theirs {
   justify-content: flex-start;
 }
-
-.message-content {
+.bubble {
   max-width: 70%;
-  padding: 0.75rem 1rem;
-  border-radius: 18px;
-  position: relative;
+  padding: 12px 14px;
+  border-radius: 16px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+  background: #e6f4ff;
+  color: #0b172a;
 }
-
-.message-sent .message-content {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: white;
+.msg-row.mine .bubble {
+  background: #0f93ff;
+  color: #fff;
   border-bottom-right-radius: 4px;
 }
-
-.message-received .message-content {
-  background: white;
-  color: #333;
-  border: 1px solid #e9ecef;
+.msg-row.theirs .bubble {
+  background: #e8f5e9;
+  color: #0b172a;
   border-bottom-left-radius: 4px;
 }
-
-.message-text {
-  word-wrap: break-word;
-  line-height: 1.4;
+.text {
+  white-space: pre-wrap;
+  word-break: break-word;
 }
-
-.message-time {
-  font-size: 0.75rem;
-  opacity: 0.7;
-  margin-top: 0.25rem;
+.time {
+  margin-top: 6px;
+  font-size: 11px;
+  opacity: 0.75;
+}
+.composer {
+  padding: 14px 16px;
+  border-top: 1px solid #f1f1f1;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: end;
+}
+.composer__input {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px 12px;
+  resize: none;
+  font-family: inherit;
+}
+.send-btn {
+  background: #0f93ff;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.composer__left {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
 }
-
-.message-sent .message-time {
-  color: rgba(255, 255, 255, 0.8);
+.attach-btn {
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 16px;
 }
-
-.message-received .message-time {
-  color: #6c757d;
+.hidden-input {
+  display: none;
 }
-
-.chat-input {
-  padding: 1rem 1.5rem;
-  background: white;
-  border-top: 1px solid #e9ecef;
-  flex-shrink: 0;
+.attach-chip {
+  background: #eef2ff;
+  color: #1f2937;
+  padding: 6px 10px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
 }
-
-.chat-input .input-group {
-  border-radius: 25px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.chat-input .form-control {
+.attach-chip button {
   border: none;
-  padding: 0.75rem 1rem;
-  font-size: 0.95rem;
-}
-
-.chat-input .form-control:focus {
-  box-shadow: none;
-}
-
-.btn-send {
-  border: none;
-  padding: 0.75rem 1.25rem;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: white;
+  background: transparent;
   cursor: pointer;
   font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s ease;
 }
-
-.btn-send:hover:not(:disabled) {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+.attach-image img {
+  max-width: 240px;
+  border-radius: 10px;
+  display: block;
 }
-
-.btn-send:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.attach-file a {
+  color: #1d4ed8;
+  text-decoration: underline;
 }
-
-/* Typing indicator */
-.typing-indicator {
-  background: white !important;
-  border: 1px solid #e9ecef !important;
-}
-
-.typing-dots {
-  display: flex;
-  gap: 4px;
-  padding: 4px 0;
-}
-
-.typing-dots span {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #6c757d;
-  animation: typing 1.4s infinite ease-in-out;
-}
-
-.typing-dots span:nth-child(1) { animation-delay: -0.32s; }
-.typing-dots span:nth-child(2) { animation-delay: -0.16s; }
-
-@keyframes typing {
-  0%, 80%, 100% {
-    transform: scale(0.8);
-    opacity: 0.5;
-  }
-  40% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-/* Scrollbar */
-.chat-messages::-webkit-scrollbar {
-  width: 6px;
-}
-
-.chat-messages::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-.chat-messages::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
-}
-
-.chat-messages::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .chat-container {
-    margin: 0.5rem;
-    height: calc(100vh - 80px);
-    border-radius: 8px;
-  }
-  
-  .message-content {
-    max-width: 85%;
-  }
-  
-  .chat-header {
-    padding: 0.75rem 1rem;
-  }
-  
-  .chat-input {
-    padding: 0.75rem 1rem;
-  }
-}
-
-@media (max-width: 576px) {
-  .chat-container {
-    margin: 0.25rem;
-    height: calc(100vh - 70px);
-    border-radius: 6px;
-  }
-  
-  .chat-header {
-    padding: 0.5rem 0.75rem;
-  }
-  
-  .chat-messages {
-    padding: 0.75rem;
-  }
-  
-  .chat-input {
-    padding: 0.5rem 0.75rem;
-  }
-  
-  .message-content {
-    max-width: 90%;
-    padding: 0.5rem 0.75rem;
-  }
+.empty {
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  font-weight: 600;
 }
 </style>

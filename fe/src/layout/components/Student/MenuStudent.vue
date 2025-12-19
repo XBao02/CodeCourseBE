@@ -23,6 +23,9 @@
                     <router-link to="/student/course-store" class="nav-link">Course Store</router-link>
                 </li>
                 <li class="nav-item">
+                    <router-link to="/student/chat" class="nav-link">Chat</router-link>
+                </li>
+                <li class="nav-item">
                     <router-link to="/student/profile" class="nav-link">Profile</router-link>
                 </li>
             </ul>

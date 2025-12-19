@@ -58,9 +58,12 @@ def create_app():
         from app.routes.Student import student_bp
         from app.routes.AIQuiz import ai_quiz_bp
         from app.routes.Payment import payment_bp
+        from app.routes.payment_va import va_payment_bp
+        from app.routes.sepay_webhook import sepay_webhook_bp
         from app.routes.EmailVerification import email_verification_bp
         from app.routes.PlacementTest import placement_bp
         from app.routes.LearningPath import learning_path_bp
+        from app.routes.Chat import chat_bp
 
         app.register_blueprint(ai_bp)
         app.register_blueprint(auth_bp)
@@ -69,9 +72,12 @@ def create_app():
         app.register_blueprint(student_bp)
         app.register_blueprint(ai_quiz_bp)
         app.register_blueprint(payment_bp)
+        app.register_blueprint(va_payment_bp)
+        app.register_blueprint(sepay_webhook_bp)
         app.register_blueprint(email_verification_bp)
         app.register_blueprint(placement_bp)
         app.register_blueprint(learning_path_bp)
+        app.register_blueprint(chat_bp)
 
     except Exception as e:
         app.logger.error(f"Failed to register blueprints: {e}")
@@ -89,7 +95,52 @@ def _ensure_columns(flask_app: Flask):
     with flask_app.app_context():
         engine = db.session.get_bind()
         with engine.connect() as connection:
+            try:
+                exists_payment = connection.execute(text("SHOW TABLES LIKE 'Payments'")).first()
+                if not exists_payment:
+                    connection.execute(
+                        text(
+                            """
+                            CREATE TABLE Payments (
+                              Id INT AUTO_INCREMENT PRIMARY KEY,
+                              UserId BIGINT NOT NULL,
+                              CourseId INT NOT NULL,
+                              Amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+                              VaAccountNumber VARCHAR(64) NOT NULL UNIQUE,
+                              BankCode VARCHAR(32) NOT NULL,
+                              Status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+                              TransactionId VARCHAR(128),
+                              PaymentCode VARCHAR(64) UNIQUE,
+                              PaidAt DATETIME NULL,
+                              CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+                              INDEX idx_payments_user (UserId),
+                              INDEX idx_payments_course (CourseId),
+                              CONSTRAINT fk_payments_user FOREIGN KEY (UserId) REFERENCES Users(Id),
+                              CONSTRAINT fk_payments_course FOREIGN KEY (CourseId) REFERENCES Courses(Id)
+                            )
+                            """
+                        )
+                    )
+                else:
+                    for column, definition in [
+                        ("PaymentCode", "VARCHAR(64) UNIQUE"),
+                        ("BankCode", "VARCHAR(32) NOT NULL DEFAULT 'MBbank'"),
+                        ("TransactionId", "VARCHAR(128)"),
+                        ("PaidAt", "DATETIME NULL"),
+                        ("Status", "VARCHAR(20) NOT NULL DEFAULT 'PENDING'"),
+                    ]:
+                        exists_col = connection.execute(
+                            text("SHOW COLUMNS FROM Payments LIKE :column"), {"column": column}
+                        ).first()
+                        if not exists_col:
+                            connection.execute(text(f"ALTER TABLE Payments ADD COLUMN {column} {definition}"))
+            except Exception as exc:
+                flask_app.logger.warning("Failed to ensure Payments table: %s", exc)
             for table, column, definition in [
+                ("Payments", "BankCode", "VARCHAR(32) NOT NULL DEFAULT 'MBbank'"),
+                ("Payments", "TransactionId", "VARCHAR(128)"),
+                ("Payments", "PaidAt", "DATETIME NULL"),
+                ("Payments", "Status", "VARCHAR(20) NOT NULL DEFAULT 'PENDING'"),
                 ("skill_profiles", "RecommendedCourseIds", "JSON"),
                 ("learning_paths", "RecommendedCourseIds", "JSON"),
                 ("learning_path_items", "CourseIds", "JSON"),
@@ -101,6 +152,10 @@ def _ensure_columns(flask_app: Flask):
                 ("placement_tests", "Language", "VARCHAR(64) DEFAULT 'general' NOT NULL"),
                 ("placement_questions", "Language", "VARCHAR(64) DEFAULT 'general' NOT NULL"),
                 ("Courses", "Language", "VARCHAR(64) DEFAULT 'general' NOT NULL"),
+                ("Messages", "AttachmentUrl", "VARCHAR(500)"),
+                ("Messages", "AttachmentType", "VARCHAR(20)"),
+                ("Messages", "AttachmentName", "VARCHAR(255)"),
+                ("Messages", "MessageType", "VARCHAR(20) DEFAULT 'text'"),
             ]:
                 try:
                     exists = connection.execute(
