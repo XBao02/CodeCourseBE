@@ -19,7 +19,6 @@
           <div class="actions">
             <button class="soft-btn" @click="toggleAddQuestion"><i class="fas fa-plus"></i> Add Question</button>
             <button class="primary-outline-btn" @click="toggleAISettings" :disabled="aiGenerating">
-              <i :class="aiGenerating ? 'fas fa-spinner fa-spin' : 'fas fa-robot'" />
               {{ showAISettings ? 'Close AI Settings' : (aiGenerating ? 'Generating...' : 'AI Generator') }}
             </button>
           </div>
@@ -53,33 +52,38 @@
         <transition name="fade">
           <div v-if="addingQuestion" class="editor-card add-question-card">
             <div class="editor-card-header">Add Question</div>
-            <div class="add-q-block">
-              <label class="meta-label block-label">Question Content</label>
-              <textarea v-model="newQ.content" rows="3" class="form-input stretched"></textarea>
-            </div>
-            <div class="add-q-row">
-              <div class="field-inline">
-                <label class="meta-label">Points</label>
-                <input type="number" min="0" v-model.number="newQ.points" class="form-input" />
+            <div class="add-q-form">
+              <div class="form-field full-width">
+                <label class="meta-label">QUESTION CONTENT</label>
+                <textarea v-model="newQ.content" rows="3" class="form-input" placeholder="Enter question text"></textarea>
               </div>
-              <div class="field-inline">
-                <label class="meta-label">Difficulty</label>
-                <select v-model="newQ.difficulty" class="form-input">
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </select>
-              </div>
-              <div class="choices-inline-action">
-                <button class="soft-btn small" @click="addChoice(newQ)"><i class="fas fa-plus"></i> Add choice</button>
+              <div class="form-row">
+                <div class="form-field">
+                  <label class="meta-label">POINTS</label>
+                  <input type="number" min="0" v-model.number="newQ.points" class="form-input" />
+                </div>
+                <div class="form-field">
+                  <label class="meta-label">DIFFICULTY</label>
+                  <select v-model="newQ.difficulty" class="form-input">
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                </div>
+                <div class="form-field add-choice-field">
+                  <button class="soft-btn" @click="addChoice(newQ)"><i class="fas fa-plus"></i> Add choice</button>
+                </div>
               </div>
             </div>
             <div class="choices-section">
-              <div class="sub-title">Choices</div>
-              <div v-if="!newQ.choices.length" class="empty tiny">No choices</div>
+              <div class="sub-title">CHOICES</div>
+              <div v-if="!newQ.choices.length" class="empty-choices">No choices</div>
               <div v-for="(c, idx) in newQ.choices" :key="idx" class="choice-row">
                 <input v-model="c.text" class="form-input" placeholder="Choice text" />
-                <label class="checkbox"><input type="checkbox" v-model="c.isCorrect" /> Correct</label>
+                <label class="checkbox-label">
+                  <input type="checkbox" v-model="c.isCorrect" />
+                  <span>Correct</span>
+                </label>
                 <button class="danger-btn small" @click="removeChoice(newQ, idx)">Delete</button>
               </div>
             </div>
@@ -448,6 +452,17 @@ export default {
 .ai-settings-card .editor-card-header { display:flex; align-items:center; gap:6px; }
 .ai-settings-card .editor-card-header:before { content:'🤖'; font-size:16px; }
 
+/* Add Question Card Styles */
+.add-question-card { margin-top: 4px; }
+.add-q-form { display: flex; flex-direction: column; gap: 20px; }
+.form-field { display: flex; flex-direction: column; gap: 8px; }
+.form-field.full-width { width: 100%; }
+.form-field.add-choice-field { justify-content: flex-end; }
+.form-row { display: grid; grid-template-columns: 150px 200px 1fr; gap: 16px; align-items: end; }
+.empty-choices { text-align: center; padding: 24px; font-size: 13px; color: #94a3b8; border: 2px dashed #e2e8f0; border-radius: 8px; background: #f8fafc; }
+.checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: #475569; white-space: nowrap; }
+.checkbox-label input[type="checkbox"] { width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer; }
+
 .bulk-tools { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
 .select-all { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:500; color:#475569; }
 .select-all input { width:20px; height:20px; accent-color:#2563eb; cursor:pointer; }
@@ -461,5 +476,13 @@ export default {
   .col-span-3 { grid-column:1 / -1; }
   .actions { width:100%; justify-content:flex-start; }
   .q-head { padding:14px 16px; gap: 12px; }
+  .form-row { grid-template-columns: 1fr 1fr; }
+  .form-field.add-choice-field { grid-column: 1 / -1; justify-content: flex-start; }
+}
+
+@media (max-width: 640px) {
+  .form-row { grid-template-columns: 1fr; }
+  .choice-row { grid-template-columns: 1fr; gap: 8px; }
+  .choice-row .form-input { grid-column: 1 / -1; }
 }
 </style>

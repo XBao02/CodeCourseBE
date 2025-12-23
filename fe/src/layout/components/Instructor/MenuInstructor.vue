@@ -6,7 +6,7 @@
             <a class="navbar-logo" href="/">
                 <div class="logo-box">CC</div>
                 <div class="logo-text">
-                    <div class="logo-title">CodeClass</div>
+                    <div class="logo-title">CodeCourse</div>
                     <small class="logo-subtitle">Manager</small>
                 </div>
             </a>
@@ -209,7 +209,7 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #1f2937;
+    background: #3276F1;
     color: white;
     font-weight: 700;
     font-size: 14px;

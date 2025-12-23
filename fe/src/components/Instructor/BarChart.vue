@@ -19,8 +19,7 @@ export default {
     chartData() {
       return {
         labels: this.data.map(d => d.label),
-        datasets: [
-          {
+        datasets: [          {
             label: "Quiz",
             data: this.data.map(d => d.quiz),
             backgroundColor: "#6FDB6A"

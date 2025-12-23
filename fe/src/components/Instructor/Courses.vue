@@ -473,7 +473,7 @@ export default {
 }
 
 .btn-create {
-    background: #1f2937;
+    background: #377CF4;
     color: white;
     padding: 12px 24px;
     border: none;
@@ -485,7 +485,8 @@ export default {
 }
 
 .btn-create:hover {
-    background: #111827;
+    background: #c0d7ff;
+    color: black;
 }
 
 .courses-filter {
@@ -751,14 +752,11 @@ export default {
 }
 
 .btn-save {
-    background: #1f2937;
+    background: #377CF4;
     color: white;
     border: 1px solid #1f2937;
 }
 
-.btn-save:hover {
-    background: #111827;
-}
 
 /* Content Modal Styles */
 .content-modal .modal-content {
