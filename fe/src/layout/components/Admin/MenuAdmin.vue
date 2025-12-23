@@ -5,7 +5,7 @@
             <router-link to="/admin" class="navbar-logo">
                 <div class="logo-icon">CC</div>
                 <div class="logo-text">
-                    <div class="logo-title">CodeClass</div>
+                    <div class="logo-title">CodeCourse</div>
                     <div class="logo-subtitle">Admin</div>
                 </div>
             </router-link>

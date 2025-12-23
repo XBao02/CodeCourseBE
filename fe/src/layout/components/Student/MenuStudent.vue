@@ -6,7 +6,7 @@
             <a class="navbar-logo" href="/">
                 <div class="logo-box student">CC</div>
                 <div class="logo-text">
-                    <div class="logo-title">CodeClass</div>
+                    <div class="logo-title">CodeCourse</div>
                     <small class="logo-subtitle">Learning</small>
                 </div>
             </a>

@@ -7,15 +7,16 @@ from app.models.model import User, LessonProgress, Instructor, Category, Topic
 from app.services.recommender import semantic_recommend, recommend_courses  # new import
 from app.utils.cloudinary_upload import upload_video  # placeholder import if using cloudinary for images too
 import traceback
-import os, uuid, time
+import os, uuid, time, logging
 import json
 try:
     import google.generativeai as genai  # type: ignore
 except Exception:
     genai = None
 
-_AI_CHAT_SESSIONS = {}  # session_id -> {user_id, history:[{"role":"user"|"assistant","text":...}], created_at}
+_AI_CHAT_SESSIONS = {}  # (user_id, session_id) -> {history:[{"role":"user"|"assistant","text":...}], created_at}
 _GEMINI_MODEL_NAME = os.getenv('GEMINI_RECO_MODEL', 'gemini-2.5-flash')
+_SESSION_TIMEOUT = 3600  # 1 hour in seconds
 
 def _configure_client():
     """Configure Gemini client similar to AIQuiz flow."""
@@ -62,12 +63,47 @@ def _build_system_instruction():
         "If the user writes Vietnamese, respond in Vietnamese; otherwise match their language."
     )
 
-def _ai_generate_reply(history):
+def _build_course_system_instruction(course_context):
+    """Build system instruction for course recommendation with course catalog."""
+    courses_json = json.dumps(course_context, ensure_ascii=False, indent=2)
+    return (
+        "You are CourseAI, a friendly bilingual course recommendation assistant (Vietnamese and English).\n"
+        "Help users find the best courses based on their goals, interests, skill level, and preferences.\n\n"
+        "AVAILABLE COURSES:\n"
+        f"{courses_json}\n\n"
+        "INSTRUCTIONS:\n"
+        "1. Understand the user's learning goals, interests, current skill level, and preferences\n"
+        "2. Recommend 2-5 most suitable courses from the catalog above\n"
+        "3. For each recommended course, explain WHY it matches their needs\n"
+        "4. If no exact match exists, recommend the closest alternatives\n"
+        "5. Ask clarifying questions if the user's needs are unclear\n"
+        "6. Always be encouraging and supportive\n\n"
+        "RESPONSE FORMAT:\n"
+        "- Start with a friendly conversational response\n"
+        "- Then add a JSON block with recommendations like this:\n"
+        "```json\n"
+        "{\n"
+        '  "courses": [\n'
+        '    {"id": 123, "reason": "This course teaches Python backend which matches your goal"},\n'
+        '    {"id": 456, "reason": "Great for interview preparation with algorithm focus"}\n'
+        "  ],\n"
+        '  "follow_up": "Would you like more details about any of these courses?"\n'
+        "}\n"
+        "```\n"
+        "If the user writes Vietnamese, respond in Vietnamese; otherwise match their language."
+    )
+
+def _ai_generate_reply(history, course_context=None):
     ready = _configure_client()
     if not ready:
         return { 'text': 'AI is unavailable, please try again later.' }
     try:
-        sys = _build_system_instruction()
+        # Build system instruction based on whether we have course context
+        if course_context:
+            sys = _build_course_system_instruction(course_context)
+        else:
+            sys = _build_system_instruction()
+            
         convo = "\n".join(
             ("User: " + m['text']) if m['role'] == 'user' else ("Assistant: " + m['text'])
             for m in history
@@ -75,12 +111,9 @@ def _ai_generate_reply(history):
         prompt = (
             f"{sys}\n\n"
             f"Conversation so far:\n{convo}\n\n"
-            "Respond to the latest user message with a helpful, unrestricted answer."
+            "Respond to the latest user message with a helpful answer."
         )
-        msgs = [{ 'role': 'system', 'parts': [prompt] }]
-        for m in history:
-            role = 'user' if m['role'] == 'user' else 'model'
-            msgs.append({ 'role': role, 'parts': [m['text']] })
+        msgs = [{ 'role': 'user', 'parts': [prompt] }]
         model = genai.GenerativeModel(_GEMINI_MODEL_NAME)
         resp = model.generate_content(msgs)
         text = getattr(resp, 'text', None)
@@ -92,10 +125,29 @@ def _ai_generate_reply(history):
                     if hasattr(part, 'text') and part.text:
                         parts.append(part.text)
             text = " ".join(parts)
-        return { 'text': (text or '').strip() }
+        
+        # Parse JSON recommendations if present
+        result = { 'text': (text or '').strip(), 'courses': [], 'follow_up': None }
+        if text and '```json' in text:
+            try:
+                # Extract JSON block
+                json_start = text.find('```json') + 7
+                json_end = text.find('```', json_start)
+                if json_end > json_start:
+                    json_str = text[json_start:json_end].strip()
+                    json_data = json.loads(json_str)
+                    result['courses'] = json_data.get('courses', [])
+                    result['follow_up'] = json_data.get('follow_up')
+                    # Clean the JSON block from the text
+                    result['text'] = text[:text.find('```json')].strip()
+            except Exception as e:
+                print(f'JSON parse error: {e}')
+                
+        return result
     except Exception as e:
         print('Gemini error:', e)
-        return { 'text': 'AI error occurred; please provide more detail.' }
+        traceback.print_exc()
+        return { 'text': 'AI error occurred; please provide more detail.', 'courses': [], 'follow_up': None }
 
 student_bp = Blueprint('student', __name__, url_prefix='/api/student')
 
@@ -860,58 +912,155 @@ def _produce_recommendations(answers):
 @student_bp.post('/recommend/chat/init')
 @jwt_required(optional=True)
 def recommend_chat_init():
+    # Clean up old sessions periodically
+    _cleanup_old_sessions()
+    
     ident = get_jwt_identity()
     user_id = _resolve_user_id_from_identity(ident) if ident else None
+    
+    if not user_id:
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
+    
     session_id = str(uuid.uuid4())
-    _AI_CHAT_SESSIONS[session_id] = { 'user_id': user_id, 'history': [], 'created_at': time.time() }
+    session_key = (user_id, session_id)
+    _AI_CHAT_SESSIONS[session_key] = { 'history': [], 'created_at': time.time() }
+    
+    logging.info(f"✅ Created session {session_id} for user {user_id}")
+    
     intro = 'Xin chào! Bạn muốn học gì? Hãy cho tôi biết mục tiêu (ví dụ: học backend Python, cải thiện thuật toán, chuẩn bị phỏng vấn...).'
     return jsonify({ 'success': True, 'sessionId': session_id, 'message': intro }) , 200
 
 @student_bp.post('/recommend/chat/message')
 @jwt_required(optional=True)
 def recommend_chat_message():
-    data = request.get_json() or {}
-    session_id = data.get('sessionId')
-    user_msg = (data.get('message') or '').strip()
-    if not session_id or session_id not in _AI_CHAT_SESSIONS:
-        return jsonify({ 'success': False, 'error': 'Invalid session' }), 400
-    if not user_msg:
-        return jsonify({ 'success': False, 'error': 'Empty message' }), 400
-    sess = _AI_CHAT_SESSIONS[session_id]
-    sess['history'].append({'role':'user','text': user_msg})
-    course_context = _serialize_courses()
-    ai = _ai_generate_reply(sess['history'], course_context)
-    # If AI included course IDs with reasons, map to full course objects
-    detailed = []
-    for item in ai.get('courses', [])[:8]:
-        cid = item.get('id')
-        if not cid:
-            continue
-        c = Course.query.get(int(cid))
-        if not c:
-            continue
-        detailed.append({
-            'course': {
-                'id': c.id,
-                'title': c.title,
-                'level': c.level,
-                'price': float(c.price) if c.price else 0,
-                'categories': [cat.name for cat in getattr(c,'categories',[]) if getattr(cat,'name',None)],
-                'topics': [t.name for t in getattr(c,'topics',[]) if getattr(t,'name',None)],
-                'description': c.description
-            },
-            'reason': item.get('reason')
-        })
-    # Append assistant message (store trimmed text to avoid growth)
-    assistant_text = ai.get('text','')[:6000]
-    sess['history'].append({'role':'assistant','text': assistant_text})
-    return jsonify({
-        'success': True,
-        'sessionId': session_id,
-        'reply': assistant_text,
-        'coursesWithReasons': detailed,
-        'followUp': ai.get('follow_up')
-    }), 200
+    try:
+        data = request.get_json() or {}
+        session_id = data.get('sessionId')
+        user_msg = (data.get('message') or '').strip()
+        
+        ident = get_jwt_identity()
+        user_id = _resolve_user_id_from_identity(ident) if ident else None
+        
+        if not user_id:
+            return jsonify({'success': False, 'error': 'Authentication required'}), 401
+        
+        session_key = (user_id, session_id)
+        
+        # Debug logging
+        logging.info(f"📨 Chat message request - User: {user_id}, Session: {session_id}")
+        logging.info(f"🔍 Active sessions for user {user_id}: {[k for k in _AI_CHAT_SESSIONS.keys() if k[0] == user_id]}")
+        
+        if not session_id or session_key not in _AI_CHAT_SESSIONS:
+            logging.warning(f"⚠️ Invalid session - User: {user_id}, Session: {session_id}, Key exists: {session_key in _AI_CHAT_SESSIONS}")
+            return jsonify({ 'success': False, 'error': 'Invalid or expired session' }), 400
+        if not user_msg:
+            return jsonify({ 'success': False, 'error': 'Empty message' }), 400
+        
+        sess = _AI_CHAT_SESSIONS[session_key]
+        sess['history'].append({'role':'user','text': user_msg})
+        
+        # Get course context for recommendation
+        course_context = _serialize_courses()
+        
+        # Generate AI reply with course context
+        ai = _ai_generate_reply(sess['history'], course_context)
+        
+        # If AI included course IDs with reasons, map to full course objects
+        detailed = []
+        for item in ai.get('courses', [])[:8]:
+            cid = item.get('id')
+            if not cid:
+                continue
+            try:
+                c = Course.query.get(int(cid))
+                if not c:
+                    continue
+                detailed.append({
+                    'course': {
+                        'id': c.id,
+                        'title': c.title,
+                        'level': c.level,
+                        'price': float(c.price) if c.price else 0,
+                        'categories': [cat.name for cat in getattr(c,'categories',[]) if getattr(cat,'name',None)],
+                        'topics': [t.name for t in getattr(c,'topics',[]) if getattr(t,'name',None)],
+                        'description': c.description
+                    },
+                    'reason': item.get('reason')
+                })
+            except Exception as e:
+                print(f'Error processing course {cid}: {e}')
+                continue
+        
+        # Append assistant message (store trimmed text to avoid growth)
+        assistant_text = ai.get('text','')[:6000]
+        sess['history'].append({'role':'assistant','text': assistant_text})
+        
+        return jsonify({
+            'success': True,
+            'sessionId': session_id,
+            'reply': assistant_text,
+            'coursesWithReasons': detailed,
+            'followUp': ai.get('follow_up')
+        }), 200
+        
+    except Exception as e:
+        print(f'❌ Error in recommend_chat_message: {e}')
+        traceback.print_exc()
+        return jsonify({ 
+            'success': False, 
+            'error': 'Internal server error occurred',
+            'details': str(e) if os.getenv('DEBUG') else None
+        }), 500
+
+
+@student_bp.delete('/recommend/chat/clear')
+@jwt_required(optional=True)
+def recommend_chat_clear():
+    """Clear chat history for the current user's session."""
+    try:
+        data = request.get_json() or {}
+        session_id = data.get('sessionId')
+        
+        ident = get_jwt_identity()
+        user_id = _resolve_user_id_from_identity(ident) if ident else None
+        
+        if not user_id:
+            return jsonify({'success': False, 'error': 'Authentication required'}), 401
+        
+        if not session_id:
+            return jsonify({'success': False, 'error': 'Missing sessionId'}), 400
+        
+        session_key = (user_id, session_id)
+        
+        # Log current state before clearing
+        logging.info(f"🔍 Clear request - User: {user_id}, Session: {session_id}")
+        logging.info(f"🔍 Active sessions for user: {[k[1] for k in _AI_CHAT_SESSIONS.keys() if k[0] == user_id]}")
+        
+        if session_key in _AI_CHAT_SESSIONS:
+            del _AI_CHAT_SESSIONS[session_key]
+            logging.info(f"🗑️ Successfully cleared session {session_id} for user {user_id}")
+            return jsonify({
+                'success': True,
+                'message': 'Chat history cleared successfully'
+            }), 200
+        else:
+            # Session not found - this is OK, just means it was already cleared or expired
+            logging.warning(f"⚠️ Session {session_id} not found for user {user_id} (may be already cleared)")
+            # Return success anyway since the desired state (session cleared) is achieved
+            return jsonify({
+                'success': True,
+                'message': 'Session already cleared or expired',
+                'wasAlreadyCleared': True
+            }), 200
+            
+    except Exception as e:
+        logging.error(f'❌ Error in recommend_chat_clear: {e}')
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error occurred',
+            'details': str(e) if os.getenv('DEBUG') else None
+        }), 500
 
 
 # --- Profile endpoints ---
@@ -1144,4 +1293,18 @@ def upload_avatar():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
+
+def _cleanup_old_sessions():
+    """Remove sessions older than _SESSION_TIMEOUT."""
+    current_time = time.time()
+    to_remove = []
+    for session_key, session_data in _AI_CHAT_SESSIONS.items():
+        if current_time - session_data.get('created_at', 0) > _SESSION_TIMEOUT:
+            to_remove.append(session_key)
+    for session_key in to_remove:
+        user_id, session_id = session_key
+        del _AI_CHAT_SESSIONS[session_key]
+        logging.info(f"🧹 Removed expired session {session_id} for user {user_id}")
+    if to_remove:
+        logging.info(f'🧹 Cleaned up {len(to_remove)} old chat sessions')
 

@@ -19,7 +19,7 @@
       </div>
       <div class="form-actions">
         <button class="btn" @click="cancelAddSection">Cancel</button>
-        <button class="btn primary" :disabled="!newSectionTitle" @click="saveNewSection">Save Section</button>
+        <button class="btn primary" @click="saveNewSection">Save Section</button>
       </div>
     </div>
 
@@ -48,11 +48,6 @@
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Lesson Type</label>
-              <select v-model="section.newLesson.type">
-                <option value="video">Video</option>
-                <option value="quiz">Quiz</option>
-              </select>
             </div>
           </div>
 
@@ -89,7 +84,13 @@
 
           <div class="form-actions">
             <button class="btn" @click="cancelAddLesson(section)">Cancel</button>
-            <button class="btn primary" :disabled="!section.newLesson.title" @click="saveNewLesson(section)">Save Lesson</button>
+            <button 
+              class="btn primary" 
+              :disabled="!section.newLesson.title || (section.newLesson.type === 'video' && !section.newLesson.videoUrl)" 
+              @click="saveNewLesson(section)"
+            >
+              Save Lesson
+            </button>
           </div>
         </div>
 
@@ -123,11 +124,6 @@
                   <input v-model="lesson.editTitle" class="lesson-title-input" />
                 </div>
                 <div class="field">
-                  <div class="mini-label">Type</div>
-                  <select v-model="lesson.editType" class="lesson-type">
-                    <option value="video">Video</option>
-                    <option value="quiz">Quiz</option>
-                  </select>
                 </div>
               </div>
               
@@ -452,7 +448,17 @@ export default {
       section.addingLesson = false;
     },
     async saveNewLesson(section) {
-      if (!section.newLesson.title) return;
+      if (!section.newLesson.title) {
+        alert("⚠️ Vui lòng nhập tiêu đề bài học!");
+        return;
+      }
+      
+      // Validate video URL for video type lessons
+      if (section.newLesson.type === 'video' && !section.newLesson.videoUrl) {
+        alert("⚠️ Bài học dạng Video phải có video! Vui lòng upload video hoặc nhập Video URL.");
+        return;
+      }
+      
       try {
         const headers = this.getAuthHeaders()
         const payload = {
@@ -470,13 +476,26 @@ export default {
         );
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || "Không thể tạo bài học");
+        
+        alert("✅ Bài học đã được tạo thành công!");
         section.addingLesson = false;
         await this.fetchCurriculum();
       } catch (e) {
-        alert(e.message);
+        alert(`❌ Lỗi: ${e.message}`);
       }
     },
     async saveLesson(lesson) {
+      if (!lesson.editTitle) {
+        alert("⚠️ Vui lòng nhập tiêu đề bài học!");
+        return;
+      }
+      
+      // Validate video URL for video type lessons
+      if (lesson.editType === 'video' && !lesson.editVideoUrl) {
+        alert("⚠️ Bài học dạng Video phải có video! Vui lòng upload video hoặc nhập Video URL.");
+        return;
+      }
+      
       try {
         const headers = this.getAuthHeaders()
         const payload = {
@@ -500,9 +519,11 @@ export default {
         const data = await res.json();
         if (!res.ok)
           throw new Error(data.message || "Không thể cập nhật bài học");
+        
+        alert("✅ Bài học đã được cập nhật thành công!");
         await this.fetchCurriculum();
       } catch (e) {
-        alert(e.message);
+        alert(`❌ Lỗi: ${e.message}`);
       }
     },
     async deleteLesson(lesson) {
@@ -944,14 +965,12 @@ export default {
 }
 
 .btn.primary {
-  background: #1f2937;
+  background: #377CF4;
   color: white;
-  border-color: #1f2937;
 }
 
 .btn.primary:hover {
-  background: #111827;
-  border-color: #111827;
+  background: #194692;
 }
 
 .btn.danger {

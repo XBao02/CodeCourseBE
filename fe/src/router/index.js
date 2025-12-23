@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router"; // cài vue-router: npm install vue-router@next --save
 import ForgotPassword from '../components/User/ForgotPassword.vue'
+import ResetPassword from '../components/User/ResetPassword.vue'
 
 const routes = [
   // ------------------ User ------------------
@@ -35,6 +36,11 @@ const routes = [
     path: '/forgot-password',
     name: 'ForgotPassword',
     component: ForgotPassword
+  },
+  {
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: ResetPassword
   },
 
   // ------------------ ADMIN ------------------

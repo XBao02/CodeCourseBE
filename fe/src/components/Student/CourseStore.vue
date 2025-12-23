@@ -168,6 +168,16 @@
                   </div>
                   <div v-if="recoLoading" class="msg assistant"><div class="bubble">Đang suy nghĩ...</div></div>
                 </div>
+                <div class="chat-controls">
+                  <button 
+                    class="clear-chat-btn" 
+                    @click="clearChatHistory" 
+                    :disabled="recoLoading || !chatSessionId"
+                    title="Clear chat history"
+                  >
+                    🗑️ Clear
+                  </button>
+                </div>
                 <form class="chat-input-row" @submit.prevent="sendRecoInput">
                   <input v-model="recoInput" :placeholder="recoPlaceholder" class="chat-input" />
                   <button class="send-btn" :disabled="recoLoading || !recoInput.trim()">{{ recoLoading ? '...' : 'Send' }}</button>
@@ -664,10 +674,12 @@ export default {
         )
         if (res.data?.success) {
           this.chatSessionId = res.data.sessionId
-          if (!this.recoMessages.length) {
+          // Always add welcome message for new sessions
+          if (!this.recoMessages.length || this.recoMessages.length === 0) {
             this.recoMessages.push({ role: 'system', text: res.data.message })
           }
           this.saveRecoState()
+          console.log('✅ Chat session initialized:', this.chatSessionId)
         } else {
           console.error('Failed to init session')
         }
@@ -782,6 +794,88 @@ export default {
           el.scrollTop = el.scrollHeight 
         }
       } catch {}
+    },
+    
+    async clearChatHistory() {
+      if (!this.chatSessionId) {
+        console.warn('⚠️ No active chat session to clear - initializing new session')
+        await this.initRecoChat()
+        return
+      }
+      
+      const confirmClear = confirm('Are you sure you want to clear the chat history? This cannot be undone.')
+      if (!confirmClear) return
+      
+      try {
+        console.log('🗑️ Clearing chat session:', this.chatSessionId)
+        
+        const res = await axios.delete(
+          `${API_BASE}/student/recommend/chat/clear`,
+          {
+            data: { sessionId: this.chatSessionId },
+            headers: this.authHeaders()
+          }
+        )
+        
+        // Check if the request was successful (200) OR if session was already cleared
+        if (res.data?.success || res.status === 200) {
+          console.log('✅ Chat history cleared on server:', res.data?.message || 'Success')
+          
+          // Clear local state
+          this.recoMessages = []
+          this.recoInput = ''
+          this.recoLoading = false
+          this.recoCourses = []
+          this.recoCompleted = false
+          this.chatSessionId = null
+          this.followUp = null
+          
+          // Save cleared state
+          this.saveRecoState()
+          
+          console.log('🔄 Initializing new chat session...')
+          
+          // Re-initialize the chat session
+          await this.initRecoChat()
+          
+          // Verify new session was created
+          if (this.chatSessionId) {
+            console.log('✅ New session created successfully:', this.chatSessionId)
+          } else {
+            console.error('❌ Failed to create new session')
+          }
+          
+          // Force save the new state again
+          this.saveRecoState()
+          
+        } else {
+          alert('Failed to clear chat history: ' + (res.data?.error || 'Unknown error'))
+        }
+      } catch (e) {
+        console.error('❌ Error clearing chat history:', e)
+        
+        // Even if backend returns an error, clear the frontend state and reinitialize
+        if (e?.response?.status === 404 || e?.response?.status === 400) {
+          console.log('⚠️ Session not found on server (may be expired), clearing local state...')
+          
+          // Clear local state
+          this.recoMessages = []
+          this.recoInput = ''
+          this.recoLoading = false
+          this.recoCourses = []
+          this.recoCompleted = false
+          this.chatSessionId = null
+          this.followUp = null
+          
+          // Initialize new session
+          await this.initRecoChat()
+          
+          console.log('✅ Recovered by creating new session:', this.chatSessionId)
+        } else {
+          const errorMsg = e?.response?.data?.error || 'Failed to clear chat history'
+          alert(errorMsg)
+        }
+      }
     },
     
     acceptFollowUp() { 
@@ -1412,6 +1506,39 @@ export default {
   font-size: 13px;
   line-height: 1.4;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.chat-controls {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.clear-chat-btn {
+  padding: 6px 12px;
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.clear-chat-btn:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+}
+
+.clear-chat-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .chat-input-row {

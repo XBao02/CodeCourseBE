@@ -7,6 +7,10 @@ import re
 import bcrypt
 from datetime import datetime, timedelta
 import secrets
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import os
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
@@ -216,6 +220,7 @@ def login():
             "id": user.id,
             "email": user.email,
             "role": role,
+            "full_name": user.full_name,
             "instructorId": instructor_id,
             "studentId": student_id,
         },
@@ -255,8 +260,9 @@ def forgot_password():
 
         user = User.query.filter(db.func.lower(User.email) == email).first()
         if not user:
-            # Do not reveal user existence
-            return jsonify({ 'success': True }), 200
+            # Do not reveal user existence for security
+            # Still return success to prevent email enumeration
+            return jsonify({ 'success': True, 'message': 'If the email exists, a reset link has been sent.' }), 200
 
         # Create token
         token = secrets.token_urlsafe(32)
@@ -265,11 +271,34 @@ def forgot_password():
         db.session.add(prt)
         db.session.commit()
 
-        # In real app, send email with reset link. For now, return token for testing.
-        reset_link = f"http://localhost:5000/api/auth/reset-password?token={token}"
-        return jsonify({ 'success': True, 'resetLink': reset_link, 'token': token }), 200
+        # Generate reset link (update with frontend URL)
+        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+        reset_link = f"{frontend_url}/reset-password?token={token}"
+        
+        # Send reset password email
+        user_name = user.full_name or user.email.split('@')[0]
+        email_sent = send_reset_password_email(user.email, reset_link, user_name)
+        
+        if email_sent:
+            print(f"✅ Password reset email sent successfully to {user.email}")
+        else:
+            print(f"⚠️ Failed to send password reset email to {user.email}")
+
+        # Return success with message
+        response = { 
+            'success': True, 
+            'message': 'If the email exists, a reset link has been sent to your email.'
+        }
+        
+        # Include reset link in development mode for testing
+        if os.getenv('DEBUG') == 'True' or os.getenv('FLASK_ENV') == 'development':
+            response['resetLink'] = reset_link
+            response['token'] = token
+        
+        return jsonify(response), 200
     except Exception as e:
         db.session.rollback()
+        print(f"❌ Error in forgot_password: {e}")
         return jsonify({ 'success': False, 'error': 'Server error' }), 500
 
 
@@ -303,5 +332,91 @@ def reset_password():
     except Exception as e:
         db.session.rollback()
         return jsonify({ 'success': False, 'error': 'Server error' }), 500
+
+
+# Helper function to send password reset email
+def send_reset_password_email(to_email, reset_link, user_name):
+    """Send password reset link via Gmail SMTP"""
+    try:
+        # Get email credentials from environment
+        smtp_email = os.getenv('SMTP_EMAIL') or os.getenv('GMAIL_USER')
+        smtp_password = os.getenv('SMTP_PASSWORD') or os.getenv('GMAIL_APP_PASSWORD')
+        
+        if not smtp_email or not smtp_password:
+            print("⚠️ SMTP credentials not configured. Email will not be sent.")
+            return False
+        
+        # Create email message
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = 'Reset Your Password - CodeCourse'
+        msg['From'] = f"CodeCourse <{smtp_email}>"
+        msg['To'] = to_email
+        
+        # HTML email template
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }}
+                .content {{ background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }}
+                .button {{ display: inline-block; background: #3b82f6; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }}
+                .button:hover {{ background: #2563eb; }}
+                .link-box {{ background: white; border: 1px solid #d1d5db; padding: 15px; margin: 20px 0; border-radius: 6px; word-break: break-all; }}
+                .footer {{ text-align: center; color: #666; font-size: 14px; margin-top: 20px; }}
+                .warning {{ background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; margin: 20px 0; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🔐 Reset Your Password</h1>
+                </div>
+                <div class="content">
+                    <p>Hi {user_name},</p>
+                    <p>We received a request to reset your password for your CodeCourse account. Click the button below to create a new password:</p>
+                    
+                    <div style="text-align: center;">
+                        <a href="{reset_link}" class="button">Reset Password</a>
+                    </div>
+                    
+                    <p>Or copy and paste this link into your browser:</p>
+                    <div class="link-box">
+                        {reset_link}
+                    </div>
+                    
+                    <div class="warning">
+                        <strong>⚠️ Important:</strong> This link will expire in 1 hour. For your security, do not share this link with anyone.
+                    </div>
+                    
+                    <p>If you didn't request a password reset, please ignore this email or contact support if you have concerns.</p>
+                    
+                    <div class="footer">
+                        <p>© 2024 CodeCourse. All rights reserved.</p>
+                        <p>This is an automated email. Please do not reply.</p>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Attach HTML content
+        part = MIMEText(html, 'html')
+        msg.attach(part)
+        
+        # Send email via Gmail SMTP
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login(smtp_email, smtp_password)
+            server.send_message(msg)
+        
+        print(f"✅ Password reset email sent to {to_email}")
+        return True
+    except Exception as e:
+        print(f"❌ Error sending password reset email: {e}")
+        return False
 
 
