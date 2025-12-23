@@ -46,27 +46,6 @@
           <p v-if="!recommendedCourses.length" class="muted">No recommended courses yet.</p>
         </div>
       </article>
-
-      <article class="card timeline-card">
-        <header>
-          <h3>Lộ trình học theo tuần dựa trên các khóa học này</h3>
-        </header>
-        <div v-if="timeline?.length" class="timeline">
-          <article v-for="week in timeline" :key="`week-${week.week}`" class="timeline-item">
-            <header>
-              <span class="week-label">Tuần {{ week.week }}</span>
-              <h4>{{ week.title }}</h4>
-            </header>
-            <p class="desc">{{ week.description }}</p>
-            <ul class="topics">
-              <li v-for="course in getCoursesByIds(week.course_ids || [])" :key="course.id">
-                {{ course.title }}
-              </li>
-            </ul>
-          </article>
-        </div>
-        <p v-else class="status muted">Chưa có timeline cho bạn.</p>
-      </article>
     </div>
   </section>
 </template>
@@ -83,7 +62,6 @@ const loading = ref(true);
 const error = ref("");
 const skillProfile = ref(null);
 const recommendedCourses = ref([]);
-const timeline = ref([]);
 const router = useRouter();
 
 const client = axios.create({
@@ -99,6 +77,25 @@ client.interceptors.request.use((config) => {
 });
 
 const loadPath = async () => {
+  // Prefer latest placement result stored in sessionStorage
+  const storedRecs = sessionStorage.getItem("placementRecommended");
+  const storedLevel = sessionStorage.getItem("placementLevel");
+  if (storedRecs) {
+    try {
+      recommendedCourses.value = JSON.parse(storedRecs) || [];
+      skillProfile.value = {
+        level: storedLevel || "pending",
+        strengths: [],
+        weaknesses: [],
+        recommended_courses: recommendedCourses.value,
+      };
+      loading.value = false;
+      return;
+    } catch (e) {
+      // fallback to API
+    }
+  }
+
   if (!userId.value) {
     error.value = "Vui lòng đăng nhập để xem lộ trình.";
     loading.value = false;
@@ -108,19 +105,11 @@ const loadPath = async () => {
     const { data } = await client.get(`/learning-path/${userId.value}`);
     skillProfile.value = data.skill_profile || null;
     recommendedCourses.value = skillProfile.value?.recommended_courses || [];
-    timeline.value = data.timeline || [];
   } catch (err) {
     error.value = err?.response?.data?.error || "Không thể tải lộ trình từ API.";
   } finally {
     loading.value = false;
   }
-};
-
-const getCoursesByIds = (ids = []) => {
-  if (!ids.length) {
-    return [];
-  }
-  return recommendedCourses.value.filter((course) => ids.includes(course.id));
 };
 
 const goToCourse = (course) => {

@@ -1,0 +1,2511 @@
+[
+  {
+    "question": "Which keyword is used to define a function in Python?",
+    "options": ["func", "def", "function", "lambda"],
+    "correct_answer": "def",
+    "difficulty": "beginner",
+    "skill_tag": "python_syntax"
+  },
+  {
+    "question": "Which data type is mutable in Python?",
+    "options": ["tuple", "str", "list", "int"],
+    "correct_answer": "list",
+    "difficulty": "beginner",
+    "skill_tag": "python_types"
+  },
+  {
+    "question": "What symbol starts a comment in Python?",
+    "options": ["//", "#", "/*", "--"],
+    "correct_answer": "#",
+    "difficulty": "beginner",
+    "skill_tag": "python_syntax"
+  },
+  {
+    "question": "Which keyword is used to handle exceptions?",
+    "options": ["catch", "error", "except", "handle"],
+    "correct_answer": "except",
+    "difficulty": "beginner",
+    "skill_tag": "python_exception"
+  },
+  {
+    "question": "Which built-in function returns the length of a list?",
+    "options": ["count()", "size()", "length()", "len()"],
+    "correct_answer": "len()",
+    "difficulty": "beginner",
+    "skill_tag": "python_builtin"
+  },
+
+  {
+    "question": "What does list comprehension provide?",
+    "options": [
+      "Loop optimization",
+      "Short syntax to create lists",
+      "Parallel execution",
+      "Memory management"
+    ],
+    "correct_answer": "Short syntax to create lists",
+    "difficulty": "intermediate",
+    "skill_tag": "python_comprehension"
+  },
+  {
+    "question": "Which keyword creates a generator?",
+    "options": ["return", "yield", "gen", "produce"],
+    "correct_answer": "yield",
+    "difficulty": "intermediate",
+    "skill_tag": "python_generator"
+  },
+  {
+    "question": "What is the output type of map() in Python 3?",
+    "options": ["list", "tuple", "iterator", "set"],
+    "correct_answer": "iterator",
+    "difficulty": "intermediate",
+    "skill_tag": "python_functional"
+  },
+  {
+    "question": "Which module is used for regular expressions?",
+    "options": ["regex", "pyregex", "re", "match"],
+    "correct_answer": "re",
+    "difficulty": "intermediate",
+    "skill_tag": "python_regex"
+  },
+  {
+    "question": "What does the with statement manage?",
+    "options": [
+      "Memory",
+      "Context lifecycle",
+      "Threads",
+      "Exceptions"
+    ],
+    "correct_answer": "Context lifecycle",
+    "difficulty": "intermediate",
+    "skill_tag": "python_context"
+  },
+
+  {
+    "question": "What is the purpose of __init__ method?",
+    "options": [
+      "Destroy object",
+      "Initialize object",
+      "Clone object",
+      "Serialize object"
+    ],
+    "correct_answer": "Initialize object",
+    "difficulty": "intermediate",
+    "skill_tag": "python_oop"
+  },
+  {
+    "question": "Which statement creates an abstract base class?",
+    "options": ["@abstract", "ABC", "abstract", "interface"],
+    "correct_answer": "ABC",
+    "difficulty": "advanced",
+    "skill_tag": "python_oop"
+  },
+  {
+    "question": "What does GIL stand for in Python?",
+    "options": [
+      "Global Interpreter Lock",
+      "General Input Layer",
+      "Global Index List",
+      "Generic Instruction Loop"
+    ],
+    "correct_answer": "Global Interpreter Lock",
+    "difficulty": "advanced",
+    "skill_tag": "python_concurrency"
+  },
+  {
+    "question": "Which library enables asynchronous programming?",
+    "options": ["threading", "multiprocessing", "asyncio", "syncio"],
+    "correct_answer": "asyncio",
+    "difficulty": "advanced",
+    "skill_tag": "python_async"
+  },
+  {
+    "question": "What does deepcopy() do?",
+    "options": [
+      "Copies reference",
+      "Copies object recursively",
+      "Copies memory address",
+      "Clones pointer"
+    ],
+    "correct_answer": "Copies object recursively",
+    "difficulty": "advanced",
+    "skill_tag": "python_memory"
+  },
+
+  {
+    "question": "Which magic method controls attribute access?",
+    "options": ["__call__", "__getattr__", "__dict__", "__slots__"],
+    "correct_answer": "__getattr__",
+    "difficulty": "advanced",
+    "skill_tag": "python_magic"
+  },
+  {
+    "question": "Which statement is used to optimize memory for attributes?",
+    "options": ["__dict__", "__slots__", "__reduce__", "__cache__"],
+    "correct_answer": "__slots__",
+    "difficulty": "advanced",
+    "skill_tag": "python_optimization"
+  },
+  {
+    "question": "Which keyword declares a variable in JavaScript?",
+    "options": ["var", "let", "const", "all are correct"],
+    "correct_answer": "all are correct",
+    "difficulty": "beginner",
+    "skill_tag": "javascript_variables"
+  },
+  {
+    "question": "Which keyword creates a block-scoped variable?",
+    "options": ["var", "let", "global", "static"],
+    "correct_answer": "let",
+    "difficulty": "beginner",
+    "skill_tag": "javascript_scope"
+  },
+  {
+    "question": "Which symbol is used for single-line comments?",
+    "options": ["#", "//", "/*", "--"],
+    "correct_answer": "//",
+    "difficulty": "beginner",
+    "skill_tag": "javascript_syntax"
+  },
+  {
+    "question": "What does typeof null return?",
+    "options": ["null", "object", "undefined", "number"],
+    "correct_answer": "object",
+    "difficulty": "beginner",
+    "skill_tag": "javascript_types"
+  },
+  {
+    "question": "Which operator is used for strict comparison?",
+    "options": ["==", "=", "===", "!="],
+    "correct_answer": "===",
+    "difficulty": "beginner",
+    "skill_tag": "javascript_operator"
+  },
+  {
+    "question": "Which method converts JSON string to object?",
+    "options": ["JSON.stringify", "JSON.parse", "parseJSON", "toObject"],
+    "correct_answer": "JSON.parse",
+    "difficulty": "beginner",
+    "skill_tag": "javascript_json"
+  },
+  {
+    "question": "Which function runs when a promise is resolved?",
+    "options": ["catch()", "then()", "finally()", "resolve()"],
+    "correct_answer": "then()",
+    "difficulty": "beginner",
+    "skill_tag": "javascript_promise"
+  },
+  {
+    "question": "Which array method adds an element to the end?",
+    "options": ["push()", "pop()", "shift()", "unshift()"],
+    "correct_answer": "push()",
+    "difficulty": "beginner",
+    "skill_tag": "javascript_array"
+  },
+  {
+    "question": "Which keyword defines an arrow function?",
+    "options": ["=>", "->", "function", "arrow"],
+    "correct_answer": "=>",
+    "difficulty": "beginner",
+    "skill_tag": "javascript_function"
+  },
+  {
+    "question": "Which object represents the browser window?",
+    "options": ["document", "screen", "window", "browser"],
+    "correct_answer": "window",
+    "difficulty": "beginner",
+    "skill_tag": "javascript_dom"
+  },
+
+  {
+    "question": "What is a closure in JavaScript?",
+    "options": [
+      "A loop structure",
+      "A function with preserved lexical scope",
+      "A promise handler",
+      "A memory leak"
+    ],
+    "correct_answer": "A function with preserved lexical scope",
+    "difficulty": "intermediate",
+    "skill_tag": "javascript_closure"
+  },
+  {
+    "question": "Which method creates a new array without mutating the original?",
+    "options": ["push()", "splice()", "map()", "sort()"],
+    "correct_answer": "map()",
+    "difficulty": "intermediate",
+    "skill_tag": "javascript_array"
+  },
+  {
+    "question": "What does event bubbling mean?",
+    "options": [
+      "Event moves from parent to child",
+      "Event moves from child to parent",
+      "Event stops immediately",
+      "Event runs asynchronously"
+    ],
+    "correct_answer": "Event moves from child to parent",
+    "difficulty": "intermediate",
+    "skill_tag": "javascript_event"
+  },
+  {
+    "question": "Which keyword pauses execution inside async function?",
+    "options": ["wait", "pause", "await", "sleep"],
+    "correct_answer": "await",
+    "difficulty": "intermediate",
+    "skill_tag": "javascript_async"
+  },
+  {
+    "question": "What does Object.freeze() do?",
+    "options": [
+      "Deletes object",
+      "Prevents modification",
+      "Creates copy",
+      "Freezes memory"
+    ],
+    "correct_answer": "Prevents modification",
+    "difficulty": "intermediate",
+    "skill_tag": "javascript_object"
+  },
+  {
+    "question": "Which statement handles errors in promises?",
+    "options": ["then()", "resolve()", "catch()", "await"],
+    "correct_answer": "catch()",
+    "difficulty": "intermediate",
+    "skill_tag": "javascript_promise"
+  },
+  {
+    "question": "Which data structure ensures unique values?",
+    "options": ["Array", "Object", "Set", "Map"],
+    "correct_answer": "Set",
+    "difficulty": "intermediate",
+    "skill_tag": "javascript_collection"
+  },
+  {
+    "question": "Which API stores data in the browser persistently?",
+    "options": ["sessionStorage", "cookie", "localStorage", "cache"],
+    "correct_answer": "localStorage",
+    "difficulty": "intermediate",
+    "skill_tag": "javascript_storage"
+  },
+  {
+    "question": "Which loop is best for iterating object keys?",
+    "options": ["for", "forEach", "for...in", "for...of"],
+    "correct_answer": "for...in",
+    "difficulty": "intermediate",
+    "skill_tag": "javascript_loop"
+  },
+  {
+    "question": "What does NaN stand for?",
+    "options": [
+      "Not a Name",
+      "New and Null",
+      "Not a Number",
+      "Negative Number"
+    ],
+    "correct_answer": "Not a Number",
+    "difficulty": "intermediate",
+    "skill_tag": "javascript_number"
+  },
+
+  {
+    "question": "What is the JavaScript event loop responsible for?",
+    "options": [
+      "Memory allocation",
+      "UI rendering",
+      "Handling async callbacks",
+      "Compiling code"
+    ],
+    "correct_answer": "Handling async callbacks",
+    "difficulty": "advanced",
+    "skill_tag": "javascript_event_loop"
+  },
+  {
+    "question": "Which structure handles microtasks?",
+    "options": [
+      "Call Stack",
+      "Task Queue",
+      "Microtask Queue",
+      "Heap"
+    ],
+    "correct_answer": "Microtask Queue",
+    "difficulty": "advanced",
+    "skill_tag": "javascript_event_loop"
+  },
+  {
+    "question": "What causes memory leaks in JavaScript?",
+    "options": [
+      "Garbage collection",
+      "Unused closures",
+      "Primitive values",
+      "Const variables"
+    ],
+    "correct_answer": "Unused closures",
+    "difficulty": "advanced",
+    "skill_tag": "javascript_memory"
+  },
+  {
+    "question": "Which design pattern is Promise based on?",
+    "options": [
+      "Observer",
+      "Factory",
+      "Singleton",
+      "Decorator"
+    ],
+    "correct_answer": "Observer",
+    "difficulty": "advanced",
+    "skill_tag": "javascript_design_pattern"
+  },
+  {
+    "question": "What does debouncing solve?",
+    "options": [
+      "Memory leak",
+      "Excessive function calls",
+      "Async blocking",
+      "DOM mutation"
+    ],
+    "correct_answer": "Excessive function calls",
+    "difficulty": "advanced",
+    "skill_tag": "javascript_optimization"
+  },
+  {
+    "question": "Which technique improves performance by caching results?",
+    "options": ["Hoisting", "Memoization", "Currying", "Binding"],
+    "correct_answer": "Memoization",
+    "difficulty": "advanced",
+    "skill_tag": "javascript_optimization"
+  },
+  {
+    "question": "Which keyword is used to define a class in Java?",
+    "options": ["class", "struct", "define", "object"],
+    "correct_answer": "class",
+    "difficulty": "beginner",
+    "skill_tag": "java_syntax"
+  },
+  {
+    "question": "Which method is the entry point of a Java program?",
+    "options": ["start()", "run()", "main()", "init()"],
+    "correct_answer": "main()",
+    "difficulty": "beginner",
+    "skill_tag": "java_basics"
+  },
+  {
+    "question": "Which keyword is used to inherit a class in Java?",
+    "options": ["implements", "inherits", "extends", "instanceof"],
+    "correct_answer": "extends",
+    "difficulty": "beginner",
+    "skill_tag": "java_oop"
+  },
+  {
+    "question": "Which data type stores whole numbers?",
+    "options": ["float", "double", "int", "boolean"],
+    "correct_answer": "int",
+    "difficulty": "beginner",
+    "skill_tag": "java_types"
+  },
+  {
+    "question": "Which keyword prevents method overriding?",
+    "options": ["static", "private", "final", "protected"],
+    "correct_answer": "final",
+    "difficulty": "beginner",
+    "skill_tag": "java_oop"
+  },
+  {
+    "question": "Which operator compares object references?",
+    "options": ["equals()", "==", "compare()", "==="],
+    "correct_answer": "==",
+    "difficulty": "beginner",
+    "skill_tag": "java_operator"
+  },
+  {
+    "question": "Which package is automatically imported?",
+    "options": ["java.util", "java.io", "java.lang", "java.net"],
+    "correct_answer": "java.lang",
+    "difficulty": "beginner",
+    "skill_tag": "java_package"
+  },
+  {
+    "question": "Which loop executes at least once?",
+    "options": ["for", "while", "do-while", "foreach"],
+    "correct_answer": "do-while",
+    "difficulty": "beginner",
+    "skill_tag": "java_loop"
+  },
+  {
+    "question": "Which keyword is used to create an object?",
+    "options": ["create", "new", "alloc", "make"],
+    "correct_answer": "new",
+    "difficulty": "beginner",
+    "skill_tag": "java_oop"
+  },
+  {
+    "question": "Which type holds true or false values?",
+    "options": ["int", "String", "boolean", "char"],
+    "correct_answer": "boolean",
+    "difficulty": "beginner",
+    "skill_tag": "java_types"
+  },
+
+  {
+    "question": "What is method overloading?",
+    "options": [
+      "Same method name, different parameters",
+      "Same method signature",
+      "Overriding parent method",
+      "Multiple inheritance"
+    ],
+    "correct_answer": "Same method name, different parameters",
+    "difficulty": "intermediate",
+    "skill_tag": "java_oop"
+  },
+  {
+    "question": "Which collection does not allow duplicates?",
+    "options": ["List", "ArrayList", "Set", "Map"],
+    "correct_answer": "Set",
+    "difficulty": "intermediate",
+    "skill_tag": "java_collections"
+  },
+  {
+    "question": "Which interface is implemented by all collections?",
+    "options": ["Iterable", "Collection", "List", "Serializable"],
+    "correct_answer": "Collection",
+    "difficulty": "intermediate",
+    "skill_tag": "java_collections"
+  },
+  {
+    "question": "What does JVM stand for?",
+    "options": [
+      "Java Variable Machine",
+      "Java Virtual Machine",
+      "Java Visual Model",
+      "Java Verified Machine"
+    ],
+    "correct_answer": "Java Virtual Machine",
+    "difficulty": "intermediate",
+    "skill_tag": "java_jvm"
+  },
+  {
+    "question": "Which keyword handles exceptions?",
+    "options": ["catch", "throw", "throws", "all are correct"],
+    "correct_answer": "all are correct",
+    "difficulty": "intermediate",
+    "skill_tag": "java_exception"
+  },
+  {
+    "question": "Which class is thread-safe?",
+    "options": ["ArrayList", "HashMap", "Vector", "LinkedList"],
+    "correct_answer": "Vector",
+    "difficulty": "intermediate",
+    "skill_tag": "java_concurrency"
+  },
+  {
+    "question": "What is autoboxing?",
+    "options": [
+      "Manual type conversion",
+      "Primitive to wrapper conversion",
+      "Wrapper to primitive",
+      "Casting objects"
+    ],
+    "correct_answer": "Primitive to wrapper conversion",
+    "difficulty": "intermediate",
+    "skill_tag": "java_types"
+  },
+  {
+    "question": "Which keyword creates a constant?",
+    "options": ["static", "final", "const", "immutable"],
+    "correct_answer": "final",
+    "difficulty": "intermediate",
+    "skill_tag": "java_keyword"
+  },
+  {
+    "question": "Which stream operation transforms data?",
+    "options": ["filter()", "collect()", "map()", "reduce()"],
+    "correct_answer": "map()",
+    "difficulty": "intermediate",
+    "skill_tag": "java_stream"
+  },
+  {
+    "question": "Which access modifier is the most restrictive?",
+    "options": ["public", "protected", "default", "private"],
+    "correct_answer": "private",
+    "difficulty": "intermediate",
+    "skill_tag": "java_access"
+  },
+
+  {
+    "question": "What is garbage collection responsible for?",
+    "options": [
+      "Deleting variables",
+      "Freeing unused memory",
+      "Optimizing code",
+      "Handling threads"
+    ],
+    "correct_answer": "Freeing unused memory",
+    "difficulty": "advanced",
+    "skill_tag": "java_memory"
+  },
+  {
+    "question": "Which algorithm does HashMap use internally?",
+    "options": [
+      "Binary Tree",
+      "Red-Black Tree",
+      "Hashing",
+      "Heap"
+    ],
+    "correct_answer": "Hashing",
+    "difficulty": "advanced",
+    "skill_tag": "java_collections"
+  },
+  {
+    "question": "What causes a memory leak in Java?",
+    "options": [
+      "Unreachable objects",
+      "Unclosed resources",
+      "Garbage collection",
+      "Primitive variables"
+    ],
+    "correct_answer": "Unclosed resources",
+    "difficulty": "advanced",
+    "skill_tag": "java_memory"
+  },
+  {
+    "question": "Which concurrency keyword ensures visibility between threads?",
+    "options": ["final", "volatile", "synchronized", "static"],
+    "correct_answer": "volatile",
+    "difficulty": "advanced",
+    "skill_tag": "java_concurrency"
+  },
+  {
+    "question": "What does synchronized keyword do?",
+    "options": [
+      "Prevents deadlock",
+      "Locks object or class",
+      "Stops threads",
+      "Improves performance"
+    ],
+    "correct_answer": "Locks object or class",
+    "difficulty": "advanced",
+    "skill_tag": "java_concurrency"
+  },
+  {
+    "question": "Which JVM memory area stores class metadata?",
+    "options": ["Heap", "Stack", "Metaspace", "Register"],
+    "correct_answer": "Metaspace",
+    "difficulty": "advanced",
+    "skill_tag": "java_jvm"
+  },
+  {
+    "question": "Which keyword defines a class in C#?",
+    "options": ["class", "struct", "object", "define"],
+    "correct_answer": "class",
+    "difficulty": "beginner",
+    "skill_tag": "csharp_syntax"
+  },
+  {
+    "question": "Which method is the entry point of a C# console application?",
+    "options": ["Start()", "Run()", "Main()", "Init()"],
+    "correct_answer": "Main()",
+    "difficulty": "beginner",
+    "skill_tag": "csharp_basics"
+  },
+  {
+    "question": "Which keyword declares a variable with inferred type?",
+    "options": ["auto", "dynamic", "var", "let"],
+    "correct_answer": "var",
+    "difficulty": "beginner",
+    "skill_tag": "csharp_types"
+  },
+  {
+    "question": "Which access modifier allows access only within the same class?",
+    "options": ["public", "internal", "protected", "private"],
+    "correct_answer": "private",
+    "difficulty": "beginner",
+    "skill_tag": "csharp_access"
+  },
+  {
+    "question": "Which value type stores true or false?",
+    "options": ["int", "bool", "string", "char"],
+    "correct_answer": "bool",
+    "difficulty": "beginner",
+    "skill_tag": "csharp_types"
+  },
+  {
+    "question": "Which keyword creates an object instance?",
+    "options": ["create", "alloc", "new", "make"],
+    "correct_answer": "new",
+    "difficulty": "beginner",
+    "skill_tag": "csharp_oop"
+  },
+  {
+    "question": "Which symbol is used for single-line comments?",
+    "options": ["#", "//", "/*", "--"],
+    "correct_answer": "//",
+    "difficulty": "beginner",
+    "skill_tag": "csharp_syntax"
+  },
+  {
+    "question": "Which collection stores key-value pairs?",
+    "options": ["List", "Array", "Dictionary", "Queue"],
+    "correct_answer": "Dictionary",
+    "difficulty": "beginner",
+    "skill_tag": "csharp_collections"
+  },
+  {
+    "question": "Which keyword prevents inheritance?",
+    "options": ["sealed", "final", "static", "private"],
+    "correct_answer": "sealed",
+    "difficulty": "beginner",
+    "skill_tag": "csharp_oop"
+  },
+  {
+    "question": "Which loop iterates over collections?",
+    "options": ["for", "while", "foreach", "do-while"],
+    "correct_answer": "foreach",
+    "difficulty": "beginner",
+    "skill_tag": "csharp_loop"
+  },
+
+  {
+    "question": "What is method overloading in C#?",
+    "options": [
+      "Same method name with different parameters",
+      "Same method signature",
+      "Runtime polymorphism",
+      "Interface implementation"
+    ],
+    "correct_answer": "Same method name with different parameters",
+    "difficulty": "intermediate",
+    "skill_tag": "csharp_oop"
+  },
+  {
+    "question": "Which interface enables LINQ queries?",
+    "options": ["IList", "ICollection", "IEnumerable", "IDisposable"],
+    "correct_answer": "IEnumerable",
+    "difficulty": "intermediate",
+    "skill_tag": "csharp_linq"
+  },
+  {
+    "question": "What does the async keyword indicate?",
+    "options": [
+      "Parallel execution",
+      "Method returns Task",
+      "Method can be awaited",
+      "Thread creation"
+    ],
+    "correct_answer": "Method can be awaited",
+    "difficulty": "intermediate",
+    "skill_tag": "csharp_async"
+  },
+  {
+    "question": "Which keyword waits for an async operation?",
+    "options": ["wait", "delay", "await", "pause"],
+    "correct_answer": "await",
+    "difficulty": "intermediate",
+    "skill_tag": "csharp_async"
+  },
+  {
+    "question": "Which interface releases unmanaged resources?",
+    "options": ["ICloneable", "IEnumerable", "IDisposable", "IComparable"],
+    "correct_answer": "IDisposable",
+    "difficulty": "intermediate",
+    "skill_tag": "csharp_memory"
+  },
+  {
+    "question": "Which exception type handles null reference access?",
+    "options": [
+      "ArgumentException",
+      "NullReferenceException",
+      "IndexOutOfRangeException",
+      "InvalidOperationException"
+    ],
+    "correct_answer": "NullReferenceException",
+    "difficulty": "intermediate",
+    "skill_tag": "csharp_exception"
+  },
+  {
+    "question": "Which keyword creates a constant value?",
+    "options": ["readonly", "final", "const", "static"],
+    "correct_answer": "const",
+    "difficulty": "intermediate",
+    "skill_tag": "csharp_keyword"
+  },
+  {
+    "question": "What does LINQ stand for?",
+    "options": [
+      "Language Integrated Query",
+      "Logical Interface Query",
+      "Linked Index Query",
+      "Local Instance Query"
+    ],
+    "correct_answer": "Language Integrated Query",
+    "difficulty": "intermediate",
+    "skill_tag": "csharp_linq"
+  },
+  {
+    "question": "Which keyword allows a method to be overridden?",
+    "options": ["override", "virtual", "sealed", "abstract"],
+    "correct_answer": "virtual",
+    "difficulty": "intermediate",
+    "skill_tag": "csharp_oop"
+  },
+  {
+    "question": "Which collection is thread-safe?",
+    "options": ["List", "Dictionary", "ConcurrentDictionary", "Array"],
+    "correct_answer": "ConcurrentDictionary",
+    "difficulty": "intermediate",
+    "skill_tag": "csharp_concurrency"
+  },
+
+  {
+    "question": "What is the purpose of the Garbage Collector?",
+    "options": [
+      "Delete variables",
+      "Free unused memory",
+      "Optimize CPU",
+      "Manage threads"
+    ],
+    "correct_answer": "Free unused memory",
+    "difficulty": "advanced",
+    "skill_tag": "csharp_memory"
+  },
+  {
+    "question": "Which memory area stores value types?",
+    "options": ["Heap", "Stack", "Register", "Cache"],
+    "correct_answer": "Stack",
+    "difficulty": "advanced",
+    "skill_tag": "csharp_memory"
+  },
+  {
+    "question": "What causes memory leaks in C#?",
+    "options": [
+      "Garbage collection",
+      "Unreleased event handlers",
+      "Value types",
+      "Local variables"
+    ],
+    "correct_answer": "Unreleased event handlers",
+    "difficulty": "advanced",
+    "skill_tag": "csharp_memory"
+  },
+  {
+    "question": "Which keyword ensures thread synchronization?",
+    "options": ["lock", "sync", "await", "volatile"],
+    "correct_answer": "lock",
+    "difficulty": "advanced",
+    "skill_tag": "csharp_concurrency"
+  },
+  {
+    "question": "What does the volatile keyword guarantee?",
+    "options": [
+      "Atomic operations",
+      "Thread safety",
+      "Memory visibility",
+      "Performance optimization"
+    ],
+    "correct_answer": "Memory visibility",
+    "difficulty": "advanced",
+    "skill_tag": "csharp_concurrency"
+  },
+  {
+    "question": "Which pattern is commonly used with dependency injection?",
+    "options": ["Singleton", "Factory", "Strategy", "Observer"],
+    "correct_answer": "Factory",
+    "difficulty": "advanced",
+    "skill_tag": "csharp_design_pattern"
+  },
+   {
+    "question": "Which symbol ends a statement in C++?",
+    "options": [";", ":", ".", ","],
+    "correct_answer": ";",
+    "difficulty": "beginner",
+    "skill_tag": "cpp_syntax"
+  },
+  {
+    "question": "Which keyword defines a class in C++?",
+    "options": ["class", "struct", "object", "define"],
+    "correct_answer": "class",
+    "difficulty": "beginner",
+    "skill_tag": "cpp_oop"
+  },
+  {
+    "question": "Which header is required for input/output streams?",
+    "options": ["<stdio.h>", "<iostream>", "<stream>", "<io>"],
+    "correct_answer": "<iostream>",
+    "difficulty": "beginner",
+    "skill_tag": "cpp_io"
+  },
+  {
+    "question": "Which operator is used to access members via pointer?",
+    "options": [".", "::", "->", "*"],
+    "correct_answer": "->",
+    "difficulty": "beginner",
+    "skill_tag": "cpp_pointer"
+  },
+  {
+    "question": "Which keyword allocates memory dynamically?",
+    "options": ["alloc", "malloc", "new", "create"],
+    "correct_answer": "new",
+    "difficulty": "beginner",
+    "skill_tag": "cpp_memory"
+  },
+  {
+    "question": "Which keyword releases memory allocated by new?",
+    "options": ["free", "delete", "remove", "clear"],
+    "correct_answer": "delete",
+    "difficulty": "beginner",
+    "skill_tag": "cpp_memory"
+  },
+  {
+    "question": "Which loop checks condition before execution?",
+    "options": ["do-while", "foreach", "while", "repeat"],
+    "correct_answer": "while",
+    "difficulty": "beginner",
+    "skill_tag": "cpp_loop"
+  },
+  {
+    "question": "Which data type stores decimal values?",
+    "options": ["int", "char", "float", "bool"],
+    "correct_answer": "float",
+    "difficulty": "beginner",
+    "skill_tag": "cpp_types"
+  },
+  {
+    "question": "Which keyword prevents inheritance?",
+    "options": ["final", "sealed", "private", "const"],
+    "correct_answer": "final",
+    "difficulty": "beginner",
+    "skill_tag": "cpp_oop"
+  },
+  {
+    "question": "Which operator is used for scope resolution?",
+    "options": [".", "::", "->", ":"],
+    "correct_answer": "::",
+    "difficulty": "beginner",
+    "skill_tag": "cpp_scope"
+  },
+
+  {
+    "question": "What is a reference in C++?",
+    "options": [
+      "A copy of variable",
+      "An alias to an existing variable",
+      "A pointer to pointer",
+      "A constant value"
+    ],
+    "correct_answer": "An alias to an existing variable",
+    "difficulty": "intermediate",
+    "skill_tag": "cpp_reference"
+  },
+  {
+    "question": "Which STL container stores unique sorted elements?",
+    "options": ["vector", "list", "set", "map"],
+    "correct_answer": "set",
+    "difficulty": "intermediate",
+    "skill_tag": "cpp_stl"
+  },
+  {
+    "question": "What does const keyword do?",
+    "options": [
+      "Creates variable",
+      "Prevents modification",
+      "Allocates memory",
+      "Improves performance"
+    ],
+    "correct_answer": "Prevents modification",
+    "difficulty": "intermediate",
+    "skill_tag": "cpp_const"
+  },
+  {
+    "question": "Which STL container provides key-value pairs?",
+    "options": ["set", "vector", "map", "queue"],
+    "correct_answer": "map",
+    "difficulty": "intermediate",
+    "skill_tag": "cpp_stl"
+  },
+  {
+    "question": "What is function overloading?",
+    "options": [
+      "Same function name with different parameters",
+      "Same function signature",
+      "Runtime polymorphism",
+      "Multiple inheritance"
+    ],
+    "correct_answer": "Same function name with different parameters",
+    "difficulty": "intermediate",
+    "skill_tag": "cpp_oop"
+  },
+  {
+    "question": "Which keyword enables runtime polymorphism?",
+    "options": ["virtual", "override", "dynamic", "static"],
+    "correct_answer": "virtual",
+    "difficulty": "intermediate",
+    "skill_tag": "cpp_oop"
+  },
+  {
+    "question": "What does nullptr represent?",
+    "options": [
+      "Zero value",
+      "Invalid pointer",
+      "Null pointer literal",
+      "Garbage value"
+    ],
+    "correct_answer": "Null pointer literal",
+    "difficulty": "intermediate",
+    "skill_tag": "cpp_pointer"
+  },
+  {
+    "question": "Which STL algorithm sorts a container?",
+    "options": ["order()", "arrange()", "sort()", "sequence()"],
+    "correct_answer": "sort()",
+    "difficulty": "intermediate",
+    "skill_tag": "cpp_algorithm"
+  },
+  {
+    "question": "Which keyword defines a template?",
+    "options": ["generic", "template", "typename", "define"],
+    "correct_answer": "template",
+    "difficulty": "intermediate",
+    "skill_tag": "cpp_template"
+  },
+  {
+    "question": "Which header supports smart pointers?",
+    "options": ["<memory>", "<pointer>", "<smart>", "<utility>"],
+    "correct_answer": "<memory>",
+    "difficulty": "intermediate",
+    "skill_tag": "cpp_memory"
+  },
+
+  {
+    "question": "What does RAII stand for?",
+    "options": [
+      "Resource Allocation Is Initialization",
+      "Runtime Access In Interface",
+      "Reference Allocation In Inheritance",
+      "Random Access In Index"
+    ],
+    "correct_answer": "Resource Allocation Is Initialization",
+    "difficulty": "advanced",
+    "skill_tag": "cpp_memory"
+  },
+  {
+    "question": "Which smart pointer represents unique ownership?",
+    "options": ["shared_ptr", "weak_ptr", "unique_ptr", "auto_ptr"],
+    "correct_answer": "unique_ptr",
+    "difficulty": "advanced",
+    "skill_tag": "cpp_smart_pointer"
+  },
+  {
+    "question": "What problem does weak_ptr solve?",
+    "options": [
+      "Null pointer",
+      "Memory leak due to circular reference",
+      "Stack overflow",
+      "Race condition"
+    ],
+    "correct_answer": "Memory leak due to circular reference",
+    "difficulty": "advanced",
+    "skill_tag": "cpp_smart_pointer"
+  },
+  {
+    "question": "Which C++ feature enables move semantics?",
+    "options": ["Copy constructor", "Destructor", "Move constructor", "Operator overloading"],
+    "correct_answer": "Move constructor",
+    "difficulty": "advanced",
+    "skill_tag": "cpp_move"
+  },
+  {
+    "question": "What does constexpr enforce?",
+    "options": [
+      "Runtime evaluation",
+      "Compile-time evaluation",
+      "Memory allocation",
+      "Thread safety"
+    ],
+    "correct_answer": "Compile-time evaluation",
+    "difficulty": "advanced",
+    "skill_tag": "cpp_compile"
+  },
+  {
+    "question": "Which problem can occur with raw pointers?",
+    "options": [
+      "Garbage collection",
+      "Dangling pointer",
+      "Automatic deletion",
+      "Type safety"
+    ],
+    "correct_answer": "Dangling pointer",
+    "difficulty": "advanced",
+    "skill_tag": "cpp_memory"
+  },
+  {
+    "question": "Which keyword declares a variable in Go?",
+    "options": ["var", "let", "define", "auto"],
+    "correct_answer": "var",
+    "difficulty": "beginner",
+    "skill_tag": "go_syntax"
+  },
+  {
+    "question": "Which keyword defines a function in Go?",
+    "options": ["func", "def", "function", "fn"],
+    "correct_answer": "func",
+    "difficulty": "beginner",
+    "skill_tag": "go_function"
+  },
+  {
+    "question": "Which package is the entry point of a Go program?",
+    "options": ["main", "start", "init", "entry"],
+    "correct_answer": "main",
+    "difficulty": "beginner",
+    "skill_tag": "go_basics"
+  },
+  {
+    "question": "Which function starts program execution in Go?",
+    "options": ["start()", "run()", "main()", "init()"],
+    "correct_answer": "main()",
+    "difficulty": "beginner",
+    "skill_tag": "go_basics"
+  },
+  {
+    "question": "Which symbol is used for short variable declaration?",
+    "options": [":=", "=", "==", "->"],
+    "correct_answer": ":=",
+    "difficulty": "beginner",
+    "skill_tag": "go_variable"
+  },
+  {
+    "question": "Which data type stores true or false?",
+    "options": ["int", "bool", "string", "byte"],
+    "correct_answer": "bool",
+    "difficulty": "beginner",
+    "skill_tag": "go_types"
+  },
+  {
+    "question": "Which loop construct exists in Go?",
+    "options": ["for", "while", "do-while", "foreach"],
+    "correct_answer": "for",
+    "difficulty": "beginner",
+    "skill_tag": "go_loop"
+  },
+  {
+    "question": "Which keyword imports a package?",
+    "options": ["include", "using", "import", "require"],
+    "correct_answer": "import",
+    "difficulty": "beginner",
+    "skill_tag": "go_package"
+  },
+  {
+    "question": "Which type represents a collection of key-value pairs?",
+    "options": ["slice", "array", "map", "struct"],
+    "correct_answer": "map",
+    "difficulty": "beginner",
+    "skill_tag": "go_map"
+  },
+  {
+    "question": "Which keyword creates a concurrent routine?",
+    "options": ["thread", "async", "go", "spawn"],
+    "correct_answer": "go",
+    "difficulty": "beginner",
+    "skill_tag": "go_concurrency"
+  },
+
+  {
+    "question": "What is a slice in Go?",
+    "options": [
+      "Fixed-size array",
+      "Dynamic view over an array",
+      "Linked list",
+      "Map structure"
+    ],
+    "correct_answer": "Dynamic view over an array",
+    "difficulty": "intermediate",
+    "skill_tag": "go_slice"
+  },
+  {
+    "question": "Which built-in function gets the length of a slice?",
+    "options": ["size()", "count()", "len()", "length()"],
+    "correct_answer": "len()",
+    "difficulty": "intermediate",
+    "skill_tag": "go_builtin"
+  },
+  {
+    "question": "Which keyword defines a struct?",
+    "options": ["class", "object", "struct", "type"],
+    "correct_answer": "type",
+    "difficulty": "intermediate",
+    "skill_tag": "go_struct"
+  },
+  {
+    "question": "Which interface method is required implicitly?",
+    "options": [
+      "Explicit implementation",
+      "All methods defined",
+      "No method requirement",
+      "Interface keyword"
+    ],
+    "correct_answer": "All methods defined",
+    "difficulty": "intermediate",
+    "skill_tag": "go_interface"
+  },
+  {
+    "question": "Which keyword is used to handle errors?",
+    "options": ["try", "catch", "if", "handle"],
+    "correct_answer": "if",
+    "difficulty": "intermediate",
+    "skill_tag": "go_error"
+  },
+  {
+    "question": "Which function creates a channel?",
+    "options": ["new()", "make()", "channel()", "alloc()"],
+    "correct_answer": "make()",
+    "difficulty": "intermediate",
+    "skill_tag": "go_channel"
+  },
+  {
+    "question": "Which operation receives data from a channel?",
+    "options": ["<-", "->", "<<", ">>"],
+    "correct_answer": "<-",
+    "difficulty": "intermediate",
+    "skill_tag": "go_channel"
+  },
+  {
+    "question": "Which keyword waits for multiple channel operations?",
+    "options": ["wait", "select", "sync", "block"],
+    "correct_answer": "select",
+    "difficulty": "intermediate",
+    "skill_tag": "go_concurrency"
+  },
+  {
+    "question": "Which package provides mutual exclusion?",
+    "options": ["sync", "time", "context", "atomic"],
+    "correct_answer": "sync",
+    "difficulty": "intermediate",
+    "skill_tag": "go_concurrency"
+  },
+  {
+    "question": "Which type is used to wait for goroutines?",
+    "options": ["Mutex", "WaitGroup", "Channel", "Context"],
+    "correct_answer": "WaitGroup",
+    "difficulty": "intermediate",
+    "skill_tag": "go_concurrency"
+  },
+
+  {
+    "question": "What problem do goroutines primarily solve?",
+    "options": [
+      "Memory management",
+      "Concurrency",
+      "Compilation speed",
+      "Type safety"
+    ],
+    "correct_answer": "Concurrency",
+    "difficulty": "advanced",
+    "skill_tag": "go_concurrency"
+  },
+  {
+    "question": "Which issue can occur when accessing shared data?",
+    "options": [
+      "Dead code",
+      "Race condition",
+      "Stack overflow",
+      "Compilation error"
+    ],
+    "correct_answer": "Race condition",
+    "difficulty": "advanced",
+    "skill_tag": "go_concurrency"
+  },
+  {
+    "question": "Which command detects race conditions?",
+    "options": ["go build", "go run", "go test -race", "go vet"],
+    "correct_answer": "go test -race",
+    "difficulty": "advanced",
+    "skill_tag": "go_tooling"
+  },
+  {
+    "question": "What does defer keyword do?",
+    "options": [
+      "Stops execution",
+      "Schedules function call after return",
+      "Creates goroutine",
+      "Handles panic"
+    ],
+    "correct_answer": "Schedules function call after return",
+    "difficulty": "advanced",
+    "skill_tag": "go_defer"
+  },
+  {
+    "question": "What does panic() do?",
+    "options": [
+      "Returns error",
+      "Stops program execution",
+      "Logs message",
+      "Retries function"
+    ],
+    "correct_answer": "Stops program execution",
+    "difficulty": "advanced",
+    "skill_tag": "go_panic"
+  },
+  {
+    "question": "Which keyword recovers from panic?",
+    "options": ["catch", "recover", "handle", "defer"],
+    "correct_answer": "recover",
+    "difficulty": "advanced",
+    "skill_tag": "go_panic"
+  },
+  {
+    "question": "Which design principle does Go emphasize?",
+    "options": [
+      "Inheritance",
+      "Simplicity",
+      "Metaprogramming",
+      "Heavy abstraction"
+    ],
+    "correct_answer": "Simplicity",
+    "difficulty": "advanced",
+    "skill_tag": "go_design"
+  },
+   {
+    "question": "Which symbol starts a variable in PHP?",
+    "options": ["$", "#", "@", "%"],
+    "correct_answer": "$",
+    "difficulty": "beginner",
+    "skill_tag": "php_syntax"
+  },
+  {
+    "question": "Which tag starts a PHP block?",
+    "options": ["<php>", "<?php", "<script>", "<?"],
+    "correct_answer": "<?php",
+    "difficulty": "beginner",
+    "skill_tag": "php_syntax"
+  },
+  {
+    "question": "Which function outputs text in PHP?",
+    "options": ["print()", "echo", "write()", "log()"],
+    "correct_answer": "echo",
+    "difficulty": "beginner",
+    "skill_tag": "php_output"
+  },
+  {
+    "question": "Which data type represents text?",
+    "options": ["int", "float", "string", "bool"],
+    "correct_answer": "string",
+    "difficulty": "beginner",
+    "skill_tag": "php_types"
+  },
+  {
+    "question": "Which operator concatenates strings?",
+    "options": ["+", ".", "&", "||"],
+    "correct_answer": ".",
+    "difficulty": "beginner",
+    "skill_tag": "php_operator"
+  },
+  {
+    "question": "Which superglobal stores GET parameters?",
+    "options": ["$_POST", "$_GET", "$_REQUEST", "$_SERVER"],
+    "correct_answer": "$_GET",
+    "difficulty": "beginner",
+    "skill_tag": "php_superglobal"
+  },
+  {
+    "question": "Which loop exists in PHP?",
+    "options": ["for", "while", "foreach", "all are correct"],
+    "correct_answer": "all are correct",
+    "difficulty": "beginner",
+    "skill_tag": "php_loop"
+  },
+  {
+    "question": "Which function counts array elements?",
+    "options": ["size()", "count()", "length()", "len()"],
+    "correct_answer": "count()",
+    "difficulty": "beginner",
+    "skill_tag": "php_array"
+  },
+  {
+    "question": "Which keyword defines a function?",
+    "options": ["def", "function", "func", "fn"],
+    "correct_answer": "function",
+    "difficulty": "beginner",
+    "skill_tag": "php_function"
+  },
+  {
+    "question": "Which comparison is strict in PHP?",
+    "options": ["==", "=", "===", "!="],
+    "correct_answer": "===",
+    "difficulty": "beginner",
+    "skill_tag": "php_operator"
+  },
+
+  {
+    "question": "What does include do?",
+    "options": [
+      "Stops script on failure",
+      "Includes file with warning on failure",
+      "Compiles code",
+      "Imports namespace"
+    ],
+    "correct_answer": "Includes file with warning on failure",
+    "difficulty": "intermediate",
+    "skill_tag": "php_include"
+  },
+  {
+    "question": "Which function starts a session?",
+    "options": ["session_create()", "session_start()", "start_session()", "init_session()"],
+    "correct_answer": "session_start()",
+    "difficulty": "intermediate",
+    "skill_tag": "php_session"
+  },
+  {
+    "question": "Which superglobal stores session data?",
+    "options": ["$_COOKIE", "$_SESSION", "$_SERVER", "$_ENV"],
+    "correct_answer": "$_SESSION",
+    "difficulty": "intermediate",
+    "skill_tag": "php_session"
+  },
+  {
+    "question": "Which function hashes passwords securely?",
+    "options": ["md5()", "sha1()", "password_hash()", "crypt()"],
+    "correct_answer": "password_hash()",
+    "difficulty": "intermediate",
+    "skill_tag": "php_security"
+  },
+  {
+    "question": "Which extension is commonly used to connect MySQL?",
+    "options": ["mysql", "mysqli", "pdo_mysql", "all are correct"],
+    "correct_answer": "all are correct",
+    "difficulty": "intermediate",
+    "skill_tag": "php_database"
+  },
+  {
+    "question": "Which PDO method prepares SQL statements?",
+    "options": ["query()", "prepare()", "execute()", "bind()"],
+    "correct_answer": "prepare()",
+    "difficulty": "intermediate",
+    "skill_tag": "php_pdo"
+  },
+  {
+    "question": "Which function filters input data?",
+    "options": ["sanitize()", "filter_input()", "clean()", "escape()"],
+    "correct_answer": "filter_input()",
+    "difficulty": "intermediate",
+    "skill_tag": "php_security"
+  },
+  {
+    "question": "What does unset() do?",
+    "options": [
+      "Deletes file",
+      "Removes variable",
+      "Clears memory",
+      "Ends script"
+    ],
+    "correct_answer": "Removes variable",
+    "difficulty": "intermediate",
+    "skill_tag": "php_variable"
+  },
+  {
+    "question": "Which keyword handles exceptions?",
+    "options": ["catch", "try", "throw", "all are correct"],
+    "correct_answer": "all are correct",
+    "difficulty": "intermediate",
+    "skill_tag": "php_exception"
+  },
+  {
+    "question": "Which function converts array to JSON?",
+    "options": ["json_encode()", "json_parse()", "to_json()", "array_json()"],
+    "correct_answer": "json_encode()",
+    "difficulty": "intermediate",
+    "skill_tag": "php_json"
+  },
+
+  {
+    "question": "What vulnerability does prepared statements prevent?",
+    "options": [
+      "XSS",
+      "CSRF",
+      "SQL Injection",
+      "RCE"
+    ],
+    "correct_answer": "SQL Injection",
+    "difficulty": "advanced",
+    "skill_tag": "php_security"
+  },
+  {
+    "question": "Which feature enables type declarations?",
+    "options": ["strict_types", "declare(strict_types=1)", "typed()", "enforce()"],
+    "correct_answer": "declare(strict_types=1)",
+    "difficulty": "advanced",
+    "skill_tag": "php_types"
+  },
+  {
+    "question": "What does late static binding solve?",
+    "options": [
+      "Static method calls",
+      "Inheritance resolution",
+      "Compile-time binding",
+      "Memory allocation"
+    ],
+    "correct_answer": "Inheritance resolution",
+    "difficulty": "advanced",
+    "skill_tag": "php_oop"
+  },
+  {
+    "question": "Which opcode cache improves performance?",
+    "options": ["APCu", "OPcache", "Memcached", "Redis"],
+    "correct_answer": "OPcache",
+    "difficulty": "advanced",
+    "skill_tag": "php_performance"
+  },
+  {
+    "question": "What does Composer manage?",
+    "options": [
+      "PHP versions",
+      "Dependencies",
+      "Web server",
+      "Database schema"
+    ],
+    "correct_answer": "Dependencies",
+    "difficulty": "advanced",
+    "skill_tag": "php_tooling"
+  },
+  {
+    "question": "Which pattern is common in PHP frameworks?",
+    "options": ["MVC", "Singleton", "Observer", "Adapter"],
+    "correct_answer": "MVC",
+    "difficulty": "advanced",
+    "skill_tag": "php_architecture"
+  },
+  {
+    "question": "Which SQL command retrieves data from a table?",
+    "options": ["GET", "FETCH", "SELECT", "READ"],
+    "correct_answer": "SELECT",
+    "difficulty": "beginner",
+    "skill_tag": "sql_query"
+  },
+  {
+    "question": "Which clause filters rows in a query?",
+    "options": ["ORDER BY", "GROUP BY", "WHERE", "HAVING"],
+    "correct_answer": "WHERE",
+    "difficulty": "beginner",
+    "skill_tag": "sql_query"
+  },
+  {
+    "question": "Which keyword sorts query results?",
+    "options": ["SORT", "ORDER BY", "GROUP BY", "ALIGN"],
+    "correct_answer": "ORDER BY",
+    "difficulty": "beginner",
+    "skill_tag": "sql_query"
+  },
+  {
+    "question": "Which SQL statement inserts new data?",
+    "options": ["ADD", "INSERT INTO", "UPDATE", "CREATE"],
+    "correct_answer": "INSERT INTO",
+    "difficulty": "beginner",
+    "skill_tag": "sql_dml"
+  },
+  {
+    "question": "Which SQL statement modifies existing records?",
+    "options": ["ALTER", "CHANGE", "UPDATE", "MODIFY"],
+    "correct_answer": "UPDATE",
+    "difficulty": "beginner",
+    "skill_tag": "sql_dml"
+  },
+  {
+    "question": "Which SQL statement removes records?",
+    "options": ["REMOVE", "DELETE", "DROP", "TRUNCATE"],
+    "correct_answer": "DELETE",
+    "difficulty": "beginner",
+    "skill_tag": "sql_dml"
+  },
+  {
+    "question": "Which keyword selects unique values?",
+    "options": ["UNIQUE", "ONLY", "DISTINCT", "SINGLE"],
+    "correct_answer": "DISTINCT",
+    "difficulty": "beginner",
+    "skill_tag": "sql_query"
+  },
+  {
+    "question": "Which function counts rows?",
+    "options": ["SUM()", "COUNT()", "TOTAL()", "NUMBER()"],
+    "correct_answer": "COUNT()",
+    "difficulty": "beginner",
+    "skill_tag": "sql_function"
+  },
+  {
+    "question": "Which operator matches a pattern?",
+    "options": ["IN", "LIKE", "BETWEEN", "MATCH"],
+    "correct_answer": "LIKE",
+    "difficulty": "beginner",
+    "skill_tag": "sql_operator"
+  },
+  {
+    "question": "Which keyword limits returned rows?",
+    "options": ["LIMIT", "TOP", "ROWNUM", "all are correct"],
+    "correct_answer": "all are correct",
+    "difficulty": "beginner",
+    "skill_tag": "sql_query"
+  },
+
+  {
+    "question": "Which JOIN returns only matching rows?",
+    "options": ["LEFT JOIN", "RIGHT JOIN", "INNER JOIN", "FULL JOIN"],
+    "correct_answer": "INNER JOIN",
+    "difficulty": "intermediate",
+    "skill_tag": "sql_join"
+  },
+  {
+    "question": "Which JOIN returns all rows from the left table?",
+    "options": ["INNER JOIN", "LEFT JOIN", "RIGHT JOIN", "CROSS JOIN"],
+    "correct_answer": "LEFT JOIN",
+    "difficulty": "intermediate",
+    "skill_tag": "sql_join"
+  },
+  {
+    "question": "Which clause filters grouped results?",
+    "options": ["WHERE", "GROUP BY", "HAVING", "ORDER BY"],
+    "correct_answer": "HAVING",
+    "difficulty": "intermediate",
+    "skill_tag": "sql_group"
+  },
+  {
+    "question": "Which constraint enforces uniqueness?",
+    "options": ["NOT NULL", "PRIMARY KEY", "FOREIGN KEY", "CHECK"],
+    "correct_answer": "PRIMARY KEY",
+    "difficulty": "intermediate",
+    "skill_tag": "sql_constraint"
+  },
+  {
+    "question": "Which constraint ensures referenced row exists?",
+    "options": ["UNIQUE", "CHECK", "FOREIGN KEY", "INDEX"],
+    "correct_answer": "FOREIGN KEY",
+    "difficulty": "intermediate",
+    "skill_tag": "sql_constraint"
+  },
+  {
+    "question": "Which SQL statement creates a table?",
+    "options": ["BUILD TABLE", "MAKE TABLE", "CREATE TABLE", "NEW TABLE"],
+    "correct_answer": "CREATE TABLE",
+    "difficulty": "intermediate",
+    "skill_tag": "sql_ddl"
+  },
+  {
+    "question": "Which command removes all rows but keeps table structure?",
+    "options": ["DELETE", "DROP", "TRUNCATE", "REMOVE"],
+    "correct_answer": "TRUNCATE",
+    "difficulty": "intermediate",
+    "skill_tag": "sql_ddl"
+  },
+  {
+    "question": "Which index type improves search performance?",
+    "options": ["PRIMARY", "INDEX", "KEY", "SEARCH"],
+    "correct_answer": "INDEX",
+    "difficulty": "intermediate",
+    "skill_tag": "sql_index"
+  },
+  {
+    "question": "Which function returns the maximum value?",
+    "options": ["MAX()", "TOP()", "HIGH()", "GREATEST()"],
+    "correct_answer": "MAX()",
+    "difficulty": "intermediate",
+    "skill_tag": "sql_function"
+  },
+  {
+    "question": "Which clause groups rows?",
+    "options": ["GROUP BY", "ORDER BY", "HAVING", "PARTITION"],
+    "correct_answer": "GROUP BY",
+    "difficulty": "intermediate",
+    "skill_tag": "sql_group"
+  },
+
+  {
+    "question": "What does ACID stand for in databases?",
+    "options": [
+      "Atomicity, Consistency, Isolation, Durability",
+      "Accuracy, Consistency, Integrity, Durability",
+      "Atomicity, Control, Isolation, Data",
+      "Access, Control, Integrity, Data"
+    ],
+    "correct_answer": "Atomicity, Consistency, Isolation, Durability",
+    "difficulty": "advanced",
+    "skill_tag": "sql_transaction"
+  },
+  {
+    "question": "Which command starts a transaction?",
+    "options": ["BEGIN", "START TRANSACTION", "BEGIN TRANSACTION", "all are correct"],
+    "correct_answer": "all are correct",
+    "difficulty": "advanced",
+    "skill_tag": "sql_transaction"
+  },
+  {
+    "question": "Which isolation level prevents dirty reads?",
+    "options": [
+      "READ UNCOMMITTED",
+      "READ COMMITTED",
+      "REPEATABLE READ",
+      "SERIALIZABLE"
+    ],
+    "correct_answer": "READ COMMITTED",
+    "difficulty": "advanced",
+    "skill_tag": "sql_isolation"
+  },
+  {
+    "question": "Which isolation level is the strictest?",
+    "options": [
+      "READ COMMITTED",
+      "REPEATABLE READ",
+      "SERIALIZABLE",
+      "READ UNCOMMITTED"
+    ],
+    "correct_answer": "SERIALIZABLE",
+    "difficulty": "advanced",
+    "skill_tag": "sql_isolation"
+  },
+  {
+    "question": "What does an execution plan show?",
+    "options": [
+      "SQL syntax",
+      "Query result",
+      "How query is executed",
+      "Database schema"
+    ],
+    "correct_answer": "How query is executed",
+    "difficulty": "advanced",
+    "skill_tag": "sql_performance"
+  },
+  {
+    "question": "Which index type supports full-text search?",
+    "options": ["BTREE", "HASH", "FULLTEXT", "GIN"],
+    "correct_answer": "FULLTEXT",
+    "difficulty": "advanced",
+    "skill_tag": "sql_index"
+  },
+    {
+    "question": "Which keyword declares a variable in Rust?",
+    "options": ["var", "let", "mut", "const"],
+    "correct_answer": "let",
+    "difficulty": "beginner",
+    "skill_tag": "rust_syntax"
+  },
+  {
+    "question": "Which keyword makes a variable mutable?",
+    "options": ["var", "let", "mut", "change"],
+    "correct_answer": "mut",
+    "difficulty": "beginner",
+    "skill_tag": "rust_mutability"
+  },
+  {
+    "question": "Which function is the entry point of a Rust program?",
+    "options": ["start()", "run()", "main()", "init()"],
+    "correct_answer": "main()",
+    "difficulty": "beginner",
+    "skill_tag": "rust_basics"
+  },
+  {
+    "question": "Which symbol ends a statement in Rust?",
+    "options": [";", ":", ".", ","],
+    "correct_answer": ";",
+    "difficulty": "beginner",
+    "skill_tag": "rust_syntax"
+  },
+  {
+    "question": "Which keyword defines a constant?",
+    "options": ["let", "static", "final", "const"],
+    "correct_answer": "const",
+    "difficulty": "beginner",
+    "skill_tag": "rust_const"
+  },
+  {
+    "question": "Which type represents text data?",
+    "options": ["String", "char", "str", "Text"],
+    "correct_answer": "String",
+    "difficulty": "beginner",
+    "skill_tag": "rust_types"
+  },
+  {
+    "question": "Which keyword defines a function?",
+    "options": ["func", "fn", "function", "def"],
+    "correct_answer": "fn",
+    "difficulty": "beginner",
+    "skill_tag": "rust_function"
+  },
+  {
+    "question": "Which operator is used for pattern matching?",
+    "options": ["==", "=>", "::", "->"],
+    "correct_answer": "=>",
+    "difficulty": "beginner",
+    "skill_tag": "rust_pattern"
+  },
+  {
+    "question": "Which macro prints output to console?",
+    "options": ["print()", "println!", "echo!", "log!"],
+    "correct_answer": "println!",
+    "difficulty": "beginner",
+    "skill_tag": "rust_macro"
+  },
+  {
+    "question": "Which type stores true or false?",
+    "options": ["int", "bool", "char", "String"],
+    "correct_answer": "bool",
+    "difficulty": "beginner",
+    "skill_tag": "rust_types"
+  },
+
+  {
+    "question": "What does ownership mean in Rust?",
+    "options": [
+      "Memory is garbage collected",
+      "Each value has a single owner",
+      "All variables share memory",
+      "Compiler manages pointers"
+    ],
+    "correct_answer": "Each value has a single owner",
+    "difficulty": "intermediate",
+    "skill_tag": "rust_ownership"
+  },
+  {
+    "question": "Which concept allows borrowing data without ownership transfer?",
+    "options": ["Move", "Clone", "Borrowing", "Copy"],
+    "correct_answer": "Borrowing",
+    "difficulty": "intermediate",
+    "skill_tag": "rust_borrowing"
+  },
+  {
+    "question": "Which symbol represents a reference?",
+    "options": ["*", "&", "%", "#"],
+    "correct_answer": "&",
+    "difficulty": "intermediate",
+    "skill_tag": "rust_reference"
+  },
+  {
+    "question": "Which type represents optional values?",
+    "options": ["Result", "Option", "Nullable", "Maybe"],
+    "correct_answer": "Option",
+    "difficulty": "intermediate",
+    "skill_tag": "rust_option"
+  },
+  {
+    "question": "Which type handles success or error values?",
+    "options": ["Option", "Try", "Result", "Either"],
+    "correct_answer": "Result",
+    "difficulty": "intermediate",
+    "skill_tag": "rust_result"
+  },
+  {
+    "question": "Which keyword handles pattern matching?",
+    "options": ["match", "switch", "case", "when"],
+    "correct_answer": "match",
+    "difficulty": "intermediate",
+    "skill_tag": "rust_pattern"
+  },
+  {
+    "question": "Which trait enables copying simple types?",
+    "options": ["Clone", "Copy", "Move", "Borrow"],
+    "correct_answer": "Copy",
+    "difficulty": "intermediate",
+    "skill_tag": "rust_trait"
+  },
+  {
+    "question": "Which keyword defines an enumeration?",
+    "options": ["enum", "struct", "type", "variant"],
+    "correct_answer": "enum",
+    "difficulty": "intermediate",
+    "skill_tag": "rust_enum"
+  },
+  {
+    "question": "Which keyword defines a structure?",
+    "options": ["struct", "class", "object", "record"],
+    "correct_answer": "struct",
+    "difficulty": "intermediate",
+    "skill_tag": "rust_struct"
+  },
+  {
+    "question": "Which crate manages dependencies in Rust?",
+    "options": ["npm", "pip", "cargo", "brew"],
+    "correct_answer": "cargo",
+    "difficulty": "intermediate",
+    "skill_tag": "rust_tooling"
+  },
+
+  {
+    "question": "What problem does the borrow checker prevent?",
+    "options": [
+      "Syntax errors",
+      "Data races",
+      "Slow execution",
+      "Compilation time"
+    ],
+    "correct_answer": "Data races",
+    "difficulty": "advanced",
+    "skill_tag": "rust_borrow_checker"
+  },
+  {
+    "question": "Which feature enables zero-cost abstractions?",
+    "options": [
+      "Garbage collection",
+      "Runtime polymorphism",
+      "Compile-time optimizations",
+      "Reflection"
+    ],
+    "correct_answer": "Compile-time optimizations",
+    "difficulty": "advanced",
+    "skill_tag": "rust_performance"
+  },
+  {
+    "question": "Which keyword enables asynchronous functions?",
+    "options": ["async", "await", "go", "future"],
+    "correct_answer": "async",
+    "difficulty": "advanced",
+    "skill_tag": "rust_async"
+  },
+  {
+    "question": "Which keyword waits for an async result?",
+    "options": ["wait", "join", "await", "block"],
+    "correct_answer": "await",
+    "difficulty": "advanced",
+    "skill_tag": "rust_async"
+  },
+  {
+    "question": "Which trait is required for async functions?",
+    "options": ["Future", "Async", "Promise", "Task"],
+    "correct_answer": "Future",
+    "difficulty": "advanced",
+    "skill_tag": "rust_async"
+  },
+  {
+    "question": "Which concept allows safe concurrency?",
+    "options": [
+      "Garbage collection",
+      "Ownership and borrowing",
+      "Thread locking",
+      "Virtual machine"
+    ],
+    "correct_answer": "Ownership and borrowing",
+    "difficulty": "advanced",
+    "skill_tag": "rust_concurrency"
+  },
+  {
+    "question": "Which keyword declares a variable in Kotlin?",
+    "options": ["var", "let", "define", "auto"],
+    "correct_answer": "var",
+    "difficulty": "beginner",
+    "skill_tag": "kotlin_syntax"
+  },
+  {
+    "question": "Which keyword declares a read-only variable?",
+    "options": ["const", "final", "val", "static"],
+    "correct_answer": "val",
+    "difficulty": "beginner",
+    "skill_tag": "kotlin_syntax"
+  },
+  {
+    "question": "Which function is the entry point of a Kotlin program?",
+    "options": ["start()", "run()", "main()", "init()"],
+    "correct_answer": "main()",
+    "difficulty": "beginner",
+    "skill_tag": "kotlin_basics"
+  },
+  {
+    "question": "Which symbol denotes a nullable type?",
+    "options": ["!", "?", "*", "&"],
+    "correct_answer": "?",
+    "difficulty": "beginner",
+    "skill_tag": "kotlin_null_safety"
+  },
+  {
+    "question": "Which keyword defines a function?",
+    "options": ["fun", "def", "function", "fn"],
+    "correct_answer": "fun",
+    "difficulty": "beginner",
+    "skill_tag": "kotlin_function"
+  },
+  {
+    "question": "Which type represents text data?",
+    "options": ["String", "Char", "Text", "str"],
+    "correct_answer": "String",
+    "difficulty": "beginner",
+    "skill_tag": "kotlin_types"
+  },
+  {
+    "question": "Which keyword creates a class?",
+    "options": ["class", "struct", "object", "data"],
+    "correct_answer": "class",
+    "difficulty": "beginner",
+    "skill_tag": "kotlin_oop"
+  },
+  {
+    "question": "Which keyword creates a singleton?",
+    "options": ["class", "static", "object", "single"],
+    "correct_answer": "object",
+    "difficulty": "beginner",
+    "skill_tag": "kotlin_oop"
+  },
+  {
+    "question": "Which collection allows duplicate elements?",
+    "options": ["Set", "Map", "List", "Pair"],
+    "correct_answer": "List",
+    "difficulty": "beginner",
+    "skill_tag": "kotlin_collection"
+  },
+  {
+    "question": "Which operator checks equality in Kotlin?",
+    "options": ["==", "===", "!=", "="],
+    "correct_answer": "==",
+    "difficulty": "beginner",
+    "skill_tag": "kotlin_operator"
+  },
+
+  {
+    "question": "What does data class automatically generate?",
+    "options": [
+      "Only constructors",
+      "equals(), hashCode(), toString()",
+      "Getters only",
+      "Serialization code"
+    ],
+    "correct_answer": "equals(), hashCode(), toString()",
+    "difficulty": "intermediate",
+    "skill_tag": "kotlin_data_class"
+  },
+  {
+    "question": "Which keyword is used for inheritance?",
+    "options": ["extends", "inherits", ":", "implements"],
+    "correct_answer": ":",
+    "difficulty": "intermediate",
+    "skill_tag": "kotlin_oop"
+  },
+  {
+    "question": "Which function safely accesses nullable values?",
+    "options": ["!!", "?.", "::", "??"],
+    "correct_answer": "?.",
+    "difficulty": "intermediate",
+    "skill_tag": "kotlin_null_safety"
+  },
+  {
+    "question": "What does the !! operator do?",
+    "options": [
+      "Safe call",
+      "Throws exception if null",
+      "Checks nullability",
+      "Converts to nullable"
+    ],
+    "correct_answer": "Throws exception if null",
+    "difficulty": "intermediate",
+    "skill_tag": "kotlin_null_safety"
+  },
+  {
+    "question": "Which keyword defines an abstract class?",
+    "options": ["abstract", "interface", "open", "sealed"],
+    "correct_answer": "abstract",
+    "difficulty": "intermediate",
+    "skill_tag": "kotlin_oop"
+  },
+  {
+    "question": "Which keyword allows a class to be inherited?",
+    "options": ["open", "public", "extend", "virtual"],
+    "correct_answer": "open",
+    "difficulty": "intermediate",
+    "skill_tag": "kotlin_oop"
+  },
+  {
+    "question": "Which scope function returns the object itself?",
+    "options": ["let", "apply", "run", "also"],
+    "correct_answer": "apply",
+    "difficulty": "intermediate",
+    "skill_tag": "kotlin_scope_function"
+  },
+  {
+    "question": "Which collection function transforms elements?",
+    "options": ["filter", "map", "reduce", "forEach"],
+    "correct_answer": "map",
+    "difficulty": "intermediate",
+    "skill_tag": "kotlin_collection"
+  },
+  {
+    "question": "Which keyword defines a sealed class?",
+    "options": ["sealed", "final", "closed", "enum"],
+    "correct_answer": "sealed",
+    "difficulty": "intermediate",
+    "skill_tag": "kotlin_oop"
+  },
+  {
+    "question": "Which feature replaces enums with subclasses?",
+    "options": ["data class", "sealed class", "interface", "object"],
+    "correct_answer": "sealed class",
+    "difficulty": "intermediate",
+    "skill_tag": "kotlin_oop"
+  },
+
+  {
+    "question": "What is the main benefit of coroutines?",
+    "options": [
+      "Thread creation",
+      "Asynchronous programming without blocking",
+      "Parallel execution only",
+      "Memory optimization"
+    ],
+    "correct_answer": "Asynchronous programming without blocking",
+    "difficulty": "advanced",
+    "skill_tag": "kotlin_coroutines"
+  },
+  {
+    "question": "Which keyword starts a coroutine?",
+    "options": ["async", "launch", "go", "run"],
+    "correct_answer": "launch",
+    "difficulty": "advanced",
+    "skill_tag": "kotlin_coroutines"
+  },
+  {
+    "question": "Which function returns a deferred result?",
+    "options": ["launch", "async", "await", "runBlocking"],
+    "correct_answer": "async",
+    "difficulty": "advanced",
+    "skill_tag": "kotlin_coroutines"
+  },
+  {
+    "question": "Which keyword waits for a coroutine result?",
+    "options": ["wait", "join", "await", "block"],
+    "correct_answer": "await",
+    "difficulty": "advanced",
+    "skill_tag": "kotlin_coroutines"
+  },
+  {
+    "question": "Which dispatcher is used for IO operations?",
+    "options": ["Default", "Main", "IO", "Unconfined"],
+    "correct_answer": "IO",
+    "difficulty": "advanced",
+    "skill_tag": "kotlin_coroutines"
+  },
+  {
+    "question": "What problem do coroutines help solve?",
+    "options": [
+      "Memory leaks",
+      "Callback hell",
+      "Type safety",
+      "Compilation speed"
+    ],
+    "correct_answer": "Callback hell",
+    "difficulty": "advanced",
+    "skill_tag": "kotlin_coroutines"
+  },
+  {
+    "question": "Which keyword declares a constant in Swift?",
+    "options": ["let", "var", "const", "static"],
+    "correct_answer": "let",
+    "difficulty": "beginner",
+    "skill_tag": "swift_syntax"
+  },
+  {
+    "question": "Which keyword declares a variable in Swift?",
+    "options": ["let", "var", "define", "mutable"],
+    "correct_answer": "var",
+    "difficulty": "beginner",
+    "skill_tag": "swift_syntax"
+  },
+  {
+    "question": "Which function is the entry point of a Swift program?",
+    "options": ["main()", "start()", "run()", "init()"],
+    "correct_answer": "main()",
+    "difficulty": "beginner",
+    "skill_tag": "swift_basics"
+  },
+  {
+    "question": "Which type represents true or false values?",
+    "options": ["Int", "Bool", "String", "Char"],
+    "correct_answer": "Bool",
+    "difficulty": "beginner",
+    "skill_tag": "swift_types"
+  },
+  {
+    "question": "Which symbol starts a single-line comment?",
+    "options": ["//", "#", "--", "/*"],
+    "correct_answer": "//",
+    "difficulty": "beginner",
+    "skill_tag": "swift_syntax"
+  },
+  {
+    "question": "Which data type represents text?",
+    "options": ["Char", "Text", "String", "str"],
+    "correct_answer": "String",
+    "difficulty": "beginner",
+    "skill_tag": "swift_types"
+  },
+  {
+    "question": "Which keyword defines a function?",
+    "options": ["func", "def", "function", "fn"],
+    "correct_answer": "func",
+    "difficulty": "beginner",
+    "skill_tag": "swift_function"
+  },
+  {
+    "question": "Which collection stores ordered values?",
+    "options": ["Set", "Dictionary", "Array", "Map"],
+    "correct_answer": "Array",
+    "difficulty": "beginner",
+    "skill_tag": "swift_collection"
+  },
+  {
+    "question": "Which collection stores key-value pairs?",
+    "options": ["Array", "Set", "Dictionary", "Tuple"],
+    "correct_answer": "Dictionary",
+    "difficulty": "beginner",
+    "skill_tag": "swift_collection"
+  },
+  {
+    "question": "Which operator checks equality?",
+    "options": ["=", "==", "===", "!="],
+    "correct_answer": "==",
+    "difficulty": "beginner",
+    "skill_tag": "swift_operator"
+  },
+
+  {
+    "question": "What does optional type represent in Swift?",
+    "options": [
+      "Immutable value",
+      "Value that may be nil",
+      "Generic type",
+      "Thread-safe value"
+    ],
+    "correct_answer": "Value that may be nil",
+    "difficulty": "intermediate",
+    "skill_tag": "swift_optional"
+  },
+  {
+    "question": "Which symbol unwraps an optional forcefully?",
+    "options": ["?", "!", "??", "&"],
+    "correct_answer": "!",
+    "difficulty": "intermediate",
+    "skill_tag": "swift_optional"
+  },
+  {
+    "question": "Which operator provides a default value for optional?",
+    "options": ["!", "?", "??", "::"],
+    "correct_answer": "??",
+    "difficulty": "intermediate",
+    "skill_tag": "swift_optional"
+  },
+  {
+    "question": "Which keyword defines a class?",
+    "options": ["class", "struct", "object", "type"],
+    "correct_answer": "class",
+    "difficulty": "intermediate",
+    "skill_tag": "swift_oop"
+  },
+  {
+    "question": "Which keyword defines a structure?",
+    "options": ["class", "struct", "record", "object"],
+    "correct_answer": "struct",
+    "difficulty": "intermediate",
+    "skill_tag": "swift_oop"
+  },
+  {
+    "question": "What is the main difference between class and struct?",
+    "options": [
+      "Class is reference type, struct is value type",
+      "Struct supports inheritance",
+      "Class is immutable",
+      "Struct uses heap only"
+    ],
+    "correct_answer": "Class is reference type, struct is value type",
+    "difficulty": "intermediate",
+    "skill_tag": "swift_oop"
+  },
+  {
+    "question": "Which keyword prevents inheritance?",
+    "options": ["sealed", "final", "static", "private"],
+    "correct_answer": "final",
+    "difficulty": "intermediate",
+    "skill_tag": "swift_oop"
+  },
+  {
+    "question": "Which protocol enables iteration?",
+    "options": ["Iterator", "Sequence", "Iterable", "Collection"],
+    "correct_answer": "Sequence",
+    "difficulty": "intermediate",
+    "skill_tag": "swift_protocol"
+  },
+  {
+    "question": "Which feature allows adding methods without subclassing?",
+    "options": ["Inheritance", "Extension", "Protocol", "Override"],
+    "correct_answer": "Extension",
+    "difficulty": "intermediate",
+    "skill_tag": "swift_extension"
+  },
+  {
+    "question": "Which keyword defines a protocol?",
+    "options": ["protocol", "interface", "implements", "trait"],
+    "correct_answer": "protocol",
+    "difficulty": "intermediate",
+    "skill_tag": "swift_protocol"
+  },
+
+  {
+    "question": "What is ARC responsible for?",
+    "options": [
+      "Garbage collection",
+      "Automatic memory management",
+      "Thread scheduling",
+      "Compilation optimization"
+    ],
+    "correct_answer": "Automatic memory management",
+    "difficulty": "advanced",
+    "skill_tag": "swift_memory"
+  },
+  {
+    "question": "Which reference type can cause memory leaks?",
+    "options": ["strong", "weak", "unowned", "static"],
+    "correct_answer": "strong",
+    "difficulty": "advanced",
+    "skill_tag": "swift_memory"
+  },
+  {
+    "question": "Which keyword prevents retain cycles?",
+    "options": ["weak", "safe", "optional", "async"],
+    "correct_answer": "weak",
+    "difficulty": "advanced",
+    "skill_tag": "swift_memory"
+  },
+  {
+    "question": "Which feature supports asynchronous programming?",
+    "options": ["Thread", "DispatchQueue", "async/await", "Promise"],
+    "correct_answer": "async/await",
+    "difficulty": "advanced",
+    "skill_tag": "swift_async"
+  },
+  {
+    "question": "Which keyword defines an asynchronous function?",
+    "options": ["async", "await", "task", "future"],
+    "correct_answer": "async",
+    "difficulty": "advanced",
+    "skill_tag": "swift_async"
+  },
+  {
+    "question": "Which keyword waits for async result?",
+    "options": ["wait", "join", "await", "block"],
+    "correct_answer": "await",
+    "difficulty": "advanced",
+    "skill_tag": "swift_async"
+  },
+  {
+    "question": "Which framework is used for UI in iOS?",
+    "options": ["UIKit", "SwiftUI", "all are correct", "Foundation"],
+    "correct_answer": "all are correct",
+    "difficulty": "advanced",
+    "skill_tag": "swift_ios"
+  },
+  {
+    "question": "Which keyword declares a variable in Dart?",
+    "options": ["var", "let", "define", "auto"],
+    "correct_answer": "var",
+    "difficulty": "beginner",
+    "skill_tag": "dart_syntax"
+  },
+  {
+    "question": "Which keyword declares a constant value?",
+    "options": ["final", "const", "static", "val"],
+    "correct_answer": "const",
+    "difficulty": "beginner",
+    "skill_tag": "dart_const"
+  },
+  {
+    "question": "Which function is the entry point of a Dart program?",
+    "options": ["start()", "run()", "main()", "init()"],
+    "correct_answer": "main()",
+    "difficulty": "beginner",
+    "skill_tag": "dart_basics"
+  },
+  {
+    "question": "Which data type stores true or false values?",
+    "options": ["int", "bool", "String", "num"],
+    "correct_answer": "bool",
+    "difficulty": "beginner",
+    "skill_tag": "dart_types"
+  },
+  {
+    "question": "Which data type represents text?",
+    "options": ["char", "Text", "String", "str"],
+    "correct_answer": "String",
+    "difficulty": "beginner",
+    "skill_tag": "dart_types"
+  },
+  {
+    "question": "Which keyword defines a function?",
+    "options": ["func", "fn", "function", "void"],
+    "correct_answer": "void",
+    "difficulty": "beginner",
+    "skill_tag": "dart_function"
+  },
+  {
+    "question": "Which collection stores ordered elements?",
+    "options": ["Set", "Map", "List", "Queue"],
+    "correct_answer": "List",
+    "difficulty": "beginner",
+    "skill_tag": "dart_collection"
+  },
+  {
+    "question": "Which collection stores key-value pairs?",
+    "options": ["List", "Set", "Map", "Array"],
+    "correct_answer": "Map",
+    "difficulty": "beginner",
+    "skill_tag": "dart_collection"
+  },
+  {
+    "question": "Which symbol starts a single-line comment?",
+    "options": ["#", "//", "--", "/*"],
+    "correct_answer": "//",
+    "difficulty": "beginner",
+    "skill_tag": "dart_syntax"
+  },
+  {
+    "question": "Which keyword is used for class declaration?",
+    "options": ["class", "struct", "object", "type"],
+    "correct_answer": "class",
+    "difficulty": "beginner",
+    "skill_tag": "dart_oop"
+  },
+
+  {
+    "question": "What is the difference between final and const?",
+    "options": [
+      "No difference",
+      "const is compile-time, final is runtime",
+      "final is compile-time, const is runtime",
+      "const is mutable"
+    ],
+    "correct_answer": "const is compile-time, final is runtime",
+    "difficulty": "intermediate",
+    "skill_tag": "dart_const"
+  },
+  {
+    "question": "Which keyword enables null safety?",
+    "options": ["safe", "?", "!", "null"],
+    "correct_answer": "?",
+    "difficulty": "intermediate",
+    "skill_tag": "dart_null_safety"
+  },
+  {
+    "question": "Which operator force unwraps a nullable value?",
+    "options": ["?", "!", "??", "&"],
+    "correct_answer": "!",
+    "difficulty": "intermediate",
+    "skill_tag": "dart_null_safety"
+  },
+  {
+    "question": "Which operator provides a default value for null?",
+    "options": ["!", "?", "??", "::"],
+    "correct_answer": "??",
+    "difficulty": "intermediate",
+    "skill_tag": "dart_null_safety"
+  },
+  {
+    "question": "Which keyword defines inheritance?",
+    "options": ["inherits", "extends", "implements", "with"],
+    "correct_answer": "extends",
+    "difficulty": "intermediate",
+    "skill_tag": "dart_oop"
+  },
+  {
+    "question": "Which keyword mixes in behavior?",
+    "options": ["with", "extends", "implements", "include"],
+    "correct_answer": "with",
+    "difficulty": "intermediate",
+    "skill_tag": "dart_mixin"
+  },
+  {
+    "question": "Which feature allows multiple inheritance?",
+    "options": ["extends", "mixin", "interface", "abstract"],
+    "correct_answer": "mixin",
+    "difficulty": "intermediate",
+    "skill_tag": "dart_mixin"
+  },
+  {
+    "question": "Which keyword defines an abstract class?",
+    "options": ["abstract", "interface", "sealed", "base"],
+    "correct_answer": "abstract",
+    "difficulty": "intermediate",
+    "skill_tag": "dart_oop"
+  },
+  {
+    "question": "Which function transforms list elements?",
+    "options": ["where()", "map()", "reduce()", "forEach()"],
+    "correct_answer": "map()",
+    "difficulty": "intermediate",
+    "skill_tag": "dart_collection"
+  },
+  {
+    "question": "Which keyword marks an asynchronous function?",
+    "options": ["async", "await", "future", "task"],
+    "correct_answer": "async",
+    "difficulty": "intermediate",
+    "skill_tag": "dart_async"
+  },
+
+  {
+    "question": "What does Future represent in Dart?",
+    "options": [
+      "Synchronous result",
+      "Asynchronous computation result",
+      "Thread",
+      "Callback"
+    ],
+    "correct_answer": "Asynchronous computation result",
+    "difficulty": "advanced",
+    "skill_tag": "dart_async"
+  },
+  {
+    "question": "Which keyword waits for a Future result?",
+    "options": ["wait", "join", "await", "block"],
+    "correct_answer": "await",
+    "difficulty": "advanced",
+    "skill_tag": "dart_async"
+  },
+  {
+    "question": "What does Stream represent?",
+    "options": [
+      "Single async value",
+      "Multiple async values over time",
+      "Thread pool",
+      "Event loop"
+    ],
+    "correct_answer": "Multiple async values over time",
+    "difficulty": "advanced",
+    "skill_tag": "dart_stream"
+  },
+  {
+    "question": "Which widget lays out children vertically in Flutter?",
+    "options": ["Row", "Column", "Stack", "ListView"],
+    "correct_answer": "Column",
+    "difficulty": "advanced",
+    "skill_tag": "flutter_layout"
+  },
+  {
+    "question": "Which widget manages mutable state?",
+    "options": ["StatelessWidget", "StatefulWidget", "InheritedWidget", "Provider"],
+    "correct_answer": "StatefulWidget",
+    "difficulty": "advanced",
+    "skill_tag": "flutter_state"
+  },
+  {
+    "question": "What does setState() do?",
+    "options": [
+      "Updates UI",
+      "Restarts app",
+      "Changes route",
+      "Stops widget"
+    ],
+    "correct_answer": "Updates UI",
+    "difficulty": "advanced",
+    "skill_tag": "flutter_state"
+  },
+  {
+    "question": "Which widget handles navigation between screens?",
+    "options": ["Router", "Navigator", "PageView", "Scaffold"],
+    "correct_answer": "Navigator",
+    "difficulty": "advanced",
+    "skill_tag": "flutter_navigation"
+  },
+  {
+    "question": "Which architecture pattern is common in Flutter?",
+    "options": ["MVC", "MVVM", "BLoC", "all are correct"],
+    "correct_answer": "all are correct",
+    "difficulty": "advanced",
+    "skill_tag": "flutter_architecture"
+  }
+]

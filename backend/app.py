@@ -61,7 +61,7 @@ def create_app():
         from app.routes.payment_va import va_payment_bp
         from app.routes.sepay_webhook import sepay_webhook_bp
         from app.routes.EmailVerification import email_verification_bp
-        from app.routes.PlacementTest import placement_bp
+        from app.routes.PlacementAI import placement_ai_bp
         from app.routes.LearningPath import learning_path_bp
         from app.routes.Chat import chat_bp
 
@@ -75,7 +75,7 @@ def create_app():
         app.register_blueprint(va_payment_bp)
         app.register_blueprint(sepay_webhook_bp)
         app.register_blueprint(email_verification_bp)
-        app.register_blueprint(placement_bp)
+        app.register_blueprint(placement_ai_bp)
         app.register_blueprint(learning_path_bp)
         app.register_blueprint(chat_bp)
 

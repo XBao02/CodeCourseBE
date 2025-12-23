@@ -146,20 +146,16 @@ const startTest = async () => {
 
   loading.value = true;
   try {
-    await client.post("/placement/generate-questions", {
-      user_id: userId.value,
+    const { data } = await client.post("/placement/run", {
       language: selectedLanguage.value,
-      level: selectedLevel.value,
+      goal: selectedLevel.value,
+      user_id: userId.value,
     });
-    router
-      .push({
-        path: "/student/placement/test",
-        query: {
-          userId: userId.value,
-          language: selectedLanguage.value,
-        },
-      })
-      .catch(() => {});
+    sessionStorage.setItem("placementQuestions", JSON.stringify(data.questions || []));
+    sessionStorage.setItem("placementLanguage", selectedLanguage.value);
+    sessionStorage.setItem("placementGoal", selectedLevel.value);
+    sessionStorage.setItem("placementBatch", data.batch_id || "");
+    router.push({ path: "/student/placement/test" }).catch(() => {});
   } catch (err) {
     error.value = err?.response?.data?.error || "Không tạo được câu hỏi. Vui lòng thử lại.";
   } finally {

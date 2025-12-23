@@ -52,20 +52,11 @@ const error = ref("");
 const success = ref("");
 const loading = ref(true);
 const session = computed(() => getStoredSession());
-const userId = computed(() => Number(route.query.userId) || session.value?.user?.id);
-const languageMap = {
-  python: "Python",
-  javascript: "JavaScript",
-  cpp: "C++",
-  java: "Java",
-  web_frontend: "Web Frontend",
-  backend: "Backend / API",
-};
 
 const languageLabel = computed(() => {
-  const raw = (route.query.language || "").toString().trim();
+  const raw = (sessionStorage.getItem("placementLanguage") || "").toString().trim();
   if (!raw) return "Chưa chọn";
-  return languageMap[raw] || raw.replace(/_/g, " ");
+  return raw.replace(/_/g, " ");
 });
 
 const questions = ref([]);
@@ -84,16 +75,18 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
-const loadQuestions = async () => {
-  if (!userId.value) {
+const loadQuestions = () => {
+  const stored = sessionStorage.getItem("placementQuestions");
+  if (!stored) {
+    error.value = "Chưa có bộ câu hỏi. Vui lòng chọn ngôn ngữ trước.";
     loading.value = false;
     return;
   }
   try {
-    const { data } = await client.get(`/placement/questions/latest/${userId.value}`);
-    questions.value = data;
+    questions.value = JSON.parse(stored) || [];
   } catch (err) {
-    error.value = "Không thể tải câu hỏi. Vui lòng thử lại.";
+    questions.value = [];
+    error.value = "Lỗi đọc bộ câu hỏi. Vui lòng thử lại.";
   } finally {
     loading.value = false;
   }
@@ -102,10 +95,6 @@ const loadQuestions = async () => {
 const handleSubmit = async () => {
   error.value = "";
   success.value = "";
-  if (!userId.value) {
-    error.value = "Bạn cần đăng nhập để nộp bài.";
-    return;
-  }
   if (!questions.value.length) {
     error.value = "Chưa có câu hỏi để gửi.";
     return;
@@ -117,16 +106,28 @@ const handleSubmit = async () => {
   }
   submitting.value = true;
   try {
-    const payload = questions.value.map((question) => ({
+    const payloadAnswers = questions.value.map((question) => ({
       question_id: question.id,
-      chosen_answer: answers[question.id],
+      answer: answers[question.id],
     }));
-    await client.post("/placement/submit", {
-      user_id: userId.value,
-      answers: payload,
+    const language = sessionStorage.getItem("placementLanguage") || "general";
+    const goal = sessionStorage.getItem("placementGoal") || "beginner";
+    const batch_id = sessionStorage.getItem("placementBatch") || "";
+    const userId = session.value?.user?.id;
+
+    const { data } = await client.post("/placement/run", {
+      language,
+      goal,
+      user_id: userId,
+      batch_id,
+      answers: payloadAnswers,
     });
-    success.value = "Kết quả đã được gửi. Hệ thống đang sinh lộ trình.";
-    setTimeout(() => router.push("/student"), 1200);
+    // Persist recommended courses for Skill profile view
+    sessionStorage.setItem("placementRecommended", JSON.stringify(data.recommended_courses || []));
+    sessionStorage.setItem("placementLevel", data.level || "");
+    success.value = `Điểm: ${data.score}. Level: ${data.level}.`;
+    sessionStorage.removeItem("placementQuestions");
+    setTimeout(() => router.push("/student"), 1500);
   } catch (err) {
     error.value =
       err?.response?.data?.error || "Không thể gửi kết quả. Vui lòng thử lại.";
@@ -135,10 +136,14 @@ const handleSubmit = async () => {
   }
 };
 
-watch(userId, () => {
-  loading.value = true;
-  loadQuestions();
-}, { immediate: true });
+watch(
+  () => route.fullPath,
+  () => {
+    loading.value = true;
+    loadQuestions();
+  },
+  { immediate: true }
+);
 </script>
 
 <style scoped>
